@@ -1,0 +1,34 @@
+# Python cache files
+__pycache__/
+*.pyc
+
+# Virtual Environment folders (never commit these)
+venv/
+env/
+.venv/
+.env/
+
+# PyInstaller build artifacts (IMPORTANT)
+dist/
+build/
+*.spec
+
+# VS Code editor settings
+.vscode/
+
+# macOS specific files
+.DS_Store
+
+# Log files
+*.log
+*.log*
+
+# Any file containing sensitive information
+secrets.ini
+.env
+
+# Personal configuration files
+server/
+dashboard.py
+experiment/
+dmg/
