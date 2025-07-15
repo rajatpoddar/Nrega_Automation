@@ -1,0 +1,17 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  nrega-server:
+    build: .
+    container_name: nrega-license-server
+    restart: unless-stopped
+    ports:
+      # Updated: Host port 4967 now maps to the new container port 8000
+      - "4967:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - FLASK_SECRET_KEY=your_super_secret_and_long_random_string__change_me
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=poddar
