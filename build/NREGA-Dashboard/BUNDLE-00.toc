@@ -1,3 +1,0 @@
-([('NREGA-Dashboard',
-   '/Users/rajatpoddar/Documents/work/5.0 Dashboard/dist/NREGA-Dashboard',
-   'EXECUTABLE')],)
