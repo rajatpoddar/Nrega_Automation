@@ -3,7 +3,7 @@
 
 # --- Application Version Info ---
 APP_NAME = "NREGA-Dashboard"
-APP_VERSION = "2.2.0" # Version can be updated as needed
+APP_VERSION = "2.2.3" # Version can be updated as needed
 
 # --- Platform & UI Configuration ---
 import platform
@@ -53,6 +53,7 @@ WAGELIST_GEN_CONFIG = {
 }
 
 MB_ENTRY_CONFIG = {
+    "url": "https://nregade4.nic.in/Netnrega/mbbook.aspx", # <-- URL ADDED HERE
     "measurement_book_no": "1", "page_no": "2",
     "measurement_date": "10/07/2025", "unit_cost": "282",
     "mate_name": "abc", "default_pit_count": "112",

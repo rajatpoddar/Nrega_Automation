@@ -64,8 +64,26 @@ def create_tab(parent_frame, app_instance):
     changelog_text = scrolledtext.ScrolledText(changelog_frame, wrap=tk.WORD, state="disabled", relief="flat")
     changelog_text.grid(row=0, column=0, sticky="nsew")
     
-    # UPDATED: Added new version 2.2.0 with all recent changes
+    # --- UPDATED CHANGELOG CONTENT ---
     changelog_content = {
+        "2.3.0": [
+            "Added new 'FTO Generation' automation tab.",
+            "FTO Generation: Automates login, processes two verification URLs, accepts all rows, and captures FTO numbers.",
+            "FTO Generation: Added a 'Results' tab to display captured FTO numbers.",
+            "FTO Generation: Login process now automatically skips if the user is already logged in.",
+            "FTO Generation: Removed password field from UI for better security; user now enters it in the browser.",
+            "eMB Entry: Fixed bug where 'Earth work' activity was not being detected due to case-sensitivity.",
+            "eMB Entry: Added a 'Results' tab and a 'Copy Log' button for better feedback and debugging.",
+            "eMB Entry: Optimized workflow to prevent errors and skip duplicate work codes.",
+        ],
+        "2.2.1": [
+            "Fixed critical stability issues in 'MR Fill & Absent' and 'Jobcard Verify' tabs.",
+            "Resolved multiple StaleElementReferenceException and TimeoutException errors.",
+            "Greatly improved the reliability of the 'smart wait' feature for manual user actions.",
+            "Corrected element IDs to ensure the 'Jobcard Verify' automation runs without timing out.",
+            "Added a user-friendly error message for mistyped Panchayat or Village names.",
+            "Added instructional note for the photo naming convention in the 'Jobcard Verify' tab."
+        ],
         "2.2.0": [
             "Added new 'MR Fill & Absent' automation tab with manual edit pause.",
             "Added new 'Jobcard Verify & Photo' automation tab.",
@@ -86,17 +104,9 @@ def create_tab(parent_frame, app_instance):
             "Added a direct link to the 'Nrega Palojori' website in the footer.",
             "Added 'Copy Log' button to more tabs for easier debugging."
         ],
-        "1.8.0": [
-            "Added 'Muster Roll Generator' feature with automatic mode and smart skipping.",
-            "Fixed 'Read-only file system' error for built applications."
-        ],
-        "1.5.0": [
-            "Enhanced security by locking paid keys to a single device.",
-            "Added 'Reset' button to all tabs to clear inputs and logs.",
-            "Added admin feature to reset machine binding for a key."
-        ],
     }
     changelog_text.config(state="normal")
+    changelog_text.delete("1.0", tk.END) # Clear existing content before inserting new
     for version, changes in changelog_content.items():
         changelog_text.insert(tk.END, f"Version {version}\n", "bold")
         for change in changes:

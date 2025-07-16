@@ -1,4 +1,4 @@
-# main_app.py v2.2
+# main_app.py v2.3
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, scrolledtext
 import threading, time, subprocess, os, webbrowser, sys, requests, json, uuid
@@ -14,7 +14,7 @@ from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.chrome.options import Options
 
 import config
-from tabs import msr_tab, wagelist_gen_tab, wagelist_send_tab, wc_gen_tab, mb_entry_tab, if_edit_tab, musterroll_gen_tab, about_tab, mr_fill_tab, jobcard_verify_tab
+from tabs import msr_tab, wagelist_gen_tab, wagelist_send_tab, wc_gen_tab, mb_entry_tab, if_edit_tab, musterroll_gen_tab, about_tab, mr_fill_tab, jobcard_verify_tab, fto_generation_tab
 
 def get_data_path(filename):
     app_name = "NREGA-Dashboard"
@@ -46,6 +46,9 @@ class NregaDashboard(tk.Tk):
         self.open_on_about_tab = False
         self.after(100, self.start_app)
 
+    def get_data_path(self, filename):
+        return get_data_path(filename)
+        
     def get_user_downloads_path(self):
         return get_user_downloads_path()
 
@@ -148,11 +151,12 @@ class NregaDashboard(tk.Tk):
 
         tabs_to_create = {
             "MR Gen": musterroll_gen_tab.create_tab,
-            "MR Fill & Absent": mr_fill_tab.create_tab,
-            "MSR Processor": msr_tab.create_tab,
-            "Wagelist Gen": wagelist_gen_tab.create_tab,
+            "⚙️ Fill E-MR (Beta)": mr_fill_tab.create_tab,
+            "MR Payment": msr_tab.create_tab,
+            "FTO Generation": fto_generation_tab.create_tab, # <-- ADDED NEW TAB
+            "Gen Wagelist": wagelist_gen_tab.create_tab,
             "Send Wagelist": wagelist_send_tab.create_tab,
-            "Jobcard Verify": jobcard_verify_tab.create_tab,
+            "Verify Jobcard": jobcard_verify_tab.create_tab,
             "⚠️ eMB Entry": mb_entry_tab.create_tab,
             "WC Gen (Abua)": wc_gen_tab.create_tab,
             "⚠️ IF Editor (Abua)": if_edit_tab.create_tab,
