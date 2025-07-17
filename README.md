@@ -87,7 +87,7 @@ When you run the app for the first time, it will automatically start a **30-day 
 
 ## 📸 Screenshots
 
-[App Screenshot](assests/FTO_Generation.png) (assests/MSR_Processor.png) (assests/about.png)
+[App Screenshot](assets/FTO_Generation.png) (assests/MSR_Processor.png) (assests/about.png)
 
 ---
 
