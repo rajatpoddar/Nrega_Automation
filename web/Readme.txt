@@ -20,7 +20,7 @@ create-dmg \
   --icon-size 120 \
   --icon "NREGA-Dashboard.app" 175 190 \
   --app-drop-link 425 190 \
-  "NREGA-Dashboard-1.5.0.dmg" \
+  "NREGA-Dashboard-2.3.0.dmg" \
   "path/to/your/NREGA-Dashboard.app"
 
   

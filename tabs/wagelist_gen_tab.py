@@ -20,12 +20,13 @@ def create_tab(parent_frame, app_instance):
     controls_frame = ttk.LabelFrame(parent_frame, text="Wagelist Generation Controls")
     controls_frame.grid(row=0, column=0, sticky="ew", pady=(0, 10))
     controls_frame.columnconfigure(1, weight=1)
+    
     ttk.Label(controls_frame, text="Agency Name: Gram Panchayat -").grid(row=0, column=0, sticky='w', pady=(5,0))
-    agency_var = tk.StringVar()
-    agency_var.trace_add("write", lambda name, index, mode, var=agency_var: var.set(var.get().upper()))
-    widgets['agency_entry'] = ttk.Entry(controls_frame, textvariable=agency_var)
+    # Removed auto-capitalization for more user control
+    widgets['agency_entry'] = ttk.Entry(controls_frame)
     widgets['agency_entry'].grid(row=0, column=1, sticky='ew', pady=(5,0))
-    ttk.Label(controls_frame, text="e.g., BURKUNDI, PALOJORI", style="Instruction.TLabel").grid(row=1, column=1, sticky='w')
+    # Updated instructional text
+    ttk.Label(controls_frame, text="Enter Panchayat name exactly as on the NREGA website.", style="Instruction.TLabel").grid(row=1, column=1, sticky='w')
 
     action_frame = ttk.Frame(controls_frame)
     action_frame.grid(row=2, column=0, columnspan=2, sticky='ew', pady=(15, 0))
@@ -116,7 +117,7 @@ def run_automation_logic(app, agency_name_part):
     app.after(0, set_ui_state, True)
     app.clear_log(widgets['log_text'])
     app.after(0, lambda: [item for item in widgets['results_tree'].get_children() if widgets['results_tree'].delete(item)])
-    full_agency_to_find = "Gram Panchayat -" + agency_name_part.upper()
+    full_agency_to_find = "Gram Panchayat -" + agency_name_part
     app.log_message(widgets['log_text'], f"Starting wagelist generation for: {full_agency_to_find}")
     
     try:
@@ -127,16 +128,19 @@ def run_automation_logic(app, agency_name_part):
         while not app.stop_events["gen"].is_set():
             app.after(0, lambda: widgets['status_label'].config(text="Status: Navigating and selecting agency..."))
             
-            # UPDATED: Force navigation to the base URL at the start of every loop
-            # This prevents all stale element reference errors.
             driver.get(config.WAGELIST_GEN_CONFIG["base_url"])
             
             agency_select_element = wait.until(EC.presence_of_element_located((By.ID, 'ctl00_ContentPlaceHolder1_exe_agency')))
             select = Select(agency_select_element)
-            match_text = next((opt.text for opt in select.options if re.sub(r'\s+', ' ', opt.text).strip().lower() == full_agency_to_find.lower()), None)
+            
+            # Improved matching logic
+            match_text = next((opt.text for opt in select.options if agency_name_part.lower() in opt.text.lower()), None)
 
             if not match_text:
-                app.log_message(widgets['log_text'], f"Agency '{full_agency_to_find}' not found. Stopping.", "error"); break
+                error_msg = f"Agency '{agency_name_part}' not found. Please check the spelling and try again."
+                app.log_message(widgets['log_text'], error_msg, "error")
+                messagebox.showerror("Agency Not Found", error_msg)
+                break
             
             select.select_by_visible_text(match_text)
             app.log_message(widgets['log_text'], f"Selected agency: {match_text}", "success")

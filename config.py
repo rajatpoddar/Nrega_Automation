@@ -3,7 +3,7 @@
 
 # --- Application Version Info ---
 APP_NAME = "NREGA-Dashboard"
-APP_VERSION = "2.2.3" # Version can be updated as needed
+APP_VERSION = "2.3.1" # Version can be updated as needed
 
 # --- Platform & UI Configuration ---
 import platform
@@ -34,9 +34,7 @@ STYLE_CONFIG = {
 
 # --- Automation Configurations ---
 
-# New: Configuration for the Muster Roll Generator
 MUSTER_ROLL_CONFIG = {
-    # Note: Please verify this is the correct URL for muster roll generation.
     "base_url": "https://nregade4.nic.in/Netnrega/preprintmsr.aspx"
 }
 
@@ -52,12 +50,13 @@ WAGELIST_GEN_CONFIG = {
     "base_url": 'https://nregade4.nic.in/Netnrega/SendMSRtoPO.aspx',
 }
 
+# Updated: Default values are now empty strings to be loaded from a saved config file.
 MB_ENTRY_CONFIG = {
-    "url": "https://nregade4.nic.in/Netnrega/mbbook.aspx", # <-- URL ADDED HERE
-    "measurement_book_no": "1", "page_no": "2",
-    "measurement_date": "10/07/2025", "unit_cost": "282",
-    "mate_name": "abc", "default_pit_count": "112",
-    "je_name": "Nilesh Hembram", "je_designation": "JE",
+    "url": "https://nregade4.nic.in/Netnrega/mbbook.aspx",
+    "measurement_book_no": "", "page_no": "",
+    "measurement_date": "", "unit_cost": "",
+    "mate_name": "", "default_pit_count": "",
+    "je_name": "", "je_designation": "",
 }
 
 IF_EDIT_CONFIG = {

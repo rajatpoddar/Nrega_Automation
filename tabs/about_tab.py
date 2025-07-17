@@ -66,6 +66,17 @@ def create_tab(parent_frame, app_instance):
     
     # --- UPDATED CHANGELOG CONTENT ---
     changelog_content = {
+        "2.3.1": [
+            "Muster Roll Gen: Fixed a critical crash that occurred when processing with user-provided work keys.",
+            "Muster Roll Gen: Improved UI layout by moving the log display into a tab, ensuring it's always visible on all screen sizes.",
+            "FTO Generation: Improved error handling to provide clearer messages if a District, Block, or Panchayat name is not found.",
+            "eMB Entry: Added an optional 'Panchayat' field to the UI and automation logic.",
+            "eMB Entry: Configuration fields now start blank and remember user input for the next session. 'Meas. Date' now defaults to the current date.",
+            "MSR Processor: Added a new 'Export to PDF' feature to save results.",
+            "MSR Processor: Replaced technical error messages in the 'Results' tab with user-friendly descriptions like 'Pending for AE Approval' and 'MR not Filled yet.'",
+            "UI Consistency: Removed auto-capitalization from several input fields (Block, Panchayat) across multiple tabs for better user control.",
+            "User Guidance: Added and improved instructional notes on several tabs to provide clearer guidance to the user."
+        ],
         "2.3.0": [
             "Added new 'FTO Generation' automation tab.",
             "FTO Generation: Automates login, processes two verification URLs, accepts all rows, and captures FTO numbers.",
@@ -75,34 +86,6 @@ def create_tab(parent_frame, app_instance):
             "eMB Entry: Fixed bug where 'Earth work' activity was not being detected due to case-sensitivity.",
             "eMB Entry: Added a 'Results' tab and a 'Copy Log' button for better feedback and debugging.",
             "eMB Entry: Optimized workflow to prevent errors and skip duplicate work codes.",
-        ],
-        "2.2.1": [
-            "Fixed critical stability issues in 'MR Fill & Absent' and 'Jobcard Verify' tabs.",
-            "Resolved multiple StaleElementReferenceException and TimeoutException errors.",
-            "Greatly improved the reliability of the 'smart wait' feature for manual user actions.",
-            "Corrected element IDs to ensure the 'Jobcard Verify' automation runs without timing out.",
-            "Added a user-friendly error message for mistyped Panchayat or Village names.",
-            "Added instructional note for the photo naming convention in the 'Jobcard Verify' tab."
-        ],
-        "2.2.0": [
-            "Added new 'MR Fill & Absent' automation tab with manual edit pause.",
-            "Added new 'Jobcard Verify & Photo' automation tab.",
-            "Enhanced 'Jobcard Verify' to loop through all job cards and use folder-based or default photo matching.",
-            "Enhanced 'MSR Processor' and 'Wagelist Gen' with improved, more resilient error handling and clearer results.",
-            "Fixed various bugs including StaleElementReferenceException and UnexpectedAlertPresentException.",
-            "Added 'Copy Log' button and 'Results' tabs to several modules for better user feedback."
-        ],
-        "2.1.0": [
-            "Added license expiry notifications (within 3 days of expiry).",
-            "Improved 'About' tab layout with a 60/40 split for better readability.",
-            "Added donation and pricing information to the payment section.",
-            "Updated support email address."
-        ],
-        "2.0.0": [
-            "UI Overhaul: Shortened and reordered tab names for better visibility.",
-            "Enhanced header buttons for launching Chrome with a clearer design.",
-            "Added a direct link to the 'Nrega Palojori' website in the footer.",
-            "Added 'Copy Log' button to more tabs for easier debugging."
         ],
     }
     changelog_text.config(state="normal")

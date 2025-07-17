@@ -14,55 +14,58 @@ widgets = {}
 LAST_INPUTS_FILE = "muster_roll_inputs.json"
 
 def create_tab(parent_frame, app_instance):
-    """Creates the Muster Roll Generation tab GUI."""
+    """Creates the Muster Roll Generation tab GUI with improved layout and bug fixes."""
     parent_frame.columnconfigure(0, weight=1)
-    parent_frame.rowconfigure(2, weight=1)
+    # Configure row 1 to be the expanding row for the new notebook
+    parent_frame.rowconfigure(1, weight=1)
 
+    # --- Controls Frame ---
     controls_frame = ttk.LabelFrame(parent_frame, text="Muster Roll Generation Controls")
     controls_frame.grid(row=0, column=0, sticky="ew", pady=(0, 10))
     controls_frame.columnconfigure(1, weight=1)
     controls_frame.columnconfigure(3, weight=1)
 
     # Row 0: Panchayat Name
-    ttk.Label(controls_frame, text="Panchayat Name: Gram Panchayat -").grid(row=0, column=0, sticky='w', padx=5, pady=5)
-    panchayat_var = tk.StringVar()
-    panchayat_var.trace_add("write", lambda n, i, m, v=panchayat_var: v.set(v.get().upper()))
-    widgets['panchayat_entry'] = ttk.Entry(controls_frame, textvariable=panchayat_var)
-    widgets['panchayat_entry'].grid(row=0, column=1, columnspan=3, sticky='ew', padx=5, pady=5)
+    ttk.Label(controls_frame, text="Panchayat Name:").grid(row=0, column=0, sticky='w', padx=5, pady=(5,0))
+    # REMOVED: Auto-capitalization for more user control
+    widgets['panchayat_entry'] = ttk.Entry(controls_frame)
+    widgets['panchayat_entry'].grid(row=0, column=1, columnspan=3, sticky='ew', padx=5, pady=(5,0))
+    # ADDED: Instructional Label
+    instructional_label = ttk.Label(controls_frame, text="Note: Must exactly match the name of Panchayat & Staff on the NREGA website.", style="Instruction.TLabel")
+    instructional_label.grid(row=1, column=1, columnspan=3, sticky='w', padx=5, pady=(0,5))
 
-    # Row 1: Dates
-    ttk.Label(controls_frame, text="तारीख से (DD/MM/YYYY):").grid(row=1, column=0, sticky='w', padx=5, pady=5)
+    # Row 2: Dates
+    ttk.Label(controls_frame, text="तारीख से (DD/MM/YYYY):").grid(row=2, column=0, sticky='w', padx=5, pady=5)
     widgets['start_date_entry'] = ttk.Entry(controls_frame)
-    widgets['start_date_entry'].grid(row=1, column=1, sticky='ew', padx=5, pady=5)
-    ttk.Label(controls_frame, text="तारीख को (DD/MM/YYYY):").grid(row=1, column=2, sticky='w', padx=5, pady=5)
+    widgets['start_date_entry'].grid(row=2, column=1, sticky='ew', padx=5, pady=5)
+    ttk.Label(controls_frame, text="तारीख को (DD/MM/YYYY):").grid(row=2, column=2, sticky='w', padx=5, pady=5)
     widgets['end_date_entry'] = ttk.Entry(controls_frame)
-    widgets['end_date_entry'].grid(row=1, column=3, sticky='ew', padx=5, pady=5)
+    widgets['end_date_entry'].grid(row=2, column=3, sticky='ew', padx=5, pady=5)
 
-    # Row 2: Designation and Staff
-    ttk.Label(controls_frame, text="Select Designation:").grid(row=2, column=0, sticky='w', padx=5, pady=5)
+    # Row 3: Designation and Staff
+    ttk.Label(controls_frame, text="Select Designation:").grid(row=3, column=0, sticky='w', padx=5, pady=5)
     designation_options = [
         "Junior Engineer--BP", "Assistant Engineer--BP", "Technical Assistant--BP",
         "Acrited Engineer(AE)--GP", "Junior Engineer--GP", "Technical Assistant--GP"
     ]
     widgets['designation_combobox'] = ttk.Combobox(controls_frame, values=designation_options, state="readonly")
-    widgets['designation_combobox'].grid(row=2, column=1, sticky='ew', padx=5, pady=5)
-    ttk.Label(controls_frame, text="Select Technical Staff:").grid(row=2, column=2, sticky='w', padx=5, pady=5)
+    widgets['designation_combobox'].grid(row=3, column=1, sticky='ew', padx=5, pady=5)
+    ttk.Label(controls_frame, text="Select Technical Staff:").grid(row=3, column=2, sticky='w', padx=5, pady=5)
     widgets['staff_entry'] = ttk.Entry(controls_frame)
-    widgets['staff_entry'].grid(row=2, column=3, sticky='ew', padx=5, pady=5)
+    widgets['staff_entry'].grid(row=3, column=3, sticky='ew', padx=5, pady=5)
 
-    # Row 3: Work Search Keys
-    ttk.Label(controls_frame, text="Work Search Keys (or leave blank for auto):").grid(row=3, column=0, sticky='nw', padx=5, pady=5)
-    widgets['work_codes_text'] = scrolledtext.ScrolledText(controls_frame, wrap=tk.WORD, height=8)
-    widgets['work_codes_text'].grid(row=3, column=1, columnspan=3, sticky='ew', padx=5, pady=5)
+    # Row 4: Work Search Keys
+    ttk.Label(controls_frame, text="Work Search Keys (or leave blank for auto):").grid(row=4, column=0, sticky='nw', padx=5, pady=5)
+    widgets['work_codes_text'] = scrolledtext.ScrolledText(controls_frame, wrap=tk.WORD, height=6)
+    widgets['work_codes_text'].grid(row=4, column=1, columnspan=3, sticky='ew', padx=5, pady=5)
 
-    # --- NEW: Instructional text for save location ---
-    # Row 4: Informational Label
+    # Row 5: Informational Label
     info_label = ttk.Label(controls_frame, text="ℹ️ All generated Muster Rolls are saved in a 'NREGA_MR_Output' folder inside your Downloads.", style="Instruction.TLabel")
-    info_label.grid(row=4, column=1, columnspan=3, sticky='w', padx=5, pady=(5,0))
+    info_label.grid(row=5, column=1, columnspan=3, sticky='w', padx=5, pady=(5,0))
 
-    # Row 5: Action Buttons
+    # Row 6: Action Buttons
     action_frame = ttk.Frame(controls_frame)
-    action_frame.grid(row=5, column=0, columnspan=4, sticky='ew', pady=(15, 5))
+    action_frame.grid(row=6, column=0, columnspan=4, sticky='ew', pady=(15, 5))
     action_frame.columnconfigure((0, 1, 2), weight=1)
     widgets['start_button'] = ttk.Button(action_frame, text="▶ Start Generation", style="Accent.TButton", command=lambda: start_automation(app_instance))
     widgets['stop_button'] = ttk.Button(action_frame, text="Stop", command=lambda: app_instance.stop_events["muster"].set(), state=tk.DISABLED)
@@ -70,34 +73,44 @@ def create_tab(parent_frame, app_instance):
     widgets['start_button'].grid(row=0, column=0, sticky="ew", padx=(0,5), ipady=5)
     widgets['stop_button'].grid(row=0, column=1, sticky="ew", padx=(5,5), ipady=5)
     widgets['reset_button'].grid(row=0, column=2, sticky='ew', padx=(5,0), ipady=5)
-
-    # --- Results Frame ---
-    results_frame = ttk.LabelFrame(parent_frame, text="Results")
-    results_frame.grid(row=1, column=0, sticky="ew", pady=10)
-    results_frame.columnconfigure((0, 1), weight=1)
     
-    widgets['success_label'] = ttk.Label(results_frame, text="Successfully Generated: 0", style="Success.TLabel")
+    # --- ADDED: Notebook for Results and Logs to improve layout ---
+    data_notebook = ttk.Notebook(parent_frame, style="Modern.TNotebook")
+    data_notebook.grid(row=1, column=0, sticky="nsew", pady=(10,0))
+    
+    results_tab_frame = ttk.Frame(data_notebook, padding=15)
+    logs_tab_frame = ttk.Frame(data_notebook, padding=15)
+    
+    data_notebook.add(results_tab_frame, text="Results")
+    data_notebook.add(logs_tab_frame, text="Logs & Status")
+    
+    # --- Results Tab Content ---
+    results_tab_frame.columnconfigure(0, weight=1)
+    results_tab_frame.rowconfigure(0, weight=1)
+    results_content_frame = ttk.Frame(results_tab_frame)
+    results_content_frame.grid(row=0, column=0, sticky="nsew")
+    results_content_frame.columnconfigure((0, 1), weight=1)
+
+    widgets['success_label'] = ttk.Label(results_content_frame, text="Successfully Generated: 0", foreground=config.STYLE_CONFIG["colors"]["light"]["success"], font=config.STYLE_CONFIG["font_bold"])
     widgets['success_label'].grid(row=0, column=0, sticky='w', padx=10, pady=5)
     
-    widgets['skipped_label'] = ttk.Label(results_frame, text="Skipped (No Workers): 0", style="Warning.TLabel")
+    widgets['skipped_label'] = ttk.Label(results_content_frame, text="Skipped (No Workers/Errors): 0", foreground=config.STYLE_CONFIG["colors"]["light"]["warning"], font=config.STYLE_CONFIG["font_bold"])
     widgets['skipped_label'].grid(row=0, column=1, sticky='w', padx=10, pady=5)
 
-    # --- Log Frame ---
-    log_frame = ttk.LabelFrame(parent_frame, text="Logs & Status")
-    log_frame.grid(row=2, column=0, sticky="nsew")
-    log_frame.columnconfigure(0, weight=1)
-    log_frame.rowconfigure(1, weight=1)
-    status_bar = ttk.Frame(log_frame)
+    # --- Logs Tab Content ---
+    logs_tab_frame.columnconfigure(0, weight=1)
+    logs_tab_frame.rowconfigure(1, weight=1)
+    status_bar = ttk.Frame(logs_tab_frame)
     status_bar.grid(row=0, column=0, sticky='ew')
     status_bar.columnconfigure(0, weight=1)
     widgets['status_label'] = ttk.Label(status_bar, text="Status: Ready", style="Status.TLabel")
     widgets['status_label'].grid(row=0, column=0, sticky='ew')
     widgets['copy_logs_button'] = ttk.Button(status_bar, text="Copy Logs", style="Outline.TButton", command=lambda: copy_logs_to_clipboard(app_instance))
     widgets['copy_logs_button'].grid(row=0, column=1, sticky='e', padx=5)
-    widgets['log_text'] = scrolledtext.ScrolledText(log_frame, wrap=tk.WORD, state=tk.DISABLED)
+    widgets['log_text'] = scrolledtext.ScrolledText(logs_tab_frame, wrap=tk.WORD, state=tk.DISABLED)
     widgets['log_text'].grid(row=1, column=0, sticky='nsew', pady=(10, 0))
 
-    load_inputs()
+    load_inputs(app_instance)
 
 def copy_logs_to_clipboard(app):
     log_content = widgets['log_text'].get('1.0', tk.END).strip()
@@ -106,18 +119,22 @@ def copy_logs_to_clipboard(app):
         app.clipboard_append(log_content)
         app.log_message(widgets['log_text'], "Logs copied to clipboard.", "info")
 
-def save_inputs(inputs):
+def get_inputs_path(app):
+    return app.get_data_path(LAST_INPUTS_FILE)
+
+def save_inputs(app, inputs):
     try:
-        with open(LAST_INPUTS_FILE, 'w') as f:
+        with open(get_inputs_path(app), 'w') as f:
             data_to_save = {k: v for k, v in inputs.items() if k not in ['work_codes_raw', 'work_codes', 'auto_mode']}
             json.dump(data_to_save, f)
     except Exception as e:
         print(f"Error saving inputs: {e}")
 
-def load_inputs():
+def load_inputs(app):
     try:
-        if os.path.exists(LAST_INPUTS_FILE):
-            with open(LAST_INPUTS_FILE, 'r') as f:
+        inputs_path = get_inputs_path(app)
+        if os.path.exists(inputs_path):
+            with open(inputs_path, 'r') as f:
                 data = json.load(f)
                 widgets['panchayat_entry'].insert(0, data.get('panchayat', ''))
                 widgets['start_date_entry'].insert(0, data.get('start_date', ''))
@@ -132,11 +149,13 @@ def reset_ui(app):
         for key in ['panchayat_entry', 'start_date_entry', 'end_date_entry', 'staff_entry']:
             widgets[key].delete(0, tk.END)
         widgets['designation_combobox'].set('')
+        widgets['work_codes_text'].config(state="normal")
         widgets['work_codes_text'].delete('1.0', tk.END)
+        widgets['work_codes_text'].config(state="disabled")
         app.clear_log(widgets['log_text'])
         widgets['status_label'].config(text="Status: Ready")
         widgets['success_label'].config(text="Successfully Generated: 0")
-        widgets['skipped_label'].config(text="Skipped (No Workers): 0")
+        widgets['skipped_label'].config(text="Skipped (No Workers/Errors): 0")
         app.log_message(widgets['log_text'], "Form has been reset.")
 
 def set_ui_state(running):
@@ -145,11 +164,15 @@ def set_ui_state(running):
                         'designation_combobox', 'staff_entry', 'work_codes_text',
                         'start_button', 'reset_button', 'copy_logs_button']:
         if widget_name in widgets:
-            if widget_name == 'designation_combobox':
-                 widgets[widget_name].config(state="disabled" if running else "readonly")
-            else:
-                widgets[widget_name].config(state=state)
+            widget = widgets[widget_name]
+            # Handle different widget types
+            if isinstance(widget, (ttk.Entry, ttk.Button, scrolledtext.ScrolledText)):
+                 widget.config(state=state)
+            elif isinstance(widget, ttk.Combobox):
+                 widget.config(state="disabled" if running else "readonly")
+
     widgets['stop_button'].config(state="normal" if running else "disabled")
+
 
 def start_automation(app):
     widgets['success_label'].config(text="Successfully Generated: 0")
@@ -171,7 +194,7 @@ def start_automation(app):
     inputs['work_codes'] = [line.strip() for line in inputs['work_codes_raw'].split('\n') if line.strip()]
     inputs['auto_mode'] = not bool(inputs['work_codes'])
 
-    save_inputs(inputs)
+    save_inputs(app, inputs)
     app.start_automation_thread("muster", run_automation_logic, args=(inputs,))
 
 def run_automation_logic(app, inputs):
@@ -186,7 +209,8 @@ def run_automation_logic(app, inputs):
         driver = app.connect_to_chrome()
         wait = WebDriverWait(driver, 20)
         
-        downloads_dir = os.path.join(os.path.expanduser('~'), 'Downloads')
+        # Use the app's helper function to get the correct downloads path
+        downloads_dir = app.get_user_downloads_path()
         base_output_dir = os.path.join(downloads_dir, 'NREGA_MR_Output')
         current_date_str = datetime.now().strftime('%Y-%m-%d')
         date_folder = os.path.join(base_output_dir, current_date_str)
@@ -200,8 +224,10 @@ def run_automation_logic(app, inputs):
             try:
                 driver.get(config.MUSTER_ROLL_CONFIG["base_url"])
                 Select(wait.until(EC.presence_of_element_located((By.ID, "exe_agency")))).select_by_visible_text(f"Gram Panchayat -{inputs['panchayat']}")
+                # Wait for the work code dropdown to have more than just the default "select" option
                 wait.until(lambda d: len(Select(d.find_element(By.ID, "ddlWorkCode")).options) > 1)
                 all_options = Select(driver.find_element(By.ID, "ddlWorkCode")).options
+                # Filter out the first disabled/default option
                 items_to_process = [opt.text for opt in all_options if opt.get_attribute("value")]
                 app.log_message(widgets['log_text'], f"Found {len(items_to_process)} available work codes to process.")
             except Exception as e:
@@ -263,7 +289,7 @@ def run_automation_logic(app, inputs):
                         except StaleElementReferenceException:
                             app.log_message(widgets['log_text'], f"Stale element detected, retrying... ({attempt+1}/3)", "warning")
                             time.sleep(1)
-                    if full_work_code_text: break
+                    # BUG FIX: Removed the misplaced 'break' statement that was causing the loop to exit prematurely.
                 
                 if not full_work_code_text:
                     raise NoSuchElementException(f"Could not find work for '{item}'.")
@@ -295,6 +321,7 @@ def run_automation_logic(app, inputs):
                     session_skip_list.add(full_work_code_text)
                     skipped_count += 1
                     app.log_message(widgets['log_text'], f"'{full_work_code_text}' added to skip list for this session.")
+                    app.after(0, lambda s=skipped_count: widgets['skipped_label'].config(text=f"Skipped (No Workers or Errors): {s}"))
                     continue
                 except TimeoutException:
                     app.log_message(widgets['log_text'], "Muster Roll is valid. Saving PDF...")
@@ -314,12 +341,14 @@ def run_automation_logic(app, inputs):
                 
                 app.log_message(widgets['log_text'], f"Successfully saved PDF: {pdf_filename}", "success")
                 success_count += 1
+                app.after(0, lambda s=success_count: widgets['success_label'].config(text=f"Successfully Generated: {s}"))
                 session_skip_list.add(full_work_code_text)
                 time.sleep(1)
 
             except (NoSuchElementException, ValueError, TimeoutException) as e:
                 app.log_message(widgets['log_text'], f"ERROR processing '{item}': {e}", "error")
                 skipped_count += 1
+                app.after(0, lambda s=skipped_count: widgets['skipped_label'].config(text=f"Skipped (No Workers or Errors): {s}"))
                 continue
 
     except Exception as e:

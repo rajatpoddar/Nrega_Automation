@@ -19,6 +19,7 @@ This tool is designed for users who handle large volumes of data and want to red
 🧭 An intuitive, tab-based interface for each automation task:
 - 🗂️ **MR Generator** – Automatically generates and downloads Muster Roll PDFs.
 - ✍️ **MR Fill & Absent** – Pre-fills Muster Rolls and marks the 7th day absent, then pauses for your manual review and save.
+- 🆕 **FTO Generation** – Generate FTO for both Aadhar based & Top-up Automatically with detailed FTO No. on results.
 - ⚙️ **MSR Processor** – Fills & saves Muster Rolls for a list of work codes with detailed results.
 - 🧾 **Generate Wagelist** – Creates wagelists automatically by processing all available items.
 - 📤 **Send Wagelist** – Marks generated wagelists for e-FMS payment processing.
@@ -86,7 +87,7 @@ When you run the app for the first time, it will automatically start a **30-day 
 
 ## 📸 Screenshots
 
-*(You can add your updated screenshots here)*
+(assests/FTO_Generation.png) (assests/MSR_Processor.png) (assests/about.png)
 
 ---
 

@@ -14,7 +14,7 @@ from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.chrome.options import Options
 
 import config
-from tabs import msr_tab, wagelist_gen_tab, wagelist_send_tab, wc_gen_tab, mb_entry_tab, if_edit_tab, musterroll_gen_tab, about_tab, mr_fill_tab, jobcard_verify_tab, fto_generation_tab
+from tabs import msr_tab, wagelist_gen_tab, wagelist_send_tab, wc_gen_tab, mb_entry_tab, if_edit_tab, musterroll_gen_tab, about_tab, jobcard_verify_tab, fto_generation_tab
 
 def get_data_path(filename):
     app_name = "NREGA-Dashboard"
@@ -151,7 +151,7 @@ class NregaDashboard(tk.Tk):
 
         tabs_to_create = {
             "MR Gen": musterroll_gen_tab.create_tab,
-            "⚙️ Fill E-MR (Beta)": mr_fill_tab.create_tab,
+            # "⚙️ Fill E-MR (Beta)": mr_fill_tab.create_tab,
             "MR Payment": msr_tab.create_tab,
             "FTO Generation": fto_generation_tab.create_tab, # <-- ADDED NEW TAB
             "Gen Wagelist": wagelist_gen_tab.create_tab,

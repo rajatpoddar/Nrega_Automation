@@ -11,7 +11,7 @@ from datetime import datetime
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoAlertPresentException
+from selenium.common.exceptions import TimeoutException, NoAlertPresentException, NoSuchElementException
 
 import config
 
@@ -51,7 +51,7 @@ def create_tab(parent_frame, app_instance):
     ttk.Label(controls_frame, text="Block:").grid(row=0, column=2, sticky='w', padx=5, pady=5)
     widgets['block_entry'] = ttk.Entry(controls_frame)
     widgets['block_entry'].grid(row=0, column=3, sticky='ew', padx=5, pady=5)
-    widgets['block_entry'].bind("<KeyRelease>", _capitalize_entry)
+    # Removed auto-capitalization from Block field as requested
 
     ttk.Label(controls_frame, text="Panchayat:").grid(row=1, column=0, sticky='w', padx=5, pady=5)
     widgets['panchayat_entry'] = ttk.Entry(controls_frame)
@@ -61,9 +61,13 @@ def create_tab(parent_frame, app_instance):
     widgets['user_id_entry'] = ttk.Entry(controls_frame)
     widgets['user_id_entry'].grid(row=2, column=1, columnspan=3, sticky='ew', padx=5, pady=5)
 
+    # Instructional Note
+    note_text = "Note: You can manually log in to the 1st Signatory homepage, then run this automation to create both FTOs (Aadhaar-based & Top-up)."
+    ttk.Label(controls_frame, text=note_text, style="Instruction.TLabel", wraplength=500).grid(row=3, column=0, columnspan=4, sticky='w', padx=5, pady=(10, 5))
+
     # Action Buttons
     action_frame = ttk.Frame(controls_frame)
-    action_frame.grid(row=3, column=0, columnspan=4, sticky='ew', pady=(15, 5))
+    action_frame.grid(row=4, column=0, columnspan=4, sticky='ew', pady=(10, 5))
     action_frame.columnconfigure((0, 1, 2), weight=1)
 
     widgets['start_button'] = ttk.Button(action_frame, text="▶ Start FTO Process", style="Accent.TButton", command=lambda: start_automation(app_instance))
@@ -134,10 +138,8 @@ def save_inputs():
         'user_id': widgets['user_id_entry'].get()
     }
     try:
-        with open(CONFIG_FILE, 'w') as f:
-            json.dump(data, f, indent=4)
-    except Exception as e:
-        print(f"Error saving FTO config: {e}")
+        with open(CONFIG_FILE, 'w') as f: json.dump(data, f, indent=4)
+    except Exception as e: print(f"Error saving FTO config: {e}")
 
 def load_inputs():
     """Loads values from the JSON file into the entry fields."""
@@ -234,7 +236,7 @@ def run_automation_logic(app):
         user_id = widgets['user_id_entry'].get().strip()
 
         if not all([district_name, block_name, panchayat_name, user_id]):
-            messagebox.showerror("Input Error", "District, Block, Panchayat, and User ID are required."); app.after(0, set_ui_state, False); return
+            messagebox.showerror("Input Required", "District, Block, Panchayat, and User ID are required."); app.after(0, set_ui_state, False); return
 
         driver = app.connect_to_chrome()
         wait = WebDriverWait(driver, 20)
@@ -254,13 +256,22 @@ def run_automation_logic(app):
             driver.get(login_url)
             update_status("Filling login details...", 10)
 
-            Select(wait.until(EC.presence_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_ddl_District")))).select_by_visible_text(district_name)
-            wait.until(lambda d: len(Select(d.find_element(By.ID, "ctl00_ContentPlaceHolder1_ddl_Block")).options) > 1)
-            Select(driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_ddl_Block")).select_by_visible_text(block_name)
-            wait.until(lambda d: len(Select(d.find_element(By.ID, "ctl00_ContentPlaceHolder1_ddl_Panch")).options) > 1)
-            Select(driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_ddl_Panch")).select_by_visible_text(panchayat_name)
+            try:
+                Select(wait.until(EC.presence_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_ddl_District")))).select_by_visible_text(district_name)
+                app.log_message(widgets['log_display'], f"Selected District: {district_name}")
+
+                wait.until(lambda d: len(Select(d.find_element(By.ID, "ctl00_ContentPlaceHolder1_ddl_Block")).options) > 1)
+                Select(driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_ddl_Block")).select_by_visible_text(block_name)
+                app.log_message(widgets['log_display'], f"Selected Block: {block_name}")
+
+                wait.until(lambda d: len(Select(d.find_element(By.ID, "ctl00_ContentPlaceHolder1_ddl_Panch")).options) > 1)
+                Select(driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_ddl_Panch")).select_by_visible_text(panchayat_name)
+                app.log_message(widgets['log_display'], f"Selected Panchayat: {panchayat_name}")
+                
+            except NoSuchElementException as e:
+                raise ValueError(f"A selection (District, Block, or Panchayat) was not found. Please check your spelling and try again.")
+
             wait.until(EC.element_to_be_clickable((By.ID, "ctl00_ContentPlaceHolder1_txt_UserID"))).send_keys(user_id)
-            
             app.log_message(widgets['log_display'], "Login details filled.")
             update_status("Waiting for manual login...", 25)
 
