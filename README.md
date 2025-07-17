@@ -87,7 +87,7 @@ When you run the app for the first time, it will automatically start a **30-day 
 
 ## 📸 Screenshots
 
-[App Screenshot](https://github.com/rajatpoddar/Nrega_Automation/blob/main/assets/FTO_Generation.png?raw=true) <img src="assests/MSR_Processor.png" width="500" />(assests/about.png)
+[App Screenshot](https://github.com/rajatpoddar/Nrega_Automation/blob/main/assets/FTO_Generation.png?raw=true) <img src="assets/about.png" width="500" />   (assets/eMB_entry.png)
 
 ---
 
