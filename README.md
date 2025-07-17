@@ -87,7 +87,9 @@ When you run the app for the first time, it will automatically start a **30-day 
 
 ## 📸 Screenshots
 
-<img src="assets/FTO_Generation.png" width="500" /> <img src="assets/about.png" width="500" />   <img src="assets/eMB_entry.png" width="500" /> 
+<img src="assets/FTO_Generation.png" width="500" />
+<img src="assets/about.png" width="500" /> 
+<img src="assets/eMB_entry.png" width="500" /> 
 
 ---
 
