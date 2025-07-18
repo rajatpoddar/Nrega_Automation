@@ -6,3 +6,7 @@ appdirs
 getmac
 fpdf2
 pyinstaller
+sentry-sdk
+ttkbootstrap
+darkdetect
+python-dotenv
