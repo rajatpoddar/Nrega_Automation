@@ -36,4 +36,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: NREGA-Dashboard
-          path: dist/NREGA-Dashboard-v2.4.0.exe
+          path: dist/NREGA-Dashboard.exe
