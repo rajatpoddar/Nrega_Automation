@@ -66,6 +66,10 @@ def create_tab(parent_frame, app_instance):
     
     # --- UPDATED CHANGELOG CONTENT ---
     changelog_content = {
+         "2.4.0": [
+            "Complete UI Overhaul: The application now features a modern, vertical IDE-style navigation panel, replacing the previous tabbed layout for a cleaner and more organized user experience.",
+            "Startup Crash Fixed: Resolved a critical bug that caused a cascade of KeyError exceptions and prevented the application's UI from loading correctly."
+        ],
         "2.3.1": [
             "Muster Roll Gen: Fixed a critical crash that occurred when processing with user-provided work keys.",
             "Muster Roll Gen: Improved UI layout by moving the log display into a tab, ensuring it's always visible on all screen sizes.",
