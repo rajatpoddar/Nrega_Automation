@@ -1,7 +1,7 @@
 <p align="center">
   <img src="https://img.icons8.com/color/96/robot-2.png" alt="NREGA Automation Dashboard Logo" width="80"/>
   <h1 align="center">NREGA Automation Dashboard</h1>
-  <p align="center"><b>Version 2.2.0 | Automate repetitive NREGA portal tasks with ease!</b></p>
+  <p align="center"><b>Version 2.4.0 | Automate repetitive NREGA portal tasks with ease!</b></p>
 </p>
 
 ---
