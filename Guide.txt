@@ -121,3 +121,10 @@ Once this works, you can re-package the final application with PyInstaller to se
 **Important Consideration: Dynamic IP Address**
 * Most home internet connections have a **dynamic public IP**. If your IP changes, your app will stop working.
 * **Permanent Solution (Recommended):** Use Synology's built-in **DDNS** service. Go to **Control Panel** > **External Access** > **DDNS** and set up a free hostname (e.g., `rajat.synology.me`). Then, use this permanent address in your `main_app.py` file: `http://rajat.synology.me:5000/validate`. It will always point to your NAS, even if the IP changes.
+
+
+
+
+
+
+

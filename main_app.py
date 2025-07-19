@@ -305,8 +305,6 @@ class NregaDashboard(tk.Tk):
         if active_button_name:
              self.show_frame(active_button_name)
 
-    # --- All other methods (check_license, start_automation_thread, etc.) remain unchanged ---
-    # (I'm omitting them for brevity, but they are part of the full file)
     def check_license(self):
         license_file = get_data_path('license.dat')
         try:
@@ -438,15 +436,17 @@ class NregaDashboard(tk.Tk):
             if response.status_code == 200:
                 data = response.json()
                 latest_version_str = data.get("latest_version")
-                download_url = data.get("download_url")
-                if latest_version_str and download_url and parse_version(latest_version_str) > parse_version(config.APP_VERSION):
-                    self.after(0, self.show_update_prompt, latest_version_str, download_url)
+                if latest_version_str and parse_version(latest_version_str) > parse_version(config.APP_VERSION):
+                    # Pass the entire app instance to the prompt function
+                    self.after(0, self.show_update_prompt, latest_version_str)
         except Exception as e:
             print(f"Could not check for updates: {e}")
 
-    def show_update_prompt(self, version, url):
-        if messagebox.askyesno("Update Available", f"A new version ({version}) is available. Would you like to go to the download page now?"):
-            webbrowser.open_new_tab(url)
+    def show_update_prompt(self, version):
+        # The 'url' parameter is removed as it's no longer needed here.
+        if messagebox.askyesno("Update Available", f"A new version ({version}) is available. Would you like to go to the 'About' page to download it?"):
+            # This now directly calls the show_frame method of the app instance
+            self.show_frame("About")
 
     def center_window(self):
         self.update_idletasks()
