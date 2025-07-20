@@ -1,4 +1,4 @@
-# tabs/musterroll_gen_tab.py (Upgraded to CustomTkinter)
+# tabs/musterroll_gen_tab.py (Upgraded to CustomTkinter with Orientation Selector)
 import tkinter
 from tkinter import ttk, messagebox
 import customtkinter as ctk
@@ -80,15 +80,22 @@ def create_tab(parent_frame, app_instance):
     widgets['staff_entry'] = ctk.CTkEntry(controls_frame)
     widgets['staff_entry'].grid(row=3, column=3, sticky='ew', padx=(5,15), pady=5)
 
-    ctk.CTkLabel(controls_frame, text="Work Search Keys (or leave blank for auto):").grid(row=4, column=0, sticky='nw', padx=15, pady=5)
+    # --- NEW: PDF Orientation Selector ---
+    ctk.CTkLabel(controls_frame, text="PDF Orientation:").grid(row=4, column=0, sticky='w', padx=15, pady=5)
+    orientation_options = ["Landscape", "Portrait"]
+    widgets['orientation_combobox'] = ctk.CTkComboBox(controls_frame, values=orientation_options)
+    widgets['orientation_combobox'].set("Landscape") # Default to Landscape
+    widgets['orientation_combobox'].grid(row=4, column=1, sticky='ew', padx=(15,5), pady=5)
+
+    ctk.CTkLabel(controls_frame, text="Work Search Keys (or leave blank for auto):").grid(row=5, column=0, sticky='nw', padx=15, pady=5)
     widgets['work_codes_text'] = ctk.CTkTextbox(controls_frame, height=100)
-    widgets['work_codes_text'].grid(row=4, column=1, columnspan=3, sticky='ew', padx=15, pady=5)
+    widgets['work_codes_text'].grid(row=5, column=1, columnspan=3, sticky='ew', padx=15, pady=5)
 
     info_label = ctk.CTkLabel(controls_frame, text="ℹ️ All generated Muster Rolls are saved in a 'NREGA_MR_Output' folder inside your Downloads.", text_color="gray50")
-    info_label.grid(row=5, column=1, columnspan=3, sticky='w', padx=15, pady=(10,0))
+    info_label.grid(row=6, column=1, columnspan=3, sticky='w', padx=15, pady=(10,0))
 
     action_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
-    action_frame.grid(row=6, column=0, columnspan=4, sticky='ew', pady=(15, 15))
+    action_frame.grid(row=7, column=0, columnspan=4, sticky='ew', pady=(15, 15))
     action_frame.grid_columnconfigure((0, 1, 2), weight=1)
     widgets['start_button'] = ctk.CTkButton(action_frame, text="▶ Start Generation", command=lambda: start_automation(app_instance))
     widgets['stop_button'] = ctk.CTkButton(action_frame, text="Stop", command=lambda: app_instance.stop_events["muster"].set(), state=tkinter.DISABLED, fg_color="gray50")
@@ -189,6 +196,7 @@ def load_inputs(app):
                 widgets['end_date_entry'].insert(0, data.get('end_date', ''))
                 widgets['designation_combobox'].set(data.get('designation', ''))
                 widgets['staff_entry'].insert(0, data.get('staff', ''))
+                widgets['orientation_combobox'].set(data.get('orientation', 'Landscape'))
     except Exception as e:
         print(f"Error loading inputs: {e}")
 
@@ -197,6 +205,7 @@ def reset_ui(app):
         for key in ['panchayat_entry', 'start_date_entry', 'end_date_entry', 'staff_entry']:
             widgets[key].delete(0, tkinter.END)
         widgets['designation_combobox'].set('')
+        widgets['orientation_combobox'].set('Landscape')
         widgets['work_codes_text'].delete('1.0', tkinter.END)
         for item in widgets['results_tree'].get_children():
             widgets['results_tree'].delete(item)
@@ -209,7 +218,8 @@ def reset_ui(app):
 def set_ui_state(running):
     state = "disabled" if running else "normal"
     for name in ['panchayat_entry', 'start_date_entry', 'end_date_entry', 'staff_entry',
-                 'work_codes_text', 'start_button', 'reset_button', 'copy_logs_button', 'designation_combobox']:
+                 'work_codes_text', 'start_button', 'reset_button', 'copy_logs_button', 
+                 'designation_combobox', 'orientation_combobox']:
         widgets[name].configure(state=state)
     widgets['stop_button'].configure(state="normal" if running else "disabled")
 
@@ -225,6 +235,7 @@ def start_automation(app):
         'end_date': widgets['end_date_entry'].get().strip(),
         'designation': widgets['designation_combobox'].get().strip(),
         'staff': widgets['staff_entry'].get().strip(),
+        'orientation': widgets['orientation_combobox'].get(),
         'work_codes_raw': widgets['work_codes_text'].get("1.0", tkinter.END).strip()
     }
     
@@ -312,7 +323,7 @@ def run_automation_logic(app, inputs):
                 else: 
                     search_key = item
                     search_box = wait.until(EC.presence_of_element_located((By.ID, "txtWork")))
-                    search_box.delete(0, tkinter.END); search_box.send_keys(search_key)
+                    search_box.clear(); search_box.send_keys(search_key)
                     driver.find_element(By.ID, "imgButtonSearch").click()
                     app.log_message(widgets['log_text'], f"Searching for key: {search_key}")
                     time.sleep(2) # Added wait time
@@ -374,7 +385,21 @@ def run_automation_logic(app, inputs):
                 pdf_filename = f"{short_name}.pdf"
                 save_path = os.path.join(output_dir, pdf_filename)
 
-                print_options = {'landscape': False, 'displayHeaderFooter': False, 'printBackground': False, 'preferCSSPageSize': True}
+                # --- Dynamically Set PDF Options Based on User Input ---
+                is_landscape = (inputs['orientation'] == 'Landscape')
+                
+                print_options = {
+                    'landscape': is_landscape,
+                    'displayHeaderFooter': False,
+                    'printBackground': False,
+                    'preferCSSPageSize': False,
+                    'paperWidth': 11.69 if is_landscape else 8.27,
+                    'paperHeight': 8.27 if is_landscape else 11.69,
+                    'marginTop': 0.4,
+                    'marginBottom': 0.4,
+                    'marginLeft': 0.4,
+                    'marginRight': 0.4
+                }
                 result = driver.execute_cdp_cmd("Page.printToPDF", print_options)
                 pdf_data = base64.b64decode(result['data'])
                 
