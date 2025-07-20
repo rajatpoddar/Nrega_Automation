@@ -1,4 +1,4 @@
-# main_app.py (Upgraded to CustomTkinter)
+# main_app.py (Final Production Version)
 import tkinter
 from tkinter import messagebox, filedialog
 import customtkinter as ctk
@@ -36,8 +36,8 @@ if SENTRY_DSN:
     )
 
 # --- THEME AND APPEARANCE ---
-ctk.set_appearance_mode("System")  # Modes: "System" (default), "Dark", "Light"
-ctk.set_default_color_theme("theme.json") # Themes: "blue" (default), "green", "dark-blue"
+ctk.set_appearance_mode("System")
+ctk.set_default_color_theme("theme.json")
 
 
 def get_data_path(filename):
@@ -79,7 +79,6 @@ class NregaDashboard(ctk.CTk):
 
         self.icon_images = {}
         
-        # Initialize dictionaries here to prevent attribute errors
         self.automation_threads = {}
         self.stop_events = {}
         self.nav_buttons = {}
@@ -87,6 +86,48 @@ class NregaDashboard(ctk.CTk):
 
         self.after(100, self.start_app)
         
+    def start_app(self):
+        """Builds the UI first, then initiates the license check flow."""
+        self.build_main_ui()
+        self.after(200, self.perform_license_check_flow)
+        self.check_for_updates_background() # Start background update check
+
+    def perform_license_check_flow(self):
+        """The core logic for checking a license and locking/unlocking the app."""
+        self.is_licensed = self.check_license()
+
+        if self.is_licensed:
+            self.check_expiry_and_notify()
+            self._unlock_app()
+            self.after(100, self._update_about_tab_info) # Update UI after check
+        else:
+            self._lock_app_to_about_tab()
+            if self.show_activation_window():
+                self.is_licensed = True
+                self.check_expiry_and_notify()
+                self._unlock_app()
+                self.after(100, self._update_about_tab_info) # Update UI after activation
+            else:
+                self.destroy()
+
+    def _lock_app_to_about_tab(self):
+        """Disables all controls and forces the 'About' tab to be visible."""
+        self.show_frame("About")
+        for name, button in self.nav_buttons.items():
+            if name != "About":
+                button.configure(state="disabled")
+        
+        self.launch_chrome_btn.configure(state="disabled")
+        self.theme_combo.configure(state="disabled")
+
+    def _unlock_app(self):
+        """Enables all controls for a licensed user."""
+        for button in self.nav_buttons.values():
+            button.configure(state="normal")
+            
+        self.launch_chrome_btn.configure(state="normal")
+        self.theme_combo.configure(state="normal")
+
     def get_data_path(self, filename):
         return get_data_path(filename)
         
@@ -128,9 +169,7 @@ class NregaDashboard(ctk.CTk):
         try:
             os.makedirs(profile_dir, exist_ok=True)
             startup_url = "https://nrega.palojori.in"
-            
             command = [browser_path] + args + [f"--user-data-dir={profile_dir}", startup_url]
-
             subprocess.Popen(command)
             messagebox.showinfo(f"{browser_name.title()} Launched", f"{browser_name.title()} is starting with remote debugging.\nPlease log in to the NREGA website before starting automation.")
         except Exception as e:
@@ -144,32 +183,6 @@ class NregaDashboard(ctk.CTk):
             return "unknown-device-" + str(uuid.getnode())
         except Exception:
             return "error-getting-mac"
-
-    def start_app(self):
-        if not self.machine_id or "error" in self.machine_id:
-             messagebox.showerror("Fatal Error", "Could not get a unique machine identifier.")
-             self.destroy()
-             return
-        self.is_licensed = self.check_license()
-        if self.is_licensed:
-            self.check_expiry_and_notify()
-            self.build_main_ui()
-        else:
-            self.destroy()
-
-    def check_expiry_and_notify(self):
-        expires_at_str = self.license_info.get('expires_at')
-        if not expires_at_str: return
-        try:
-            expiry_date = datetime.fromisoformat(expires_at_str.split('T')[0]).date()
-            days_left = (expiry_date - datetime.now().date()).days
-            if 0 <= days_left < 3:
-                message = f"Your license expires today." if days_left == 0 else f"Your license will expire in {days_left} day{'s' if days_left > 1 else ''}."
-                messagebox.showwarning("License Expiring Soon", f"{message}\nPlease renew your subscription.")
-                self.open_on_about_tab = True
-        except (ValueError, TypeError) as e:
-            print(f"Could not parse expiry date: {expires_at_str}. Error: {e}")
-            if SENTRY_DSN: sentry_sdk.capture_exception(e)
 
     def build_main_ui(self):
         self._load_icon("chrome", "assets/icons/chrome.png")
@@ -186,8 +199,6 @@ class NregaDashboard(ctk.CTk):
         initial_tab = "About" if self.open_on_about_tab else "MR Gen"
         self.after(100, lambda: self.show_frame(initial_tab))
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
-        update_thread = threading.Thread(target=self.check_for_updates_background, daemon=True)
-        update_thread.start()
 
     def _create_header(self):
         header_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
@@ -208,14 +219,15 @@ class NregaDashboard(ctk.CTk):
         controls_frame = ctk.CTkFrame(header_frame, fg_color="transparent")
         controls_frame.pack(side="right")
 
-        ctk.CTkButton(controls_frame, text="Launch Chrome", image=self.icon_images.get("chrome"), command=lambda: self.open_browser_remote_debug('chrome'), width=140).pack(side="left", padx=(0,10))
+        self.launch_chrome_btn = ctk.CTkButton(controls_frame, text="Launch Chrome", image=self.icon_images.get("chrome"), command=lambda: self.open_browser_remote_debug('chrome'), width=140)
+        self.launch_chrome_btn.pack(side="left", padx=(0,10))
         
         theme_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
-        theme_frame.pack(side="left", padx=10, fill="y") # Use fill to center vertically
+        theme_frame.pack(side="left", padx=10, fill="y")
         
         ctk.CTkLabel(theme_frame, text="Theme:").pack(side="left", padx=(0, 5))
-        theme_combo = ctk.CTkOptionMenu(theme_frame, values=["System", "Light", "Dark"], command=self.on_theme_change)
-        theme_combo.pack(side="left")
+        self.theme_combo = ctk.CTkOptionMenu(theme_frame, values=["System", "Light", "Dark"], command=self.on_theme_change)
+        self.theme_combo.pack(side="left")
 
     def _create_main_layout(self):
         main_frame = ctk.CTkFrame(self, corner_radius=0)
@@ -233,7 +245,7 @@ class NregaDashboard(ctk.CTk):
         self._create_content_frames()
 
     def _create_nav_buttons(self, parent):
-        nav_frame = ctk.CTkFrame(parent, width=220, corner_radius=10, fg_color="transparent")
+        nav_frame = ctk.CTkFrame(parent, width=220, corner_radius=10)
         nav_frame.grid(row=0, column=0, sticky="nsw")
         
         tabs_to_create = self.get_tabs_definition()
@@ -301,23 +313,16 @@ class NregaDashboard(ctk.CTk):
 
     def on_theme_change(self, new_theme: str):
         ctk.set_appearance_mode(new_theme)
-        # Add a delay to allow the theme to apply before restyling the ttk widgets
         self.after(100, self.restyle_all_treeviews)
 
     def restyle_all_treeviews(self):
         """Helper function to find and restyle all Treeview widgets."""
-        if hasattr(musterroll_gen_tab, 'style_treeview'):
-            musterroll_gen_tab.style_treeview(self)
-        if hasattr(msr_tab, 'style_treeview'):
-            msr_tab.style_treeview(self)
-        if hasattr(wagelist_gen_tab, 'style_treeview'):
-            wagelist_gen_tab.style_treeview(self)
-        if hasattr(fto_generation_tab, 'style_treeview'):
-            fto_generation_tab.style_treeview(self)
-        if hasattr(mb_entry_tab, 'style_treeview'):
-            mb_entry_tab.style_treeview(self)
-        if hasattr(wagelist_send_tab, 'style_treeview'):
-            wagelist_send_tab.style_treeview(self)
+        if hasattr(musterroll_gen_tab, 'style_treeview'): musterroll_gen_tab.style_treeview(self)
+        if hasattr(msr_tab, 'style_treeview'): msr_tab.style_treeview(self)
+        if hasattr(wagelist_gen_tab, 'style_treeview'): wagelist_gen_tab.style_treeview(self)
+        if hasattr(fto_generation_tab, 'style_treeview'): fto_generation_tab.style_treeview(self)
+        if hasattr(mb_entry_tab, 'style_treeview'): mb_entry_tab.style_treeview(self)
+        if hasattr(wagelist_send_tab, 'style_treeview'): wagelist_send_tab.style_treeview(self)
 
     def check_license(self):
         license_file = get_data_path('license.dat')
@@ -325,16 +330,12 @@ class NregaDashboard(ctk.CTk):
             if os.path.exists(license_file):
                 with open(license_file, 'r') as f: self.license_info = json.load(f)
                 if self.validate_on_server(self.license_info.get('key'), is_startup_check=True): return True
-                else:
-                    if 'reason' in self.license_info and "Connection" in self.license_info['reason']: return self.show_activation_window()
-                    os.remove(license_file)
-                    messagebox.showerror("License Invalid", "Your license is no longer valid. Please start a new trial or purchase a key.")
-                    return self.show_activation_window()
-            else: return self.show_activation_window()
+                else: return False
+            else: return False
         except Exception as e:
             if SENTRY_DSN: sentry_sdk.capture_exception(e)
             if os.path.exists(license_file): os.remove(license_file)
-            return self.show_activation_window()
+            return False
 
     def validate_on_server(self, key, is_startup_check=False):
         server_url = "https://nrega-server.palojori.in/validate"
@@ -350,15 +351,15 @@ class NregaDashboard(ctk.CTk):
                 if not is_startup_check: messagebox.showerror("Validation Failed", f"License validation failed: {reason}")
                 self.license_info['reason'] = reason
                 return False
-        except requests.exceptions.RequestException:
-            if not is_startup_check: messagebox.showerror("Connection Error", "Could not connect to the license server.")
+        except requests.exceptions.RequestException as e:
+            if not is_startup_check: messagebox.showerror("Connection Error", f"Could not connect to the license server: {e}")
             self.license_info['reason'] = "Connection Error"
             return False
 
     def show_activation_window(self):
         activation_window = ctk.CTkToplevel(self)
         activation_window.title("Activate Product")
-        win_width, win_height = 450, 420
+        win_width, win_height = 450, 480
         x = (self.winfo_screenwidth() // 2) - (win_width // 2)
         y = (self.winfo_screenheight() // 2) - (win_height // 2)
         activation_window.geometry(f'{win_width}x{win_height}+{x}+{y}')
@@ -379,8 +380,7 @@ class NregaDashboard(ctk.CTk):
                 data = response.json()
                 if response.status_code == 200 and data.get("status") == "success":
                     self.license_info = {'key': data.get("key"), 'expires_at': data.get('expires_at')}
-                    license_file = get_data_path('license.dat')
-                    with open(license_file, 'w') as f: json.dump(self.license_info, f)
+                    with open(get_data_path('license.dat'), 'w') as f: json.dump(self.license_info, f)
                     messagebox.showinfo("Trial Started", f"Your 30-day free trial has started!\nExpires on: {self.license_info['expires_at'].split('T')[0]}")
                     is_activated.set(True)
                     activation_window.destroy()
@@ -401,8 +401,7 @@ class NregaDashboard(ctk.CTk):
         id_entry.configure(state="readonly")
         id_entry.pack(side='left', fill='x', expand=True)
         def copy_id():
-            self.clipboard_clear()
-            self.clipboard_append(self.machine_id)
+            self.clipboard_clear(); self.clipboard_append(self.machine_id)
             copy_button.configure(text="Copied!")
             self.after(2000, lambda: copy_button.configure(text="Copy"))
         copy_button = ctk.CTkButton(id_display_frame, text="Copy", command=copy_id, width=60)
@@ -415,16 +414,14 @@ class NregaDashboard(ctk.CTk):
 
         def on_activate_paid():
             key = key_entry.get().strip()
-            if not key:
-                messagebox.showwarning("Input Required", "Please enter a license key.")
-                return
+            if not key: messagebox.showwarning("Input Required", "Please enter a license key."); return
             if self.validate_on_server(key):
-                license_file = get_data_path('license.dat')
-                with open(license_file, 'w') as f: json.dump(self.license_info, f)
+                with open(get_data_path('license.dat'), 'w') as f: json.dump(self.license_info, f)
                 is_activated.set(True)
                 activation_window.destroy()
 
         ctk.CTkButton(main_frame, text="Activate with Key", command=on_activate_paid).pack(pady=10, ipady=4, fill='x')
+        ctk.CTkLabel(main_frame, text="Need help? Contact support at rajatpoddar@outlook.com", text_color="gray50").pack(pady=(15,0))
         
         self.wait_window(activation_window)
         return is_activated.get()
@@ -494,50 +491,39 @@ class NregaDashboard(ctk.CTk):
             time.sleep(0.5)
             self.destroy()
 
-    # --- Sleep Prevention and other utility methods remain unchanged ---
     def prevent_sleep(self):
         if not self.active_automations:
             print("Preventing system sleep.")
-            if config.OS_SYSTEM == "Windows":
-                ctypes.windll.kernel32.SetThreadExecutionState(0x80000003)
+            if config.OS_SYSTEM == "Windows": ctypes.windll.kernel32.SetThreadExecutionState(0x80000003)
             elif config.OS_SYSTEM == "Darwin":
                 if self.sleep_prevention_process is None: self.sleep_prevention_process = subprocess.Popen(["caffeinate", "-d"])
+    
     def allow_sleep(self):
         if not self.active_automations:
             print("Allowing system sleep.")
-            if config.OS_SYSTEM == "Windows":
-                ctypes.windll.kernel32.SetThreadExecutionState(0x80000000)
+            if config.OS_SYSTEM == "Windows": ctypes.windll.kernel32.SetThreadExecutionState(0x80000000)
             elif config.OS_SYSTEM == "Darwin":
                 if self.sleep_prevention_process:
                     self.sleep_prevention_process.terminate()
                     self.sleep_prevention_process = None
+
     def on_automation_finished(self, key):
         if key in self.active_automations: self.active_automations.remove(key)
         if not self.active_automations: self.allow_sleep()
-    # Dummy methods for license check to allow app to run
-    def check_expiry_and_notify(self):
-        expires_at_str = self.license_info.get('expires_at')
-        if not expires_at_str: return
-        try:
-            expiry_date = datetime.fromisoformat(expires_at_str.split('T')[0]).date()
-            days_left = (expiry_date - datetime.now().date()).days
-            if 0 <= days_left < 3:
-                message = f"Your license expires today." if days_left == 0 else f"Your license will expire in {days_left} day{'s' if days_left > 1 else ''}."
-                messagebox.showwarning("License Expiring Soon", f"{message}\nPlease renew your subscription.")
-                self.open_on_about_tab = True
-        except (ValueError, TypeError) as e:
-            print(f"Could not parse expiry date: {expires_at_str}. Error: {e}")
-            if SENTRY_DSN: sentry_sdk.capture_exception(e)
-    # REPLACE your existing update check functions with these three new ones
 
-    def _update_about_tab_ui(self):
-        """Finds the about tab widgets and updates them with the latest info."""
+    def _update_about_tab_info(self):
+        """Refreshes all dynamic info on the About page after validation."""
         try:
-            # Check if the widgets have been created yet
             if 'update_button' in about_tab.widgets:
+                # Update License Info
+                key_text = self.license_info.get('key', 'N/A')
+                expires_text = self.license_info.get('expires_at', 'N/A').split('T')[0]
+                about_tab.widgets['license_key_label'].configure(text=key_text)
+                about_tab.widgets['expires_on_label'].configure(text=expires_text)
+
+                # Update Update Info
                 info = self.update_info
                 about_widgets = about_tab.widgets
-                
                 if info['status'] == 'available':
                     about_widgets['latest_version_label'].configure(text=f"Latest Version: {info['version']}")
                     about_widgets['update_button'].configure(
@@ -550,14 +536,15 @@ class NregaDashboard(ctk.CTk):
                 elif info['status'] == 'updated':
                     about_widgets['latest_version_label'].configure(text=f"Latest Version: {config.APP_VERSION}")
                     about_widgets['update_button'].configure(text="You are up to date", state="disabled")
-                else: # Error or other status
+                else:
                     about_widgets['latest_version_label'].configure(text="Latest Version: Error")
                     about_widgets['update_button'].configure(text="Check for Updates", state="normal")
+            else:
+                self.after(100, self._update_about_tab_info)
         except Exception as e:
             print(f"Could not update About tab UI: {e}")
 
     def check_for_updates_background(self):
-        """Checks for updates in a background thread and updates the UI."""
         def _check():
             time.sleep(2)
             update_url = "https://nrega-dashboard.palojori.in/version.json"
@@ -566,9 +553,8 @@ class NregaDashboard(ctk.CTk):
                 response.raise_for_status()
                 data = response.json()
                 latest_version = data.get("latest_version")
-                url_key = f"download_url_{sys.platform}" if sys.platform in ["win32", "darwin"] else f"download_url_windows" # Fallback for linux
+                url_key = f"download_url_{sys.platform}" if sys.platform in ["win32", "darwin"] else f"download_url_windows"
                 download_url = data.get(url_key)
-
                 if latest_version and parse_version(latest_version) > parse_version(config.APP_VERSION):
                     self.update_info = {"status": "available", "version": latest_version, "url": download_url}
                 else:
@@ -577,10 +563,7 @@ class NregaDashboard(ctk.CTk):
                 self.update_info['status'] = 'error'
                 print(f"Update check failed: {e}")
             finally:
-                # Tell the main thread to update the UI
-                self.after(0, self._update_about_tab_ui)
-        
-        # Start the check in a separate thread
+                self.after(0, self._update_about_tab_info)
         threading.Thread(target=_check, daemon=True).start()
 
     def show_update_prompt(self, version):

@@ -40,15 +40,14 @@ def create_tab(parent_frame, app_instance):
     ctk.CTkLabel(controls_frame, text="Enter Panchayat name exactly as on the NREGA website.", text_color="gray50").grid(row=1, column=1, sticky='w', padx=15)
 
     action_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
-    action_frame.grid(row=2, column=0, columnspan=2, sticky='ew', pady=15)
+    action_frame.grid(row=6, column=0, columnspan=4, sticky='ew', pady=(15, 15))
     action_frame.grid_columnconfigure((0, 1, 2), weight=1)
-
     widgets['start_button'] = ctk.CTkButton(action_frame, text="▶ Start Generation", command=lambda: start_automation(app_instance))
-    widgets['start_button'].grid(row=0, column=0, sticky="ew", padx=(0,5))
-    widgets['stop_button'] = ctk.CTkButton(action_frame, text="Stop", command=lambda: app_instance.stop_events["gen"].set(), state=tkinter.DISABLED, fg_color="gray50")
-    widgets['stop_button'].grid(row=0, column=1, sticky="ew", padx=5)
-    widgets['reset_button'] = ctk.CTkButton(action_frame, text="Reset", fg_color="transparent", border_width=2, border_color=("gray70", "gray40"), text_color=("gray10", "#DCE4EE"), command=lambda: reset_ui(app_instance))
-    widgets['reset_button'].grid(row=0, column=2, sticky='ew', padx=(5,0))
+    widgets['stop_button'] = ctk.CTkButton(action_frame, text="Stop", command=lambda: app_instance.stop_events["muster"].set(), state=tkinter.DISABLED, fg_color="gray50")
+    widgets['reset_button'] = ctk.CTkButton(action_frame, text="Reset", command=lambda: reset_ui(app_instance), fg_color="transparent", border_width=2, border_color=("gray70", "gray40"), text_color=("gray10", "#DCE4EE"))
+    widgets['start_button'].grid(row=0, column=0, sticky="ew", padx=(15, 5))
+    widgets['stop_button'].grid(row=0, column=1, sticky="ew", padx=(5, 5))
+    widgets['reset_button'].grid(row=0, column=2, sticky='ew', padx=(5, 15))
 
     notebook = ctk.CTkTabview(parent_frame)
     notebook.grid(row=1, column=0, sticky="nsew")

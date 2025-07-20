@@ -41,7 +41,7 @@ def create_tab(parent_frame, app_instance):
     
     # Store widgets for external access from main_app
     widgets['current_version_label'] = ctk.CTkLabel(update_frame, text=f"Current Version: {config.APP_VERSION}")
-    widgets['latest_version_label'] = ctk.CTkLabel(update_frame, text=f"Latest Version: {app_instance.update_info.get('version', 'Checking...')}")
+    widgets['latest_version_label'] = ctk.CTkLabel(update_frame, text="Latest Version: Checking...")
     widgets['update_button'] = ctk.CTkButton(update_frame, text="Check for Updates", command=lambda: check_for_updates(app_instance))
     widgets['update_progress'] = ctk.CTkProgressBar(update_frame)
     widgets['update_progress'].set(0)
@@ -51,7 +51,7 @@ def create_tab(parent_frame, app_instance):
     widgets['update_button'].grid(row=2, column=0, columnspan=2, sticky="ew", padx=15, pady=(5,15))
     
     # Immediately update the UI with the status from the main app
-    app_instance._update_about_tab_ui()
+    app_instance.after(100, app_instance._update_about_tab_info)
 
     # 2. License Information
     license_frame = ctk.CTkFrame(left_frame)
@@ -60,13 +60,16 @@ def create_tab(parent_frame, app_instance):
     ctk.CTkLabel(license_frame, text="License Information", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, columnspan=2, padx=15, pady=(15,5), sticky="w")
     
     ctk.CTkLabel(license_frame, text="Status:").grid(row=1, column=0, sticky="w", padx=15, pady=5)
-    ctk.CTkLabel(license_frame, text="Active", text_color="#2E8B57").grid(row=1, column=1, sticky="w", padx=15, pady=5)
+    widgets['status_label'] = ctk.CTkLabel(license_frame, text="Active", text_color="#2E8B57") # Default to Active
+    widgets['status_label'].grid(row=1, column=1, sticky="w", padx=15, pady=5)
+    
     ctk.CTkLabel(license_frame, text="License Key:").grid(row=2, column=0, sticky="w", padx=15, pady=5)
-    key_text = app_instance.license_info.get('key', 'N/A')
-    ctk.CTkLabel(license_frame, text=key_text, font=ctk.CTkFont(weight="bold")).grid(row=2, column=1, sticky="w", padx=15, pady=5)
+    widgets['license_key_label'] = ctk.CTkLabel(license_frame, text="N/A", font=ctk.CTkFont(weight="bold"))
+    widgets['license_key_label'].grid(row=2, column=1, sticky="w", padx=15, pady=5)
+    
     ctk.CTkLabel(license_frame, text="Expires On:").grid(row=3, column=0, sticky="w", padx=15, pady=5)
-    expires_text = app_instance.license_info.get('expires_at', 'N/A').split('T')[0]
-    ctk.CTkLabel(license_frame, text=expires_text).grid(row=3, column=1, sticky="w", padx=15, pady=5)
+    widgets['expires_on_label'] = ctk.CTkLabel(license_frame, text="N/A")
+    widgets['expires_on_label'].grid(row=3, column=1, sticky="w", padx=15, pady=5)
     
     ctk.CTkLabel(license_frame, text="Machine ID:").grid(row=4, column=0, sticky="w", padx=15, pady=(5,15))
     machine_id_frame = ctk.CTkFrame(license_frame, fg_color="transparent")
@@ -96,6 +99,15 @@ def create_tab(parent_frame, app_instance):
     changelog_text.grid(row=1, column=0, sticky="nsew", padx=15, pady=(0,15))
     
     changelog_content = {
+         "2.4.1": [
+            "Implemented a new, professional two-tone color theme for light mode.",
+            "Introduced a centralized `theme.json` file for easy UI color customization.",
+            "Fixed numerous theme inconsistencies, including button visibility and content backgrounds.",
+            "Corrected asymmetrical layout in the header for a balanced and polished look.",
+            "Added the user's Machine ID to the 'About' page with a 'Copy' button for easier support.",
+            "Fixed the automatic update checker to display the correct status on the 'About' page at startup.",
+            "Updated the pricing display on the 'About' page to show a promotional offer style."
+        ],
         "2.4.0": ["Complete UI Overhaul to CustomTkinter.", "Modern, vertical IDE-style navigation.", "In-App Updates: Check, download, and install directly."],
         "2.3.1": ["Muster Roll Gen: Fixed crash with user-provided work keys.", "FTO Generation: Improved error handling.", "eMB Entry: Added optional 'Panchayat' field.", "MSR Processor: Added 'Export to PDF' feature."],
     }
@@ -140,7 +152,6 @@ def create_tab(parent_frame, app_instance):
 def check_for_updates(app_instance):
     """Triggers the central update check in the main app."""
     widgets['update_button'].configure(state="disabled", text="Checking...")
-    # This now calls the centralized function
     app_instance.check_for_updates_background()
 
 def download_and_install_update(app_instance, widgets, url, version):
