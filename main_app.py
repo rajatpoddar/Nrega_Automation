@@ -1,4 +1,4 @@
-# main_app.py (with Sentry and refined UI)
+# main_app.py (Final Version with connect_to_chrome)
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, scrolledtext
 import threading, time, subprocess, os, webbrowser, sys, requests, json, uuid
@@ -8,22 +8,32 @@ from getmac import get_mac_address
 from appdirs import user_data_dir
 from pathlib import Path
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
+import darkdetect
 
 from selenium import webdriver
 from selenium.common.exceptions import WebDriverException
-from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.options import Options as ChromeOptions
 
 import config
 from tabs import msr_tab, wagelist_gen_tab, wagelist_send_tab, wc_gen_tab, mb_entry_tab, if_edit_tab, musterroll_gen_tab, about_tab, jobcard_verify_tab, fto_generation_tab
 
-# --- SENTRY INTEGRATION: START ---
+# Import ctypes for Windows sleep prevention
+if config.OS_SYSTEM == "Windows":
+    import ctypes
+
+# --- Load Environment Variables ---
+load_dotenv()
+
+# --- SENTRY INTEGRATION ---
 import sentry_sdk
-sentry_sdk.init(
-    dsn="https://b890b3e253e841f6a6c38d0c84178b5b@o4509656622170112.ingest.us.sentry.io/4509656623480832",
-    release=f"{config.APP_NAME}@{config.APP_VERSION}",
-    traces_sample_rate=1.0,
-)
-# --- SENTRY INTEGRATION: END ---
+SENTRY_DSN = os.getenv("SENTRY_DSN")
+if SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        release=f"{config.APP_NAME}@{config.APP_VERSION}",
+        traces_sample_rate=1.0,
+    )
 
 def get_data_path(filename):
     app_name = "NREGA-Dashboard"
@@ -33,8 +43,7 @@ def get_data_path(filename):
     return os.path.join(data_dir, filename)
 
 def get_user_downloads_path():
-    downloads_dir = os.path.join(Path.home(), "Downloads")
-    return downloads_dir
+    return os.path.join(Path.home(), "Downloads")
 
 def resource_path(relative_path):
     try:
@@ -52,10 +61,23 @@ class NregaDashboard(tk.Tk):
         self.license_info = {}
         self.machine_id = self._get_machine_id()
         
-        sentry_sdk.set_user({"id": self.machine_id})
-        sentry_sdk.set_tag("os.name", config.OS_SYSTEM)
+        if SENTRY_DSN:
+            sentry_sdk.set_user({"id": self.machine_id})
+            sentry_sdk.set_tag("os.name", config.OS_SYSTEM)
 
         self.open_on_about_tab = False
+        self.sleep_prevention_process = None
+        self.active_automations = set()
+
+        self.icon_images = {}
+        self.theme_var = tk.StringVar(value="System")
+        
+        # Initialize dictionaries here to prevent attribute errors
+        self.automation_threads = {}
+        self.stop_events = {}
+        self.nav_buttons = {}
+        self.content_frames = {}
+
         self.after(100, self.start_app)
         
     def get_data_path(self, filename):
@@ -64,24 +86,49 @@ class NregaDashboard(tk.Tk):
     def get_user_downloads_path(self):
         return get_user_downloads_path()
 
-    def open_chrome_remote_debug(self, target_os):
-        if config.OS_SYSTEM != target_os:
-            messagebox.showinfo("Wrong Button", f"This button is for {target_os}. You are on {config.OS_SYSTEM}.")
+    def _load_icon(self, name, path, size=(20, 20)):
+        try:
+            full_path = resource_path(path)
+            if os.path.exists(full_path):
+                image = Image.open(full_path).resize(size, Image.Resampling.LANCZOS)
+                photo_image = ImageTk.PhotoImage(image)
+                self.icon_images[name] = photo_image
+                return photo_image
+        except Exception as e:
+            print(f"Warning: Could not load icon '{name}' from {path}. Error: {e}")
+        return None
+
+    def open_browser_remote_debug(self, browser_name):
+        if browser_name == 'chrome':
+            port = "9222"
+            profile_dir_name = "ChromeProfileForNREGA"
+            paths_to_check = {
+                "Darwin": ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"],
+                "Windows": ["C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"]
+            }
+            args = [f"--remote-debugging-port={port}"]
+        else:
+            messagebox.showerror("Error", f"Unsupported browser: {browser_name}")
             return
-        port = "9222"
-        profile_dir = os.path.expanduser("~/ChromeProfileForNREGA") if target_os == "Darwin" else "C:\\ChromeProfileForNREGA"
-        chrome_path = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" if target_os == "Darwin" else "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
-        if not os.path.exists(chrome_path):
-            messagebox.showerror("Error", f"Google Chrome not found at:\n{chrome_path}")
+
+        profile_dir = os.path.join(os.path.expanduser("~"), profile_dir_name)
+        browser_path = next((path for path in paths_to_check.get(config.OS_SYSTEM, []) if os.path.exists(path)), None)
+
+        if not browser_path:
+            messagebox.showerror("Error", f"{browser_name.title()} not found in standard locations.")
             return
+        
         try:
             os.makedirs(profile_dir, exist_ok=True)
             startup_url = "https://nrega.palojori.in"
-            subprocess.Popen([chrome_path, f"--remote-debugging-port={port}", f"--user-data-dir={profile_dir}", startup_url])
-            messagebox.showinfo("Chrome Launched", "Chrome is starting with remote debugging.\nPlease log in to the NREGA website before starting automation.")
+            
+            command = [browser_path] + args + [f"--user-data-dir={profile_dir}", startup_url]
+
+            subprocess.Popen(command)
+            messagebox.showinfo(f"{browser_name.title()} Launched", f"{browser_name.title()} is starting with remote debugging.\nPlease log in to the NREGA website before starting automation.")
         except Exception as e:
-            sentry_sdk.capture_exception(e)
-            messagebox.showerror("Error", f"Failed to launch Chrome:\n{e}")
+            if SENTRY_DSN: sentry_sdk.capture_exception(e)
+            messagebox.showerror("Error", f"Failed to launch {browser_name.title()}:\n{e}")
 
     def _get_machine_id(self):
         try:
@@ -93,7 +140,7 @@ class NregaDashboard(tk.Tk):
 
     def start_app(self):
         if not self.machine_id or "error" in self.machine_id:
-             messagebox.showerror("Fatal Error", "Could not get a unique machine identifier. The application cannot continue.")
+             messagebox.showerror("Fatal Error", "Could not get a unique machine identifier.")
              self.destroy()
              return
         self.is_licensed = self.check_license()
@@ -107,38 +154,36 @@ class NregaDashboard(tk.Tk):
         expires_at_str = self.license_info.get('expires_at')
         if not expires_at_str: return
         try:
-            expiry_date_str = expires_at_str.split('T')[0]
-            expiry_date = datetime.fromisoformat(expiry_date_str).date()
-            today = datetime.now().date()
-            time_left = expiry_date - today
-            if timedelta(days=0) <= time_left < timedelta(days=3):
-                days_left = time_left.days
-                message = f"Your license expires today." if days_left == 0 else f"Your license will expire in {days_left} {'day' if days_left == 1 else 'days'}."
-                messagebox.showwarning(
-                    "License Expiring Soon",
-                    f"{message}\nPlease renew your subscription to continue using the application without interruption."
-                )
+            expiry_date = datetime.fromisoformat(expires_at_str.split('T')[0]).date()
+            days_left = (expiry_date - datetime.now().date()).days
+            if 0 <= days_left < 3:
+                message = f"Your license expires today." if days_left == 0 else f"Your license will expire in {days_left} day{'s' if days_left > 1 else ''}."
+                messagebox.showwarning("License Expiring Soon", f"{message}\nPlease renew your subscription.")
                 self.open_on_about_tab = True
         except (ValueError, TypeError) as e:
             print(f"Could not parse expiry date: {expires_at_str}. Error: {e}")
-            sentry_sdk.capture_exception(e)
+            if SENTRY_DSN: sentry_sdk.capture_exception(e)
 
     def build_main_ui(self):
         self.geometry("1100x800")
         self.minsize(1000, 700)
         self.center_window()
         self.style = ttk.Style(self)
-        self.theme_current = "light"
-        self.automation_threads = {}
-        self.stop_events = {}
-        self.csv_paths = {}
-        self.nav_buttons = {}
-        self.content_frames = {}
+        
+        self._load_icon("chrome", "assets/icons/chrome.png")
+        self._load_icon("whatsapp", "assets/icons/whatsapp.png", size=(16, 16))
+        self._load_icon("nrega", "assets/icons/nrega.png", size=(16, 16))
+
+        # --- FOOTER FIX: Use grid layout for the main window structure ---
         self.configure(bg=config.STYLE_CONFIG["colors"]["light"]["background"])
+        self.rowconfigure(1, weight=1) # Make the main content area expandable
+        self.columnconfigure(0, weight=1)
+
         self._create_header(self)
         self._create_main_layout(self)
         self._create_footer(self)
-        self._apply_theme()
+        
+        self.on_theme_change() # Apply initial theme
         initial_tab = "About" if self.open_on_about_tab else "MR Gen"
         self.after(100, lambda: self.show_frame(initial_tab))
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -147,30 +192,42 @@ class NregaDashboard(tk.Tk):
 
     def _create_header(self, parent):
         header_frame = ttk.Frame(parent, style="Background.TFrame", padding=(20, 20, 20, 0))
-        header_frame.pack(side="top", fill="x")
+        header_frame.grid(row=0, column=0, sticky="ew") # Use grid
+        
         try:
             logo_path = resource_path("logo.png")
             logo_image = Image.open(logo_path).resize((50, 50), Image.Resampling.LANCZOS)
             self.logo_photo = ImageTk.PhotoImage(logo_image)
             ttk.Label(header_frame, image=self.logo_photo, style="Background.TLabel").pack(side="left", padx=(0, 15))
         except Exception as e:
-            print(f"Warning: logo.png not found or failed to load. Skipping icon. Error: {e}")
+            print(f"Warning: logo.png not found: {e}")
         
         title_container = ttk.Frame(header_frame, style="Background.TFrame")
         title_container.pack(side="left", fill="x", expand=True)
         ttk.Label(title_container, text="NREGA Automation Dashboard", font=config.STYLE_CONFIG["font_title"], style="Title.TLabel").pack(anchor="w")
         ttk.Label(title_container, text=f"v{config.APP_VERSION} | Log in, then select a task from the left panel.", font=config.STYLE_CONFIG["font_normal"], style="Secondary.TLabel").pack(anchor="w")
         
-        button_frame = ttk.Frame(header_frame, style="Background.TFrame")
-        button_frame.pack(side="right")
-        ttk.Button(button_frame, text="Chrome (macOS)", command=lambda: self.open_chrome_remote_debug('Darwin'), style="macOS.TButton").pack(side="left", padx=5)
-        ttk.Button(button_frame, text="Chrome (Windows)", command=lambda: self.open_chrome_remote_debug('Windows'), style="Windows.TButton").pack(side="left", padx=5)
-        self.theme_button = ttk.Button(button_frame, text=config.ICONS["Theme"]["light"], command=self.toggle_theme, width=3)
-        self.theme_button.pack(side="left", padx=(10, 0))
+        controls_frame = ttk.Frame(header_frame, style="Background.TFrame")
+        controls_frame.pack(side="right")
+
+        browser_buttons_frame = ttk.Frame(controls_frame, style="Background.TFrame")
+        browser_buttons_frame.pack(side="left", padx=10)
+        chrome_btn = ttk.Button(browser_buttons_frame, text=" Launch Chrome", image=self.icon_images.get("chrome"), command=lambda: self.open_browser_remote_debug('chrome'), compound="left", style="Outline.TButton")
+        chrome_btn.pack(side="left", padx=5)
+        
+        separator2 = ttk.Separator(controls_frame, orient='vertical')
+        separator2.pack(side="left", fill='y', padx=10, pady=5)
+
+        theme_frame = ttk.Frame(controls_frame, style="Background.TFrame")
+        theme_frame.pack(side="left", padx=10)
+        ttk.Label(theme_frame, text="Theme:", style="Secondary.TLabel", font=config.STYLE_CONFIG["font_small"]).pack(anchor='w')
+        theme_combo = ttk.Combobox(theme_frame, textvariable=self.theme_var, values=["System", "Light", "Dark"], state="readonly", width=8)
+        theme_combo.pack(anchor='w')
+        theme_combo.bind("<<ComboboxSelected>>", self.on_theme_change)
 
     def _create_main_layout(self, parent):
         main_frame = ttk.Frame(parent, style="Background.TFrame", padding=(20, 10, 20, 0))
-        main_frame.pack(expand=True, fill="both")
+        main_frame.grid(row=1, column=0, sticky="nsew") # Use grid
         main_frame.rowconfigure(0, weight=1)
         main_frame.columnconfigure(1, weight=1)
         nav_frame = ttk.Frame(main_frame, style="Nav.TFrame", width=220)
@@ -198,7 +255,7 @@ class NregaDashboard(tk.Tk):
             frame.grid(row=0, column=0, sticky="nsew")
             data["creation_func"](frame, self)
             self.content_frames[name] = frame
-
+    
     def get_tabs_definition(self):
         return {
             "MR Gen": {"creation_func": musterroll_gen_tab.create_tab, "icon": config.ICONS["MR Gen"]},
@@ -218,70 +275,83 @@ class NregaDashboard(tk.Tk):
         frame_to_show.tkraise()
         for name, button in self.nav_buttons.items():
             button.config(style="Nav.Active.TButton" if name == page_name else "Nav.TButton")
-
+    
     def _create_footer(self, parent):
         footer_frame = ttk.Frame(parent, style="Background.TFrame", padding=(20, 15, 20, 15))
-        footer_frame.pack(side="bottom", fill="x")
-        copyright_label = ttk.Label(footer_frame, text="© 2025 Made with ❤️ by Rajat Poddar. ⚠️ Tabs: some prefilled use with caution", cursor="hand2", style="Secondary.TLabel", font=config.STYLE_CONFIG["font_small"])
+        footer_frame.grid(row=2, column=0, sticky="ew") # Use grid
+        
+        copyright_label = ttk.Label(footer_frame, text="© 2025 Made with ❤️ by Rajat Poddar.", cursor="hand2", style="Secondary.TLabel", font=config.STYLE_CONFIG["font_small"])
         copyright_label.pack(side="left")
         copyright_label.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://github.com/rajatpoddar"))
+        
         button_container = ttk.Frame(footer_frame, style="Background.TFrame")
         button_container.pack(side="right")
-        ttk.Button(button_container, text="Workcode Extractor ↗", command=lambda: webbrowser.open_new_tab("https://workcode.palojori.in"), style="Link.TButton").pack(side="right", padx=(10, 0))
-        ttk.Button(button_container, text="Nrega Palojori ↗", command=lambda: webbrowser.open_new_tab("https://nrega.palojori.in"), style="Link.TButton").pack(side="right")
+
+        whatsapp_link = "https://chat.whatsapp.com/Bup3hDCH3wn2shbUryv8wn?mode=r_c"
+        whatsapp_btn = ttk.Button(button_container, text=" Join WhatsApp Group", image=self.icon_images.get("whatsapp"),
+                                  command=lambda: webbrowser.open_new_tab(whatsapp_link), compound="left", style="Link.TButton")
+        whatsapp_btn.pack(side="right", padx=(10, 0))
+
+        ttk.Button(button_container, text=" Nrega Palojori ↗", image=self.icon_images.get("nrega"), compound="left", command=lambda: webbrowser.open_new_tab("https://nrega.palojori.in"), style="Link.TButton").pack(side="right")
+
+    def on_theme_change(self, event=None):
+        self._apply_theme()
 
     def _apply_theme(self):
+        theme_choice = self.theme_var.get().lower()
+        
+        if theme_choice == "system":
+            try:
+                detected_theme = darkdetect.theme()
+                self.theme_current = "dark" if detected_theme == "Dark" else "light"
+            except Exception:
+                self.theme_current = "light"
+        else:
+            self.theme_current = theme_choice
+
         theme = config.STYLE_CONFIG["colors"][self.theme_current]
-        font_normal = config.STYLE_CONFIG["font_normal"]
-        font_nav = config.STYLE_CONFIG["font_nav"]
         self.style.theme_use('clam')
 
-        self.style.configure('.', background=theme["background"], foreground=theme["text"], font=font_normal, borderwidth=0, focusthickness=0)
+        self.style.configure('.', background=theme["background"], foreground=theme["text"], font=config.STYLE_CONFIG["font_normal"])
         self.style.configure("TFrame", background=theme["frame"])
         self.style.configure("Background.TFrame", background=theme["background"])
+        self.style.configure("Background.TRadiobutton", background=theme["background"], foreground=theme["text"])
+        self.style.map("Background.TRadiobutton", background=[('active', theme["background"])])
         self.style.configure("Content.TFrame", background=theme["frame"], borderwidth=0)
-        self.style.configure("TLabel", background=theme["frame"], foreground=theme["text"], padding=5, font=font_normal)
+        self.style.configure("TLabel", background=theme["frame"], foreground=theme["text"])
         self.style.configure("Background.TLabel", background=theme["background"])
         self.style.configure("Title.TLabel", background=theme["background"], foreground=theme["text"])
         self.style.configure("Secondary.TLabel", background=theme["background"], foreground=theme["text_secondary"])
         self.style.configure("Instruction.TLabel", background=theme["frame"], foreground=theme["text_secondary"], font=config.STYLE_CONFIG["font_small"])
         self.style.configure("Status.TLabel", background=theme["frame"], foreground=theme["text_secondary"], padding=(5, 10))
-        self.style.configure("TButton", background=theme["background"], foreground=theme["text"], font=font_normal, padding=(10, 8), borderwidth=0)
-        self.style.map("TButton", background=[('active', theme["border"])])
+        self.style.configure("TButton", padding=(10, 8))
         self.style.configure("Accent.TButton", background=theme["accent"], foreground=theme["accent_text"], font=config.STYLE_CONFIG["font_bold"])
         self.style.map("Accent.TButton", background=[('active', theme["accent"]), ('disabled', theme["border"])])
-        self.style.configure("Outline.TButton", background=theme["background"], foreground=theme["text"], relief="solid", borderwidth=1, bordercolor=theme["border"])
-        self.style.map("Outline.TButton", bordercolor=[('active', theme["accent"])], background=[('active', theme["background"])])
+        self.style.configure("Outline.TButton", background=theme["frame"], foreground=theme["text"], bordercolor=theme["border"])
+        self.style.map("Outline.TButton", bordercolor=[('active', theme["accent"])], background=[('active', theme["frame"])])
         self.style.configure("Link.TButton", foreground=theme["accent"], background=theme["background"], font=config.STYLE_CONFIG["font_small"], borderwidth=0)
-        self.style.map("Link.TButton", foreground=[('active', theme["text"])], underline=[('active', 1)])
-        self.style.configure("macOS.TButton", background='#ffcc80', foreground='#1d1d1f', font=font_normal, padding=(10, 8), borderwidth=0)
-        self.style.map("macOS.TButton", background=[('active', '#ffb74d')])
-        self.style.configure("Windows.TButton", background='#81d4fa', foreground='#1d1d1f', font=font_normal, padding=(10, 8), borderwidth=0)
-        self.style.map("Windows.TButton", background=[('active', '#4fc3f7')])
-        self.style.configure("TEntry", fieldbackground=theme["background"], foreground=theme["text"], bordercolor=theme["border"], insertcolor=theme["text"], relief="solid")
+        self.style.map("Link.TButton", foreground=[('active', theme["text"])], underline=[('active', 1)], background=[('active', theme["background"])])
+        self.style.configure("TEntry", fieldbackground=theme["background"], foreground=theme["text"], bordercolor=theme["border"], insertcolor=theme["text"])
         self.style.map("TEntry", bordercolor=[('focus', theme["accent"])])
-        self.style.configure("TCombobox", fieldbackground=theme["background"], foreground=theme["text"], bordercolor=theme["border"], arrowcolor=theme["text_secondary"], insertcolor=theme["text"])
-        self.style.configure("TProgressbar", background=theme["accent"], troughcolor=theme["background"], bordercolor=theme["background"], lightcolor=theme["accent"], darkcolor=theme["accent"])
+        self.style.configure("TCombobox", background=theme["frame"], foreground=theme["text"], bordercolor=theme["border"], arrowcolor=theme["text_secondary"], fieldbackground=theme["frame"])
+        self.style.map("TCombobox", bordercolor=[('focus', theme["accent"])]) 
+        self.style.configure("TProgressbar", background=theme["accent"], troughcolor=theme["background"])
         self.style.configure("TLabelframe", background=theme["frame"], bordercolor=theme["border"], padding=15)
-        self.style.configure("TLabelframe.Label", background=theme["frame"], foreground=theme["text_secondary"], font=font_normal)
-
-        # --- Refined IDE-Style Navigation Styles ---
+        self.style.configure("TLabelframe.Label", background=theme["frame"], foreground=theme["text_secondary"])
         self.style.configure("Nav.TFrame", background=theme["nav_bg"])
-        self.style.configure("Nav.TButton", background=theme["nav_bg"], foreground=theme["nav_fg"], font=font_nav, anchor="w", borderwidth=0, padding=(15, 5))
+        self.style.configure("Nav.TButton", background=theme["nav_bg"], foreground=theme["nav_fg"], font=config.STYLE_CONFIG["font_nav"], anchor="w", borderwidth=0, padding=(15, 5))
         self.style.map("Nav.TButton", background=[('active', theme["nav_hover_bg"])])
-        self.style.configure("Nav.Active.TButton", background=theme["nav_active_bg"], foreground=theme["nav_active_fg"], font=font_nav, anchor="w", borderwidth=0, padding=(15, 5))
-
-        # --- Refined Inner Notebook & Treeview Styles ---
+        self.style.configure("Nav.Active.TButton", background=theme["nav_active_bg"], foreground=theme["nav_active_fg"], font=config.STYLE_CONFIG["font_nav"], anchor="w", borderwidth=0)
+        self.style.configure("Nav.Active.TButton", background=theme["nav_active_bg"], foreground=theme["nav_active_fg"], font=config.STYLE_CONFIG["font_nav"], anchor="w", borderwidth=0)
+        self.style.map("Nav.Active.TButton", background=[('active', theme["nav_hover_bg"])])
         self.style.configure("Modern.TNotebook", background=theme["frame"], borderwidth=1, bordercolor=theme["border"])
-        self.style.configure("Modern.TNotebook.Tab", background=theme["inner_tab_bg"], foreground=theme["text_secondary"], padding=(12, 8), font=font_normal, borderwidth=0)
+        self.style.configure("Modern.TNotebook.Tab", background=theme["inner_tab_bg"], foreground=theme["text_secondary"], padding=(12, 8), font=config.STYLE_CONFIG["font_normal"], borderwidth=0)
         self.style.map("Modern.TNotebook.Tab", background=[("selected", theme["inner_tab_active_bg"])], foreground=[("selected", theme["inner_tab_active_fg"])])
-        self.style.configure("Treeview", background=theme["background"], fieldbackground=theme["background"], foreground=theme["text"], borderwidth=0, relief="flat")
+        self.style.configure("Treeview", background=theme["background"], fieldbackground=theme["background"], foreground=theme["text"], borderwidth=0)
         self.style.map("Treeview", background=[('selected', theme["accent"])], foreground=[('selected', theme["accent_text"])])
         self.style.configure("Treeview.Heading", background=theme["header_bg"], foreground=theme["text"], font=config.STYLE_CONFIG["font_bold"], relief="flat", padding=(10, 8))
         self.style.map("Treeview.Heading", background=[('active', theme["nav_hover_bg"])])
-
         self.style.configure("Tab.TFrame", background=theme["frame"])
-        self.theme_button.config(text=config.ICONS["Theme"][self.theme_current])
         self._update_non_ttk_widgets(self, theme)
 
     def _update_non_ttk_widgets(self, parent, theme):
@@ -293,63 +363,40 @@ class NregaDashboard(tk.Tk):
                 try: child.config(bg=theme["background"], fg=theme["text"])
                 except tk.TclError: pass
             self._update_non_ttk_widgets(child, theme)
-
-    def toggle_theme(self):
-        self.theme_current = "dark" if self.theme_current == "light" else "light"
-        self._apply_theme()
-        active_button_name = None
-        for name, button in self.nav_buttons.items():
-            if button.cget("style") == "Nav.Active.TButton":
-                 active_button_name = name
-                 break
-        if active_button_name:
-             self.show_frame(active_button_name)
-
+    
     def check_license(self):
         license_file = get_data_path('license.dat')
         try:
             if os.path.exists(license_file):
-                with open(license_file, 'r') as f:
-                    self.license_info = json.load(f)
-                key = self.license_info.get('key')
-                if self.validate_on_server(key, is_startup_check=True):
-                    return True
+                with open(license_file, 'r') as f: self.license_info = json.load(f)
+                if self.validate_on_server(self.license_info.get('key'), is_startup_check=True): return True
                 else:
-                    if 'reason' in self.license_info and "Connection" in self.license_info['reason']:
-                        return self.show_activation_window()
+                    if 'reason' in self.license_info and "Connection" in self.license_info['reason']: return self.show_activation_window()
                     os.remove(license_file)
                     messagebox.showerror("License Invalid", "Your license is no longer valid. Please start a new trial or purchase a key.")
                     return self.show_activation_window()
-            else:
-                return self.show_activation_window()
+            else: return self.show_activation_window()
         except Exception as e:
-            sentry_sdk.capture_exception(e)
+            if SENTRY_DSN: sentry_sdk.capture_exception(e)
             if os.path.exists(license_file): os.remove(license_file)
             return self.show_activation_window()
 
     def validate_on_server(self, key, is_startup_check=False):
         server_url = "https://nrega-server.palojori.in/validate"
         try:
-            headers = {'User-Agent': f'{config.APP_NAME}/{config.APP_VERSION}'}
-            payload = {"key": key, "machine_id": self.machine_id}
-            response = requests.post(server_url, json=payload, timeout=10, headers=headers)
+            response = requests.post(server_url, json={"key": key, "machine_id": self.machine_id}, timeout=10)
             data = response.json()
             if response.status_code == 200 and data.get("status") == "valid":
                 self.license_info = {'key': key, 'expires_at': data.get('expires_at')}
-                if not is_startup_check:
-                    messagebox.showinfo("License Valid", f"Activation successful!\nExpires on: {self.license_info['expires_at'].split('T')[0]}")
+                if not is_startup_check: messagebox.showinfo("License Valid", f"Activation successful!\nExpires on: {self.license_info['expires_at'].split('T')[0]}")
                 return True
             else:
                 reason = data.get("reason", "Unknown error.")
-                if not is_startup_check:
-                    messagebox.showerror("Validation Failed", f"License validation failed: {reason}")
+                if not is_startup_check: messagebox.showerror("Validation Failed", f"License validation failed: {reason}")
                 self.license_info['reason'] = reason
                 return False
-        except requests.exceptions.RequestException as e:
-            if is_startup_check:
-                messagebox.showinfo("Server Offline", "Could not connect to the license server. Please check your internet connection and try again later.")
-            else:
-                messagebox.showerror("Connection Error", "Could not connect to the license server. Please check your internet connection.")
+        except requests.exceptions.RequestException:
+            if not is_startup_check: messagebox.showerror("Connection Error", "Could not connect to the license server.")
             self.license_info['reason'] = "Connection Error"
             return False
 
@@ -431,39 +478,63 @@ class NregaDashboard(tk.Tk):
         time.sleep(2)
         update_url = "https://nrega-dashboard.palojori.in/version.json"
         try:
-            headers = {'User-Agent': 'Mozilla/5.0'}
-            response = requests.get(update_url, timeout=5, headers=headers)
+            response = requests.get(update_url, timeout=5)
             if response.status_code == 200:
                 data = response.json()
                 latest_version_str = data.get("latest_version")
                 if latest_version_str and parse_version(latest_version_str) > parse_version(config.APP_VERSION):
-                    # Pass the entire app instance to the prompt function
                     self.after(0, self.show_update_prompt, latest_version_str)
         except Exception as e:
             print(f"Could not check for updates: {e}")
 
     def show_update_prompt(self, version):
-        # The 'url' parameter is removed as it's no longer needed here.
-        if messagebox.askyesno("Update Available", f"A new version ({version}) is available. Would you like to go to the 'About' page to download it?"):
-            # This now directly calls the show_frame method of the app instance
+        if messagebox.askyesno("Update Available", f"A new version ({version}) is available. Go to the 'About' page to download?"):
             self.show_frame("About")
 
     def center_window(self):
         self.update_idletasks()
-        width = self.winfo_width()
-        height = self.winfo_height()
-        x = (self.winfo_screenwidth() // 2) - (width // 2)
-        y = (self.winfo_screenheight() // 2) - (height // 2)
-        self.geometry(f'{width}x{height}+{x}+{y}')
+        x = (self.winfo_screenwidth() // 2) - (self.winfo_width() // 2)
+        y = (self.winfo_screenheight() // 2) - (self.winfo_height() // 2)
+        self.geometry(f'+{x}+{y}')
+
+    def prevent_sleep(self):
+        if not self.active_automations:
+            print("Preventing system sleep.")
+            if config.OS_SYSTEM == "Windows":
+                ctypes.windll.kernel32.SetThreadExecutionState(0x80000003)
+            elif config.OS_SYSTEM == "Darwin":
+                if self.sleep_prevention_process is None: self.sleep_prevention_process = subprocess.Popen(["caffeinate", "-d"])
+
+    def allow_sleep(self):
+        if not self.active_automations:
+            print("Allowing system sleep.")
+            if config.OS_SYSTEM == "Windows":
+                ctypes.windll.kernel32.SetThreadExecutionState(0x80000000)
+            elif config.OS_SYSTEM == "Darwin":
+                if self.sleep_prevention_process:
+                    self.sleep_prevention_process.terminate()
+                    self.sleep_prevention_process = None
+
+    def on_automation_finished(self, key):
+        if key in self.active_automations: self.active_automations.remove(key)
+        if not self.active_automations: self.allow_sleep()
 
     def start_automation_thread(self, key, target_func, args=()):
         if self.automation_threads.get(key) and self.automation_threads[key].is_alive():
             messagebox.showwarning("In Progress", f"The '{key}' task is already running.")
             return
 
+        self.prevent_sleep()
+        self.active_automations.add(key)
         self.stop_events[key] = threading.Event()
-        thread_args = (self,) + args
-        thread = threading.Thread(target=target_func, args=thread_args, daemon=True)
+        
+        def thread_wrapper():
+            try:
+                target_func(self, *args)
+            finally:
+                self.after(0, self.on_automation_finished, key)
+
+        thread = threading.Thread(target=thread_wrapper, daemon=True)
         self.automation_threads[key] = thread
         thread.start()
 
@@ -479,28 +550,23 @@ class NregaDashboard(tk.Tk):
         log_widget.config(state="disabled")
 
     def connect_to_chrome(self):
+        driver = None
         try:
-            chrome_options = Options()
-            chrome_options.add_experimental_option("debuggerAddress", "127.0.0.1:9222")
-            driver = webdriver.Chrome(options=chrome_options)
+            options = ChromeOptions()
+            options.add_experimental_option("debuggerAddress", "127.0.0.1:9222")
+            driver = webdriver.Chrome(options=options)
             return driver
         except WebDriverException as e:
-            sentry_sdk.capture_exception(e)
-            messagebox.showerror(
-                "Connection Failed",
-                "Could not connect to Chrome. Please ensure:\n\n"
-                "1. You have launched Chrome using one of the 'Chrome' buttons in the app.\n"
-                "2. Chrome is still running.\n\n"
-                f"Error: {e}"
-            )
-            for event in self.stop_events.values():
-                if event: event.set()
-            raise ConnectionAbortedError("Failed to connect to Chrome debugger.") from e
+            if SENTRY_DSN: sentry_sdk.capture_exception(e)
+            messagebox.showerror("Connection Failed", f"Could not connect to Chrome. Please ensure:\n\n1. You launched Chrome from the app.\n2. It is still running.\n\n" f"Error: {e}")
+            for event in self.stop_events.values(): event.set()
+            return None
 
     def on_closing(self):
         if messagebox.askokcancel("Quit", "Do you want to quit? This will stop any running automations."):
-            for event in self.stop_events.values():
-                if event: event.set()
+            self.active_automations.clear()
+            self.allow_sleep()
+            for event in self.stop_events.values(): event.set()
             time.sleep(0.5)
             self.destroy()
 
@@ -509,5 +575,5 @@ if __name__ == '__main__':
         app = NregaDashboard()
         app.mainloop()
     except Exception as e:
-        sentry_sdk.capture_exception(e)
+        if SENTRY_DSN: sentry_sdk.capture_exception(e)
         messagebox.showerror("Fatal Startup Error", f"A critical error occurred on startup:\n\n{e}\n\nThe application will now close.")
