@@ -1,6 +1,7 @@
-# tabs/musterroll_gen_tab.py
-import tkinter as tk
-from tkinter import ttk, scrolledtext, messagebox
+# tabs/musterroll_gen_tab.py (Upgraded to CustomTkinter)
+import tkinter
+from tkinter import ttk, messagebox
+import customtkinter as ctk
 import os, json, time, re
 import base64
 from datetime import datetime
@@ -13,79 +14,107 @@ import config
 widgets = {}
 LAST_INPUTS_FILE = "muster_roll_inputs.json"
 
+def style_treeview(app):
+    """
+    Applies customtkinter-like styling to the ttk.Treeview widget.
+    This function needs to be called after the theme changes.
+    """
+    style = ttk.Style()
+    
+    # Get current theme colors from customtkinter
+    bg_color = app._apply_appearance_mode(ctk.ThemeManager.theme["CTkFrame"]["fg_color"])
+    text_color = app._apply_appearance_mode(ctk.ThemeManager.theme["CTkLabel"]["text_color"])
+    header_bg = app._apply_appearance_mode(ctk.ThemeManager.theme["CTkButton"]["fg_color"])
+    selected_color = app._apply_appearance_mode(ctk.ThemeManager.theme["CTkButton"]["hover_color"])
+
+    style.theme_use("default")
+    
+    style.configure("Treeview", 
+        background=bg_color,
+        foreground=text_color,
+        fieldbackground=bg_color,
+        borderwidth=0)
+    
+    style.map('Treeview', background=[('selected', selected_color)])
+    
+    style.configure("Treeview.Heading", 
+        background=header_bg,
+        foreground=text_color,
+        relief="flat")
+        
+    style.map("Treeview.Heading",
+        background=[('active', selected_color)])
+
+
 def create_tab(parent_frame, app_instance):
-    """Creates the Muster Roll Generation tab GUI with improved layout and bug fixes."""
-    parent_frame.columnconfigure(0, weight=1)
-    parent_frame.rowconfigure(1, weight=1)
+    """Creates the Muster Roll Generation tab GUI with CustomTkinter."""
+    parent_frame.grid_columnconfigure(0, weight=1)
+    parent_frame.grid_rowconfigure(1, weight=1)
 
     # --- Controls Frame ---
-    controls_frame = ttk.LabelFrame(parent_frame, text="Muster Roll Generation Controls")
-    controls_frame.grid(row=0, column=0, sticky="ew", pady=(0, 10))
-    controls_frame.columnconfigure(1, weight=1)
-    controls_frame.columnconfigure(3, weight=1)
+    controls_frame = ctk.CTkFrame(parent_frame)
+    controls_frame.grid(row=0, column=0, sticky="ew")
+    controls_frame.grid_columnconfigure((1,3), weight=1)
 
-    ttk.Label(controls_frame, text="Panchayat Name:").grid(row=0, column=0, sticky='w', padx=5, pady=(5,0))
-    widgets['panchayat_entry'] = ttk.Entry(controls_frame)
-    widgets['panchayat_entry'].grid(row=0, column=1, columnspan=3, sticky='ew', padx=5, pady=(5,0))
-    instructional_label = ttk.Label(controls_frame, text="Note: Must exactly match the name of Panchayat & Staff on the NREGA website.", style="Instruction.TLabel")
-    instructional_label.grid(row=1, column=1, columnspan=3, sticky='w', padx=5, pady=(0,5))
+    ctk.CTkLabel(controls_frame, text="Panchayat Name:").grid(row=0, column=0, sticky='w', padx=15, pady=(15,0))
+    widgets['panchayat_entry'] = ctk.CTkEntry(controls_frame)
+    widgets['panchayat_entry'].grid(row=0, column=1, columnspan=3, sticky='ew', padx=15, pady=(15,0))
+    instructional_label = ctk.CTkLabel(controls_frame, text="Note: Must exactly match the name of Panchayat & Staff on the NREGA website.", text_color="gray50")
+    instructional_label.grid(row=1, column=1, columnspan=3, sticky='w', padx=15, pady=(0,10))
 
-    ttk.Label(controls_frame, text="तारीख से (DD/MM/YYYY):").grid(row=2, column=0, sticky='w', padx=5, pady=5)
-    widgets['start_date_entry'] = ttk.Entry(controls_frame)
-    widgets['start_date_entry'].grid(row=2, column=1, sticky='ew', padx=5, pady=5)
-    ttk.Label(controls_frame, text="तारीख को (DD/MM/YYYY):").grid(row=2, column=2, sticky='w', padx=5, pady=5)
-    widgets['end_date_entry'] = ttk.Entry(controls_frame)
-    widgets['end_date_entry'].grid(row=2, column=3, sticky='ew', padx=5, pady=5)
+    ctk.CTkLabel(controls_frame, text="तारीख से (DD/MM/YYYY):").grid(row=2, column=0, sticky='w', padx=15, pady=5)
+    widgets['start_date_entry'] = ctk.CTkEntry(controls_frame)
+    widgets['start_date_entry'].grid(row=2, column=1, sticky='ew', padx=(15,5), pady=5)
+    ctk.CTkLabel(controls_frame, text="तारीख को (DD/MM/YYYY):").grid(row=2, column=2, sticky='w', padx=10, pady=5)
+    widgets['end_date_entry'] = ctk.CTkEntry(controls_frame)
+    widgets['end_date_entry'].grid(row=2, column=3, sticky='ew', padx=(5,15), pady=5)
 
-    ttk.Label(controls_frame, text="Select Designation:").grid(row=3, column=0, sticky='w', padx=5, pady=5)
+    ctk.CTkLabel(controls_frame, text="Select Designation:").grid(row=3, column=0, sticky='w', padx=15, pady=5)
     designation_options = [
         "Junior Engineer--BP", "Assistant Engineer--BP", "Technical Assistant--BP",
         "Acrited Engineer(AE)--GP", "Junior Engineer--GP", "Technical Assistant--GP"
     ]
-    widgets['designation_combobox'] = ttk.Combobox(controls_frame, values=designation_options, state="readonly")
-    widgets['designation_combobox'].grid(row=3, column=1, sticky='ew', padx=5, pady=5)
-    ttk.Label(controls_frame, text="Select Technical Staff:").grid(row=3, column=2, sticky='w', padx=5, pady=5)
-    widgets['staff_entry'] = ttk.Entry(controls_frame)
-    widgets['staff_entry'].grid(row=3, column=3, sticky='ew', padx=5, pady=5)
+    widgets['designation_combobox'] = ctk.CTkComboBox(controls_frame, values=designation_options)
+    widgets['designation_combobox'].grid(row=3, column=1, sticky='ew', padx=(15,5), pady=5)
+    ctk.CTkLabel(controls_frame, text="Select Technical Staff:").grid(row=3, column=2, sticky='w', padx=10, pady=5)
+    widgets['staff_entry'] = ctk.CTkEntry(controls_frame)
+    widgets['staff_entry'].grid(row=3, column=3, sticky='ew', padx=(5,15), pady=5)
 
-    ttk.Label(controls_frame, text="Work Search Keys (or leave blank for auto):").grid(row=4, column=0, sticky='nw', padx=5, pady=5)
-    widgets['work_codes_text'] = scrolledtext.ScrolledText(controls_frame, wrap=tk.WORD, height=6)
-    widgets['work_codes_text'].grid(row=4, column=1, columnspan=3, sticky='ew', padx=5, pady=5)
+    ctk.CTkLabel(controls_frame, text="Work Search Keys (or leave blank for auto):").grid(row=4, column=0, sticky='nw', padx=15, pady=5)
+    widgets['work_codes_text'] = ctk.CTkTextbox(controls_frame, height=100)
+    widgets['work_codes_text'].grid(row=4, column=1, columnspan=3, sticky='ew', padx=15, pady=5)
 
-    info_label = ttk.Label(controls_frame, text="ℹ️ All generated Muster Rolls are saved in a 'NREGA_MR_Output' folder inside your Downloads.", style="Instruction.TLabel")
-    info_label.grid(row=5, column=1, columnspan=3, sticky='w', padx=5, pady=(5,0))
+    info_label = ctk.CTkLabel(controls_frame, text="ℹ️ All generated Muster Rolls are saved in a 'NREGA_MR_Output' folder inside your Downloads.", text_color="gray50")
+    info_label.grid(row=5, column=1, columnspan=3, sticky='w', padx=15, pady=(10,0))
 
-    action_frame = ttk.Frame(controls_frame)
-    action_frame.grid(row=6, column=0, columnspan=4, sticky='ew', pady=(15, 5))
-    action_frame.columnconfigure((0, 1, 2), weight=1)
-    widgets['start_button'] = ttk.Button(action_frame, text="▶ Start Generation", style="Accent.TButton", command=lambda: start_automation(app_instance))
-    widgets['stop_button'] = ttk.Button(action_frame, text="Stop", command=lambda: app_instance.stop_events["muster"].set(), state=tk.DISABLED)
-    widgets['reset_button'] = ttk.Button(action_frame, text="Reset", style="Outline.TButton", command=lambda: reset_ui(app_instance))
-    widgets['start_button'].grid(row=0, column=0, sticky="ew", padx=(0,5), ipady=5)
-    widgets['stop_button'].grid(row=0, column=1, sticky="ew", padx=(5,5), ipady=5)
-    widgets['reset_button'].grid(row=0, column=2, sticky='ew', padx=(5,0), ipady=5)
+    action_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
+    action_frame.grid(row=6, column=0, columnspan=4, sticky='ew', pady=(15, 15))
+    action_frame.grid_columnconfigure((0, 1, 2), weight=1)
+    widgets['start_button'] = ctk.CTkButton(action_frame, text="▶ Start Generation", command=lambda: start_automation(app_instance))
+    widgets['stop_button'] = ctk.CTkButton(action_frame, text="Stop", command=lambda: app_instance.stop_events["muster"].set(), state=tkinter.DISABLED, fg_color="gray50")
+    widgets['reset_button'] = ctk.CTkButton(action_frame, text="Reset", fg_color="transparent", border_width=2, border_color=("gray70", "gray40"), text_color=("gray10", "#DCE4EE"), command=lambda: reset_ui(app_instance))
+    widgets['start_button'].grid(row=0, column=0, sticky="ew", padx=(0,5))
+    widgets['stop_button'].grid(row=0, column=1, sticky="ew", padx=(5,5))
+    widgets['reset_button'].grid(row=0, column=2, sticky='ew', padx=(5,0))
     
-    data_notebook = ttk.Notebook(parent_frame, style="Modern.TNotebook")
+    # --- Data Tabs ---
+    data_notebook = ctk.CTkTabview(parent_frame)
     data_notebook.grid(row=1, column=0, sticky="nsew", pady=(10,0))
-    
-    results_tab_frame = ttk.Frame(data_notebook, padding=15)
-    logs_tab_frame = ttk.Frame(data_notebook, padding=15)
-    
-    data_notebook.add(results_tab_frame, text="Results")
-    data_notebook.add(logs_tab_frame, text="Logs & Status")
+    results_tab_frame = data_notebook.add("Results")
+    logs_tab_frame = data_notebook.add("Logs & Status")
     
     # --- Results Tab ---
-    results_tab_frame.columnconfigure(0, weight=1)
-    results_tab_frame.rowconfigure(1, weight=1) 
+    results_tab_frame.grid_columnconfigure(0, weight=1)
+    results_tab_frame.grid_rowconfigure(1, weight=1) 
     
-    summary_frame = ttk.Frame(results_tab_frame)
+    summary_frame = ctk.CTkFrame(results_tab_frame, fg_color="transparent")
     summary_frame.grid(row=0, column=0, sticky="ew", pady=(0, 10))
-    summary_frame.columnconfigure((0, 1), weight=1)
+    summary_frame.grid_columnconfigure((0, 1), weight=1)
 
-    widgets['success_label'] = ttk.Label(summary_frame, text="Success: 0", foreground=config.STYLE_CONFIG["colors"]["light"]["success"], font=config.STYLE_CONFIG["font_bold"])
+    widgets['success_label'] = ctk.CTkLabel(summary_frame, text="Success: 0", text_color="#2E8B57", font=ctk.CTkFont(weight="bold"))
     widgets['success_label'].grid(row=0, column=0, sticky='w')
     
-    widgets['skipped_label'] = ttk.Label(summary_frame, text="Skipped/Failed: 0", foreground=config.STYLE_CONFIG["colors"]["light"]["warning"], font=config.STYLE_CONFIG["font_bold"])
+    widgets['skipped_label'] = ctk.CTkLabel(summary_frame, text="Skipped/Failed: 0", text_color="#DAA520", font=ctk.CTkFont(weight="bold"))
     widgets['skipped_label'].grid(row=0, column=1, sticky='w')
 
     cols = ("Timestamp", "Work Code/Key", "Status", "Details")
@@ -98,40 +127,42 @@ def create_tab(parent_frame, app_instance):
     widgets['results_tree'].column("Details", width=400)
     widgets['results_tree'].grid(row=1, column=0, sticky='nsew')
     
-    scrollbar = ttk.Scrollbar(results_tab_frame, orient="vertical", command=widgets['results_tree'].yview)
+    scrollbar = ctk.CTkScrollbar(results_tab_frame, command=widgets['results_tree'].yview)
     widgets['results_tree'].configure(yscroll=scrollbar.set)
     scrollbar.grid(row=1, column=1, sticky='ns')
+    style_treeview(app_instance) # Apply initial style
 
     # --- Logs Tab ---
-    logs_tab_frame.columnconfigure(0, weight=1)
-    logs_tab_frame.rowconfigure(1, weight=1)
-    status_bar = ttk.Frame(logs_tab_frame)
+    logs_tab_frame.grid_columnconfigure(0, weight=1)
+    logs_tab_frame.grid_rowconfigure(1, weight=1)
+    status_bar = ctk.CTkFrame(logs_tab_frame, fg_color="transparent")
     status_bar.grid(row=0, column=0, sticky='ew')
-    status_bar.columnconfigure(0, weight=1)
-    widgets['status_label'] = ttk.Label(status_bar, text="Status: Ready", style="Status.TLabel")
+    status_bar.grid_columnconfigure(0, weight=1)
+    widgets['status_label'] = ctk.CTkLabel(status_bar, text="Status: Ready")
     widgets['status_label'].grid(row=0, column=0, sticky='ew')
-    widgets['copy_logs_button'] = ttk.Button(status_bar, text="Copy Logs", style="Outline.TButton", command=lambda: copy_logs_to_clipboard(app_instance))
+    widgets['copy_logs_button'] = ctk.CTkButton(status_bar, text="Copy Logs", width=100, command=lambda: copy_logs_to_clipboard(app_instance))
     widgets['copy_logs_button'].grid(row=0, column=1, sticky='e', padx=5)
-    widgets['log_text'] = scrolledtext.ScrolledText(logs_tab_frame, wrap=tk.WORD, state=tk.DISABLED)
+    widgets['log_text'] = ctk.CTkTextbox(logs_tab_frame, state=tkinter.DISABLED)
     widgets['log_text'].grid(row=1, column=0, sticky='nsew', pady=(10, 0))
 
     load_inputs(app_instance)
 
+# The rest of the logic functions remain largely the same, only UI update calls change.
 def _log_result(app, item_key, status, details, success_counter, skipped_counter):
     timestamp = datetime.now().strftime("%H:%M:%S")
     values = (timestamp, item_key, status, details)
     
     if status == "Success":
         success_counter[0] += 1
-        app.after(0, lambda: widgets['success_label'].config(text=f"Success: {success_counter[0]}"))
+        app.after(0, lambda: widgets['success_label'].configure(text=f"Success: {success_counter[0]}"))
     else:
         skipped_counter[0] += 1
-        app.after(0, lambda: widgets['skipped_label'].config(text=f"Skipped/Failed: {skipped_counter[0]}"))
+        app.after(0, lambda: widgets['skipped_label'].configure(text=f"Skipped/Failed: {skipped_counter[0]}"))
         
     app.after(0, lambda: widgets['results_tree'].insert("", "end", values=values))
 
 def copy_logs_to_clipboard(app):
-    log_content = widgets['log_text'].get('1.0', tk.END).strip()
+    log_content = widgets['log_text'].get('1.0', tkinter.END).strip()
     if log_content:
         app.clipboard_clear()
         app.clipboard_append(log_content)
@@ -164,30 +195,29 @@ def load_inputs(app):
 def reset_ui(app):
     if messagebox.askokcancel("Reset Form?", "Are you sure you want to clear all inputs and logs?"):
         for key in ['panchayat_entry', 'start_date_entry', 'end_date_entry', 'staff_entry']:
-            widgets[key].delete(0, tk.END)
+            widgets[key].delete(0, tkinter.END)
         widgets['designation_combobox'].set('')
-        widgets['work_codes_text'].delete('1.0', tk.END)
+        widgets['work_codes_text'].delete('1.0', tkinter.END)
         for item in widgets['results_tree'].get_children():
             widgets['results_tree'].delete(item)
         app.clear_log(widgets['log_text'])
-        widgets['status_label'].config(text="Status: Ready")
-        widgets['success_label'].config(text="Success: 0")
-        widgets['skipped_label'].config(text="Skipped/Failed: 0")
+        widgets['status_label'].configure(text="Status: Ready")
+        widgets['success_label'].configure(text="Success: 0")
+        widgets['skipped_label'].configure(text="Skipped/Failed: 0")
         app.log_message(widgets['log_text'], "Form has been reset.")
 
 def set_ui_state(running):
     state = "disabled" if running else "normal"
     for name in ['panchayat_entry', 'start_date_entry', 'end_date_entry', 'staff_entry',
-                 'work_codes_text', 'start_button', 'reset_button', 'copy_logs_button']:
-        widgets[name].config(state=state)
-    widgets['designation_combobox'].config(state="readonly" if not running else "disabled")
-    widgets['stop_button'].config(state="normal" if running else "disabled")
+                 'work_codes_text', 'start_button', 'reset_button', 'copy_logs_button', 'designation_combobox']:
+        widgets[name].configure(state=state)
+    widgets['stop_button'].configure(state="normal" if running else "disabled")
 
 def start_automation(app):
     for item in widgets['results_tree'].get_children():
         widgets['results_tree'].delete(item)
-    widgets['success_label'].config(text="Success: 0")
-    widgets['skipped_label'].config(text="Skipped/Failed: 0")
+    widgets['success_label'].configure(text="Success: 0")
+    widgets['skipped_label'].configure(text="Skipped/Failed: 0")
 
     inputs = {
         'panchayat': widgets['panchayat_entry'].get().strip(),
@@ -195,7 +225,7 @@ def start_automation(app):
         'end_date': widgets['end_date_entry'].get().strip(),
         'designation': widgets['designation_combobox'].get().strip(),
         'staff': widgets['staff_entry'].get().strip(),
-        'work_codes_raw': widgets['work_codes_text'].get("1.0", tk.END).strip()
+        'work_codes_raw': widgets['work_codes_text'].get("1.0", tkinter.END).strip()
     }
     
     if not all(inputs[k] for k in ['panchayat', 'start_date', 'end_date', 'designation', 'staff']):
@@ -217,9 +247,13 @@ def run_automation_logic(app, inputs):
     skipped_count = [0]
 
     try:
-        driver = app.connect_to_chrome()
-        wait = WebDriverWait(driver, 20)
+        driver = app.connect_to_chrome() # Using the new direct method
+        if not driver:
+            app.after(0, set_ui_state, False) 
+            return
         
+        wait = WebDriverWait(driver, 20)
+
         downloads_dir = app.get_user_downloads_path()
         output_dir = os.path.join(downloads_dir, 'NREGA_MR_Output', datetime.now().strftime('%Y-%m-%d'), inputs['panchayat'])
         os.makedirs(output_dir, exist_ok=True)
@@ -262,7 +296,7 @@ def run_automation_logic(app, inputs):
             
             full_work_code_text = ""
             app.log_message(widgets['log_text'], f"\n--- Processing item ({index+1}/{len(items_to_process)}): {item} ---", "info")
-            app.after(0, lambda i=item: widgets['status_label'].config(text=f"Status: Processing {i}"))
+            app.after(0, lambda i=item: widgets['status_label'].configure(text=f"Status: Processing {i}"))
             
             try:
                 driver.get(config.MUSTER_ROLL_CONFIG["base_url"])
@@ -278,7 +312,7 @@ def run_automation_logic(app, inputs):
                 else: 
                     search_key = item
                     search_box = wait.until(EC.presence_of_element_located((By.ID, "txtWork")))
-                    search_box.clear(); search_box.send_keys(search_key)
+                    search_box.delete(0, tkinter.END); search_box.send_keys(search_key)
                     driver.find_element(By.ID, "imgButtonSearch").click()
                     app.log_message(widgets['log_text'], f"Searching for key: {search_key}")
                     time.sleep(2) # Added wait time
@@ -367,7 +401,7 @@ def run_automation_logic(app, inputs):
             messagebox.showerror("Critical Error", f"An unexpected error stopped the automation:\n\n{e}")
     finally:
         app.after(0, set_ui_state, False)
-        app.after(0, lambda: widgets['status_label'].config(text="Status: Automation Finished."))
+        app.after(0, lambda: widgets['status_label'].configure(text="Status: Automation Finished."))
         
         summary_message = f"Automation complete.\n\nSuccessfully generated: {success_count[0]}\nSkipped/Failed: {skipped_count[0]}"
         app.after(0, lambda: messagebox.showinfo("Task Finished", summary_message))

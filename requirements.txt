@@ -10,3 +10,4 @@ sentry-sdk
 ttkbootstrap
 darkdetect
 python-dotenv
+customtkinter
