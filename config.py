@@ -3,7 +3,7 @@
 
 # --- Application Version Info ---
 APP_NAME = "NREGA-Dashboard"
-APP_VERSION = "2.4.0" # Version updated for theme refinement
+APP_VERSION = "2.4.1" # Version updated for theme refinement
 
 # --- Platform & UI Configuration ---
 import platform

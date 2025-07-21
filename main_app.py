@@ -1,4 +1,4 @@
-# main_app.py (Final Production Version)
+# main_app.py (Corrected Order)
 import tkinter
 from tkinter import messagebox, filedialog
 import customtkinter as ctk
@@ -22,6 +22,25 @@ from tabs import msr_tab, wagelist_gen_tab, wagelist_send_tab, wc_gen_tab, mb_en
 if config.OS_SYSTEM == "Windows":
     import ctypes
 
+# --- HELPER FUNCTIONS (MOVED HERE) ---
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+def get_data_path(filename):
+    app_name = "NREGA-Dashboard"
+    app_author = "PoddarSolutions"
+    data_dir = user_data_dir(app_name, app_author)
+    os.makedirs(data_dir, exist_ok=True)
+    return os.path.join(data_dir, filename)
+
+def get_user_downloads_path():
+    return os.path.join(Path.home(), "Downloads")
+# ------------------------------------
+
 # --- Load Environment Variables ---
 load_dotenv()
 
@@ -37,29 +56,12 @@ if SENTRY_DSN:
 
 # --- THEME AND APPEARANCE ---
 ctk.set_appearance_mode("System")
-ctk.set_default_color_theme("theme.json")
-
-
-def get_data_path(filename):
-    app_name = "NREGA-Dashboard"
-    app_author = "PoddarSolutions"
-    data_dir = user_data_dir(app_name, app_author)
-    os.makedirs(data_dir, exist_ok=True)
-    return os.path.join(data_dir, filename)
-
-def get_user_downloads_path():
-    return os.path.join(Path.home(), "Downloads")
-
-def resource_path(relative_path):
-    try:
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
-    return os.path.join(base_path, relative_path)
+ctk.set_default_color_theme(resource_path("theme.json"))
 
 class NregaDashboard(ctk.CTk):
     def __init__(self):
         super().__init__()
+        self.withdraw() # Hide window initially to prevent flicker
         self.title("NREGA Automation Dashboard")
         self.geometry("1100x800")
         self.minsize(1000, 700)
@@ -89,24 +91,39 @@ class NregaDashboard(ctk.CTk):
     def start_app(self):
         """Builds the UI first, then initiates the license check flow."""
         self.build_main_ui()
+        # The 'perform_license_check_flow' will now handle everything else in order.
         self.after(200, self.perform_license_check_flow)
-        self.check_for_updates_background() # Start background update check
 
     def perform_license_check_flow(self):
         """The core logic for checking a license and locking/unlocking the app."""
         self.is_licensed = self.check_license()
 
         if self.is_licensed:
-            self.check_expiry_and_notify()
+            is_expiring = self.check_expiry_and_notify()
             self._unlock_app()
-            self.after(100, self._update_about_tab_info) # Update UI after check
+            self.after(100, self._update_about_tab_info)
+            
+            if is_expiring:
+                self.show_frame("About")
+            else:
+                self.show_frame("MR Gen")
+            
+            self.check_for_updates_background()
+            self.deiconify()
+
         else:
             self._lock_app_to_about_tab()
             if self.show_activation_window():
                 self.is_licensed = True
                 self.check_expiry_and_notify()
                 self._unlock_app()
-                self.after(100, self._update_about_tab_info) # Update UI after activation
+                self.after(100, self._update_about_tab_info)
+                self.show_frame("MR Gen")
+                
+                # --- THIS LINE WAS MISSING ---
+                self.check_for_updates_background()
+                
+                self.deiconify()
             else:
                 self.destroy()
 
@@ -196,8 +213,7 @@ class NregaDashboard(ctk.CTk):
         self._create_main_layout()
         self._create_footer()
         
-        initial_tab = "About" if self.open_on_about_tab else "MR Gen"
-        self.after(100, lambda: self.show_frame(initial_tab))
+        # REMOVE the initial_tab logic from here
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def _create_header(self):
@@ -428,7 +444,7 @@ class NregaDashboard(ctk.CTk):
 
     def check_expiry_and_notify(self):
         expires_at_str = self.license_info.get('expires_at')
-        if not expires_at_str: return
+        if not expires_at_str: return False  # Add this line
         try:
             expiry_date = datetime.fromisoformat(expires_at_str.split('T')[0]).date()
             days_left = (expiry_date - datetime.now().date()).days
@@ -436,9 +452,11 @@ class NregaDashboard(ctk.CTk):
                 message = f"Your license expires today." if days_left == 0 else f"Your license will expire in {days_left} day{'s' if days_left > 1 else ''}."
                 messagebox.showwarning("License Expiring Soon", f"{message}\nPlease renew your subscription.")
                 self.open_on_about_tab = True
+                return True # Add this line
         except (ValueError, TypeError) as e:
             print(f"Could not parse expiry date: {expires_at_str}. Error: {e}")
             if SENTRY_DSN: sentry_sdk.capture_exception(e)
+        return False # Add this line
 
     def start_automation_thread(self, key, target_func, args=()):
         if self.automation_threads.get(key) and self.automation_threads[key].is_alive():
@@ -532,7 +550,7 @@ class NregaDashboard(ctk.CTk):
                         fg_color=ctk.ThemeManager.theme["CTkButton"]["fg_color"],
                         command=lambda: about_tab.download_and_install_update(self, about_widgets, info['url'], info['version'])
                     )
-                    self.show_update_prompt(info['version'])
+                    # self.show_update_prompt(info['version'])
                 elif info['status'] == 'updated':
                     about_widgets['latest_version_label'].configure(text=f"Latest Version: {config.APP_VERSION}")
                     about_widgets['update_button'].configure(text="You are up to date", state="disabled")

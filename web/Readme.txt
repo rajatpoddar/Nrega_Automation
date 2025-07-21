@@ -2,7 +2,7 @@
 
 # For Windows
 
-pyinstaller --noconfirm --onefile --windowed --name "NREGA-Dashboard" --icon="app_icon.ico" --add-data="logo.png;." --add-data="payment_qr.png:." --add-data="jobcard.jpeg:." main_app.py
+pyinstaller --noconfirm --windowed --name "NREGA-Dashboard" --icon="app_icon.ico" --add-data="logo.png;." --add-data="payment_qr.png;." --add-data="theme.json;." --add-data="assets;assets" --add-data=".env;." --add-data="jobcard.jpeg;." --collect-data fpdf main_app.py
 
 
 # For MacOS
