@@ -63,11 +63,11 @@ jobs:
             ./build_macos.sh
           fi
 
-      # --- NEW: Debugging step to list created files ---
+      # --- FIXED: Check for directory existence before listing ---
       - name: List build artifacts
         run: |
-          ls -R dist
-          ls -R installer
+          if [ -d "dist" ]; then ls -R dist; fi
+          if [ -d "installer" ]; then ls -R installer; fi
         shell: bash
         if: always() # Run this step even if the build fails
 
@@ -95,6 +95,9 @@ jobs:
       - name: Get Version from config.py
         id: get_version
         run: |
+          # It's safer to checkout the code again to ensure config.py is present
+          git clone https://github.com/${{ github.repository }}.git
+          cd ${{ github.repository.name }}
           VERSION=$(grep "APP_VERSION =" config.py | awk -F'"' '{print $2}')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
