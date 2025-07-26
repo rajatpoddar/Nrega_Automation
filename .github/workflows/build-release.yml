@@ -31,6 +31,11 @@ jobs:
         with:
           python-version: '3.11'
 
+      # --- NEW: Set environment variables for universal builds on macOS ---
+      - name: Set Universal Architecture Flags
+        if: runner.os == 'macOS'
+        run: echo "ARCHFLAGS=-arch arm64 -arch x86_64" >> $GITHUB_ENV
+
       - name: Get pip cache dir
         id: pip-cache
         run: |
@@ -105,7 +110,6 @@ jobs:
           VERSION=$(grep "APP_VERSION =" config.py | awk -F'"' '{print $2}')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      # --- NEW: Read and format the changelog for the current version ---
       - name: Format Changelog for Release
         id: format_changelog
         run: |
@@ -125,7 +129,6 @@ jobs:
           except Exception as e:
               changelog_body = f'Could not generate changelog: {e}'
           
-          # Use a delimiter for multiline output
           delimiter = 'ghadelimiter_' + str(os.urandom(16).hex())
           with open(os.environ['GITHUB_OUTPUT'], 'a') as hf:
               print(f'changelog_text<<{delimiter}', file=hf)
@@ -140,7 +143,6 @@ jobs:
         with:
           tag_name: v${{ steps.get_version.outputs.version }}
           name: NREGA Bot v${{ steps.get_version.outputs.version }}
-          # --- FIXED: The body now includes the formatted changelog ---
           body: |
             ${{ steps.format_changelog.outputs.changelog_text }}
 
