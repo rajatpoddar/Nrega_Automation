@@ -1,16 +1,15 @@
 #!/bin/bash
 
-# --- Define app details here ---
-APP_NAME="NREGA-Dashboard"
-APP_VERSION="2.5.0" #<-- I've updated this to your latest version
+# --- App version is now set by the GitHub Actions environment variable 'APP_VERSION' ---
+APP_NAME="NREGA Bot"
 OUTPUT_DMG_NAME="dist/${APP_NAME}-v${APP_VERSION}-macOS.dmg"
 
 # --- Step 1: Run PyInstaller ---
 echo "Building the application with PyInstaller..."
 pyinstaller --noconfirm --windowed --name "${APP_NAME}" \
 --icon="assets/app_icon.icns" \
+--target-arch universal2 \
 --add-data="logo.png:." \
---add-data="payment_qr.png:." \
 --add-data="theme.json:." \
 --add-data="changelog.json:." \
 --add-data="assets:assets" \
@@ -19,9 +18,14 @@ pyinstaller --noconfirm --windowed --name "${APP_NAME}" \
 --collect-data fpdf \
 main_app.py
 
+# Check if PyInstaller failed
+if [ $? -ne 0 ]; then
+    echo "PyInstaller build FAILED."
+    exit 1
+fi
+
 # --- Step 2: Create the DMG ---
 echo "Creating DMG package..."
-# This part of your script is already excellent and needs no changes
 create-dmg \
   --volname "${APP_NAME} Installer" \
   --window-pos 200 120 \
