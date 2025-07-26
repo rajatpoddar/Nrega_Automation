@@ -5,7 +5,6 @@ on:
     branches:
       - main # Triggers the workflow on pushes to the main branch
 
-# FIXED: Add permissions for creating releases
 permissions:
   contents: write
 
@@ -20,6 +19,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: Extract Version from config.py
+        shell: bash
+        run: |
+          VERSION=$(grep "APP_VERSION =" config.py | awk -F'"' '{print $2}')
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -63,13 +68,12 @@ jobs:
             ./build_macos.sh
           fi
 
-      # --- FIXED: Check for directory existence before listing ---
       - name: List build artifacts
         run: |
           if [ -d "dist" ]; then ls -R dist; fi
           if [ -d "installer" ]; then ls -R installer; fi
         shell: bash
-        if: always() # Run this step even if the build fails
+        if: always()
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
@@ -87,6 +91,9 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -95,24 +102,50 @@ jobs:
       - name: Get Version from config.py
         id: get_version
         run: |
-          # It's safer to checkout the code again to ensure config.py is present
-          git clone https://github.com/${{ github.repository }}.git
-          cd ${{ github.repository.name }}
           VERSION=$(grep "APP_VERSION =" config.py | awk -F'"' '{print $2}')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      # --- NEW: Debugging step to verify version ---
-      - name: Display extracted version
-        run: echo "The extracted version is ${{ steps.get_version.outputs.version }}"
+      # --- NEW: Read and format the changelog for the current version ---
+      - name: Format Changelog for Release
+        id: format_changelog
+        run: |
+          python -c "
+          import json, os
+          version = os.environ.get('APP_VERSION')
+          changelog_body = ''
+          try:
+              with open('changelog.json', 'r', encoding='utf-8') as f:
+                  changelog_data = json.load(f)
+              if version in changelog_data:
+                  changes = changelog_data[version]
+                  changelog_body += f'## What\'s New in v{version}\\n\\n'
+                  changelog_body += '\\n'.join([f'* {item}' for item in changes])
+              else:
+                  changelog_body = 'No changelog entry for this version.'
+          except Exception as e:
+              changelog_body = f'Could not generate changelog: {e}'
+          
+          # Use a delimiter for multiline output
+          delimiter = 'ghadelimiter_' + str(os.urandom(16).hex())
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as hf:
+              print(f'changelog_text<<{delimiter}', file=hf)
+              print(changelog_body, file=hf)
+              print(delimiter, file=hf)
+          "
+        env:
+          APP_VERSION: ${{ steps.get_version.outputs.version }}
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.get_version.outputs.version }}
           name: NREGA Bot v${{ steps.get_version.outputs.version }}
-          body: "New release of NREGA Bot. Download the appropriate installer for your operating system below."
+          # --- FIXED: The body now includes the formatted changelog ---
+          body: |
+            ${{ steps.format_changelog.outputs.changelog_text }}
+
+            ---
+            Download the appropriate installer for your operating system below.
           files: |
             artifacts/nrega-bot-Windows/installer/*.exe
             artifacts/nrega-bot-macOS/dist/*.dmg
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
