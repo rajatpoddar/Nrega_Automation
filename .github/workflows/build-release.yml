@@ -1,0 +1,118 @@
+name: Build and Release NREGA Bot
+
+on:
+  push:
+    branches:
+      - main # Triggers the workflow on pushes to the main branch
+
+# FIXED: Add permissions for creating releases
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Get pip cache dir
+        id: pip-cache
+        run: |
+          echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pip-cache.outputs.dir }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -v
+          
+      - name: Install macOS specific dependencies
+        if: runner.os == 'macOS'
+        run: brew install create-dmg
+
+      - name: Create .env file
+        run: echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" > .env
+        shell: bash
+
+      - name: Build the application
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            ./build_windows.bat
+          elif [ "${{ runner.os }}" == "macOS" ]; then
+            chmod +x build_macos.sh
+            ./build_macos.sh
+          fi
+
+      # --- FIXED: Check for directory existence before listing ---
+      - name: List build artifacts
+        run: |
+          if [ -d "dist" ]; then ls -R dist; fi
+          if [ -d "installer" ]; then ls -R installer; fi
+        shell: bash
+        if: always() # Run this step even if the build fails
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nrega-bot-${{ runner.os }}
+          path: |
+            dist/*.dmg
+            installer/*.exe
+            dist/*.exe
+          if-no-files-found: ignore
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Get Version from config.py
+        id: get_version
+        run: |
+          # It's safer to checkout the code again to ensure config.py is present
+          git clone https://github.com/${{ github.repository }}.git
+          cd ${{ github.repository.name }}
+          VERSION=$(grep "APP_VERSION =" config.py | awk -F'"' '{print $2}')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      # --- NEW: Debugging step to verify version ---
+      - name: Display extracted version
+        run: echo "The extracted version is ${{ steps.get_version.outputs.version }}"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}
+          name: NREGA Bot v${{ steps.get_version.outputs.version }}
+          body: "New release of NREGA Bot. Download the appropriate installer for your operating system below."
+          files: |
+            artifacts/nrega-bot-Windows/installer/*.exe
+            artifacts/nrega-bot-macOS/dist/*.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
