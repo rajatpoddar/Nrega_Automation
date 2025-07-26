@@ -22,14 +22,12 @@ jobs:
         with:
           python-version: '3.11'
 
-      # --- FIXED: Get the platform-specific pip cache directory ---
       - name: Get pip cache dir
         id: pip-cache
         run: |
           echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
         shell: bash
 
-      # --- FIXED: Use the correct cache directory path ---
       - name: Cache pip packages
         uses: actions/cache@v4
         with:
@@ -41,12 +39,11 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # --- FIXED: Added verbose flag -v to get more detailed logs ---
           pip install -r requirements.txt -v
           
       - name: Install macOS specific dependencies
         if: runner.os == 'macOS'
-        run: pip install create-dmg
+        run: brew install create-dmg # FIXED: Use Homebrew to install create-dmg
 
       - name: Create .env file
         run: echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" > .env
