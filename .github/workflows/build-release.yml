@@ -5,6 +5,10 @@ on:
     branches:
       - main # Triggers the workflow on pushes to the main branch
 
+# FIXED: Add permissions for creating releases
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build on ${{ matrix.os }}
@@ -43,7 +47,7 @@ jobs:
           
       - name: Install macOS specific dependencies
         if: runner.os == 'macOS'
-        run: brew install create-dmg # FIXED: Use Homebrew to install create-dmg
+        run: brew install create-dmg
 
       - name: Create .env file
         run: echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" > .env
@@ -58,6 +62,14 @@ jobs:
             chmod +x build_macos.sh
             ./build_macos.sh
           fi
+
+      # --- NEW: Debugging step to list created files ---
+      - name: List build artifacts
+        run: |
+          ls -R dist
+          ls -R installer
+        shell: bash
+        if: always() # Run this step even if the build fails
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
@@ -85,6 +97,10 @@ jobs:
         run: |
           VERSION=$(grep "APP_VERSION =" config.py | awk -F'"' '{print $2}')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      # --- NEW: Debugging step to verify version ---
+      - name: Display extracted version
+        run: echo "The extracted version is ${{ steps.get_version.outputs.version }}"
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
