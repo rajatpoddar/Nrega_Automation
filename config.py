@@ -1,9 +1,12 @@
 # config.py
-# This file contains centralized configuration settings for the NREGA Dashboard.
+# This file contains centralized configuration settings for the NREGA Bot.
 
-# --- Application Version Info ---
-APP_NAME = "NREGA-Dashboard"
-APP_VERSION = "2.4.1" # Version updated for theme refinement
+# --- Application & Brand Info ---
+APP_NAME = "NREGA Bot"
+APP_VERSION = "2.5.0" # Version bumped for rebranding and new features
+LICENSE_SERVER_URL = "https://license.nregabot.com"
+MAIN_WEBSITE_URL = "https://nregabot.com"
+SUPPORT_EMAIL = "nregabot@gmail.com"
 
 # --- Platform & UI Configuration ---
 import platform
@@ -14,77 +17,101 @@ ICONS = {
     "MR Gen": "📄", "MR Payment": "💳", "FTO Generation": "📤",
     "Gen Wagelist": "📋", "Send Wagelist": "➡️", "Verify Jobcard": "✅",
     "eMB Entry": "✏️", "WC Gen (Abua)": "🏗️", "IF Editor (Abua)": "🔧",
+    "Add Activity": "🪄","Verify ABPS": "💳", "Workcode Extractor": "✂️",
     "About": "ℹ️", "Theme": {"light": "🌙", "dark": "☀️"}
 }
 
-STYLE_CONFIG = {
-    "font_family": "SF Pro Display" if OS_SYSTEM == "Darwin" else "Segoe UI",
-    "font_normal": ("SF Pro Display", 13) if OS_SYSTEM == "Darwin" else ("Segoe UI", 10),
-    "font_bold": ("SF Pro Display", 13, "bold") if OS_SYSTEM == "Darwin" else ("Segoe UI", 10, "bold"),
-    "font_title": ("SF Pro Display", 22, "bold") if OS_SYSTEM == "Darwin" else ("Segoe UI", 18, "bold"),
-    "font_small": ("SF Pro Display", 11) if OS_SYSTEM == "Darwin" else ("Segoe UI", 8),
-    "font_nav": ("SF Pro Display", 14) if OS_SYSTEM == "Darwin" else ("Segoe UI", 11),
-
-    "colors": {
-        "light": {
-            "background": "#f5f5f7", "frame": "#ffffff", "text": "#1d1d1f",
-            "text_secondary": "#6e6e73", "border": "#d2d2d7", "accent": "#007aff",
-            "accent_text": "#ffffff", "danger": "#d93636", "success": "#34c759", "warning": "#ff9500",
-            "nav_bg": "#e5e5e7", "nav_fg": "#4f4f52",
-            "nav_active_bg": "#ffffff", "nav_active_fg": "#007aff",
-            "nav_hover_bg": "#dcdce0",
-            # New colors for inner tabs and treeview
-            "header_bg": "#e5e5e7",
-            "inner_tab_bg": "#f5f5f7",
-            "inner_tab_active_bg": "#ffffff",
-            "inner_tab_active_fg": "#1d1d1f",
-        },
-        "dark": {
-            "background": "#1c1c1e", "frame": "#2c2c2e", "text": "#f5f5f7",
-            "text_secondary": "#8e8e93", "border": "#424245", "accent": "#0a84ff",
-            "accent_text": "#ffffff", "danger": "#ff453a", "success": "#32d74b", "warning": "#ff9f0a",
-            "nav_bg": "#3a3a3c", "nav_fg": "#d1d1d6",
-            "nav_active_bg": "#2c2c2e", "nav_active_fg": "#0a84ff",
-            "nav_hover_bg": "#48484a",
-            # New colors for inner tabs and treeview
-            "header_bg": "#3a3a3c",
-            "inner_tab_bg": "#1c1c1e",
-            "inner_tab_active_bg": "#2c2c2e",
-            "inner_tab_active_fg": "#f5f5f7",
-        }
-    }
-}
-
-# --- Automation Configurations (No changes here) ---
+# --- Automation Configurations ---
+# Shared value for Panchayat prefix
+AGENCY_PREFIX = "Gram Panchayat -"
 
 MUSTER_ROLL_CONFIG = {
-    "base_url": "https://nregade4.nic.in/Netnrega/preprintmsr.aspx"
+    "base_url": "https://nregade4.nic.in/Netnrega/preprintmsr.aspx",
+    "output_folder_name": "NREGABot_MR_Output",
+    "pdf_options": {
+        'landscape': True, 'displayHeaderFooter': False, 'printBackground': False,
+        'preferCSSPageSize': False, 'paperWidth': 11.69, 'paperHeight': 8.27,
+        'marginTop': 0.4, 'marginBottom': 0.4, 'marginLeft': 0.4, 'marginRight': 0.4,
+        'scale': 0.8
+    },
+    "pdf_options_portrait": {
+        'landscape': False, 'displayHeaderFooter': False, 'printBackground': False,
+        'preferCSSPageSize': False, 'paperWidth': 8.27, 'paperHeight': 11.69,
+        'marginTop': 0.4, 'marginBottom': 0.4, 'marginLeft': 0.4, 'marginRight': 0.4,
+        'scale': 0.8
+    }
 }
 
 MSR_CONFIG = {
     "url": "https://nregade4.nic.in/Netnrega/msrpayment.aspx",
-    "work_code_index": 1,
-    "muster_roll_index": 1,
-    "min_delay": 2,
-    "max_delay": 6
+    "work_code_index": 1, "muster_roll_index": 1, "min_delay": 2, "max_delay": 6
 }
 
 WAGELIST_GEN_CONFIG = {
     "base_url": 'https://nregade4.nic.in/Netnrega/SendMSRtoPO.aspx',
 }
 
+WAGELIST_SEND_CONFIG = {
+    "defaults": {
+        "start_row": "3",
+        "end_row": "19"
+    }
+}
+
 MB_ENTRY_CONFIG = {
     "url": "https://nregade4.nic.in/Netnrega/mbbook.aspx",
-    "measurement_book_no": "", "page_no": "",
-    "measurement_date": "", "unit_cost": "282",
-    "mate_name": "", "default_pit_count": "112",
-    "je_name": "", "je_designation": "JE",
+    "defaults": {
+        "measurement_book_no": "", "page_no": "", "unit_cost": "282",
+        "mate_name": "", "default_pit_count": "112", "je_name": "", "je_designation": "JE"
+    }
 }
 
 IF_EDIT_CONFIG = {
-    "url": "https://nregade4.nic.in/netnrega/IFEdit.aspx"
+    "url": "https://nregade4.nic.in/netnrega/IFEdit.aspx",
+    "page1": {
+        "estimated_pd": "0.090", "beneficiaries_count": "1", "present_status": "Not Exist",
+        "convergence_scheme_type": "State", "convergence_scheme_name": "ABUA AWAS YOJNA"
+    },
+    "page2": {
+        "sanction_no": "1-06/{year}", "sanction_date": "20/06/{year}", "est_time_completion": "1",
+        "avg_labour_per_day": "10", "expected_mandays": "0.090", "tech_sanction_amount": "0.25380",
+        "unskilled_labour_cost": "0.25380", "fin_sanction_no": "01-06/{year}",
+        "fin_sanction_date": "20/06/{year}", "fin_sanction_amount": "0.25380", "fin_scheme_input": "0"
+    },
+    "page3": {"activity_code": "ACT105", "unit_price": "282", "quantity": "90"}
 }
 
 WC_GEN_CONFIG = {
-    "url": "https://mnregaweb2.nic.in/netnrega/work_entry.aspx"
+    "url": "https://mnregaweb2.nic.in/netnrega/work_entry.aspx",
+    "defaults": {
+        "master_category": "B", "work_category": "Construction of house", "beneficiary_type": "Individual",
+        "activity_type": "Construction/Plantation/Development/Reclamation", "work_type": "Construction of PMAY /State House",
+        "pro_status": "Constr of State scheme House for Individuals", "district_distance": "36", "financial_year": "2025-2026",
+        "ridge_type": "L", "proposal_date": "15/06/{year}", "start_date": "15/06/{year}",
+        "est_labour_cost": "0.25380", "est_material_cost": "0.0", "executing_agency": "3"
+    }
+}
+
+FTO_GEN_CONFIG = {
+    "login_url": "https://mnregaweb3.nic.in/Netnrega/FTO/Login.aspx?&level=HomeACGP&state_code=34",
+    "aadhaar_fto_url": "https://mnregaweb3.nic.in/netnrega/FTO/ftoverify_aadhar.aspx",
+    "top_up_fto_url": "https://mnregaweb3.nic.in/netnrega/FTO/ftoverify_aadhar.aspx?wg_topup=S"
+}
+
+JOBCARD_VERIFY_CONFIG = {
+    "url": "https://nregade4.nic.in/Netnrega/VerificationJCatPO.aspx",
+    "default_photo": "jobcard.jpeg"
+}
+# --- Add Activity Configuration ---
+ADD_ACTIVITY_CONFIG = {
+    "url": "https://nregade4.nic.in/Netnrega/IAY_Act_Mat.aspx",
+    "defaults": {
+        "activity_code": "ACT105",
+        "unit_price": "282",
+        "quantity": "90"
+    }
+}
+# --- ABPS Verification Configuration ---
+ABPS_VERIFY_CONFIG = {
+    "url": "https://nregade4.nic.in/Netnrega/UID/VUID_NPCI.aspx"
 }

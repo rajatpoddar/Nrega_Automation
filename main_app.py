@@ -1,8 +1,8 @@
-# main_app.py (Corrected Order)
+# main_app.py
 import tkinter
 from tkinter import messagebox, filedialog
 import customtkinter as ctk
-import threading, time, subprocess, os, webbrowser, sys, requests, json, uuid
+import threading, time, subprocess, os, webbrowser, sys, requests, json, uuid, logging # Added logging import
 from PIL import Image
 from packaging.version import parse as parse_version
 from getmac import get_mac_address
@@ -14,24 +14,35 @@ from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.chrome.options import Options as ChromeOptions
+from tabs.history_manager import HistoryManager
 
 import config
-from tabs import msr_tab, wagelist_gen_tab, wagelist_send_tab, wc_gen_tab, mb_entry_tab, if_edit_tab, musterroll_gen_tab, about_tab, jobcard_verify_tab, fto_generation_tab
+# --- TAB CLASS IMPORTS ---
+from tabs.msr_tab import MsrTab
+from tabs.wagelist_gen_tab import WagelistGenTab
+from tabs.wagelist_send_tab import WagelistSendTab
+from tabs.wc_gen_tab import WcGenTab
+from tabs.mb_entry_tab import MbEntryTab
+from tabs.if_edit_tab import IfEditTab
+from tabs.musterroll_gen_tab import MusterrollGenTab
+from tabs.about_tab import AboutTab
+from tabs.jobcard_verify_tab import JobcardVerifyTab
+from tabs.fto_generation_tab import FtoGenerationTab
+from tabs.workcode_extractor_tab import WorkcodeExtractorTab
+from tabs.add_activity_tab import AddActivityTab
+from tabs.abps_verify_tab import AbpsVerifyTab
 
-# Import ctypes for Windows sleep prevention
 if config.OS_SYSTEM == "Windows":
     import ctypes
 
-# --- HELPER FUNCTIONS (MOVED HERE) ---
+# --- HELPER FUNCTIONS ---
 def resource_path(relative_path):
-    try:
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
+    try: base_path = sys._MEIPASS
+    except Exception: base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
 def get_data_path(filename):
-    app_name = "NREGA-Dashboard"
+    app_name = "NREGABot"
     app_author = "PoddarSolutions"
     data_dir = user_data_dir(app_name, app_author)
     os.makedirs(data_dir, exist_ok=True)
@@ -39,9 +50,7 @@ def get_data_path(filename):
 
 def get_user_downloads_path():
     return os.path.join(Path.home(), "Downloads")
-# ------------------------------------
 
-# --- Load Environment Variables ---
 load_dotenv()
 
 # --- SENTRY INTEGRATION ---
@@ -54,18 +63,19 @@ if SENTRY_DSN:
         traces_sample_rate=1.0,
     )
 
-# --- THEME AND APPEARANCE ---
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme(resource_path("theme.json"))
 
-class NregaDashboard(ctk.CTk):
+class NregaBotApp(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.withdraw() # Hide window initially to prevent flicker
-        self.title("NREGA Automation Dashboard")
+        self.attributes("-alpha", 0.0)
+        
+        self.title(f"{config.APP_NAME}")
         self.geometry("1100x800")
         self.minsize(1000, 700)
-
+        
+        self.history_manager = HistoryManager(self.get_data_path)
         self.is_licensed = False
         self.license_info = {}
         self.machine_id = self._get_machine_id()
@@ -74,74 +84,122 @@ class NregaDashboard(ctk.CTk):
         if SENTRY_DSN:
             sentry_sdk.set_user({"id": self.machine_id})
             sentry_sdk.set_tag("os.name", config.OS_SYSTEM)
-
+        
         self.open_on_about_tab = False
         self.sleep_prevention_process = None
         self.active_automations = set()
-
         self.icon_images = {}
-        
         self.automation_threads = {}
         self.stop_events = {}
         self.nav_buttons = {}
         self.content_frames = {}
+        self.tab_instances = {}
 
-        self.after(100, self.start_app)
+        self.after(0, self.start_app)
         
     def start_app(self):
-        """Builds the UI first, then initiates the license check flow."""
+        self.splash = self._create_splash_screen()
+        self.after(200, self._initialize_app)
+
+    def _initialize_app(self):
         self.build_main_ui()
-        # The 'perform_license_check_flow' will now handle everything else in order.
-        self.after(200, self.perform_license_check_flow)
+        if self.splash:
+            self.splash.destroy()
+            self.splash = None
+        self.perform_license_check_flow()
+
+    def _create_splash_screen(self):
+        splash = ctk.CTkToplevel(self)
+        splash.overrideredirect(True)
+        splash_width, splash_height = 300, 200
+        screen_width, screen_height = splash.winfo_screenwidth(), splash.winfo_screenheight()
+        x = (screen_width / 2) - (splash_width / 2)
+        y = (screen_height / 2) - (splash_height / 2)
+        splash.geometry(f'{splash_width}x{splash_height}+{int(x)}+{int(y)}')
+        try:
+            logo_image = ctk.CTkImage(Image.open(resource_path("logo.png")), size=(80, 80))
+            ctk.CTkLabel(splash, image=logo_image, text="").pack(pady=(20, 10))
+        except Exception: pass
+        ctk.CTkLabel(splash, text=f"{config.APP_NAME}\nLoading...", font=("SF Pro Display", 14)).pack()
+        splash.lift()
+        splash.attributes("-topmost", True)
+        return splash
 
     def perform_license_check_flow(self):
-        """The core logic for checking a license and locking/unlocking the app."""
         self.is_licensed = self.check_license()
-
         if self.is_licensed:
             is_expiring = self.check_expiry_and_notify()
+            self._ping_server_in_background() # Ensure 'last_seen' is updated
             self._unlock_app()
             self.after(100, self._update_about_tab_info)
-            
-            if is_expiring:
-                self.show_frame("About")
-            else:
-                self.show_frame("MR Gen")
-            
+            self.show_frame("About" if is_expiring else list(self.get_tabs_definition().keys())[0])
             self.check_for_updates_background()
             self.deiconify()
-
+            self.attributes("-alpha", 1.0)
         else:
             self._lock_app_to_about_tab()
+            self.deiconify()
+            self.attributes("-alpha", 1.0)
             if self.show_activation_window():
                 self.is_licensed = True
                 self.check_expiry_and_notify()
                 self._unlock_app()
                 self.after(100, self._update_about_tab_info)
-                self.show_frame("MR Gen")
-                
-                # --- THIS LINE WAS MISSING ---
+                self.show_frame(list(self.get_tabs_definition().keys())[0])
                 self.check_for_updates_background()
-                
-                self.deiconify()
             else:
                 self.destroy()
 
+    def _ping_server_in_background(self):
+        """Send a fire-and-forget request to update the 'last_seen' timestamp on the server."""
+        if not self.license_info.get('key'):
+            return
+        
+        def ping():
+            server_url = f"{config.LICENSE_SERVER_URL}/validate"
+            try:
+                # This call updates 'last_seen' on the server.
+                # We don't need to process the response here, just send the ping.
+                requests.post(server_url, json={"key": self.license_info['key'], "machine_id": self.machine_id}, timeout=10)
+                logging.info("Server ping successful, 'last_seen' updated.")
+            except requests.exceptions.RequestException as e:
+                logging.warning(f"Could not ping license server in background: {e}")
+
+        threading.Thread(target=ping, daemon=True).start()
+
+    def check_license(self):
+        license_file = get_data_path('license.dat')
+        if not os.path.exists(license_file):
+            return False
+        try:
+            with open(license_file, 'r', encoding='utf-8') as f:
+                self.license_info = json.load(f)
+            if 'key' not in self.license_info or 'expires_at' not in self.license_info:
+                raise ValueError("License file is missing key or expiry date.")
+            
+            expiry_date = datetime.fromisoformat(self.license_info['expires_at'].split('T')[0]).date()
+            if expiry_date >= datetime.now().date():
+                return True
+            else:
+                # Local license has expired, must re-validate with server
+                return self.validate_on_server(self.license_info.get('key'), is_startup_check=True)
+        except (json.JSONDecodeError, ValueError, TypeError) as e:
+            if SENTRY_DSN:
+                sentry_sdk.capture_message(f"Corrupted license file found and deleted. Error: {e}")
+            os.remove(license_file)
+            return False
+
     def _lock_app_to_about_tab(self):
-        """Disables all controls and forces the 'About' tab to be visible."""
         self.show_frame("About")
         for name, button in self.nav_buttons.items():
             if name != "About":
                 button.configure(state="disabled")
-        
         self.launch_chrome_btn.configure(state="disabled")
         self.theme_combo.configure(state="disabled")
 
     def _unlock_app(self):
-        """Enables all controls for a licensed user."""
         for button in self.nav_buttons.values():
             button.configure(state="normal")
-            
         self.launch_chrome_btn.configure(state="normal")
         self.theme_combo.configure(state="normal")
 
@@ -156,48 +214,37 @@ class NregaDashboard(ctk.CTk):
             full_path = resource_path(path)
             if os.path.exists(full_path):
                 image = Image.open(full_path)
-                photo_image = ctk.CTkImage(light_image=image, dark_image=image, size=size)
-                self.icon_images[name] = photo_image
-                return photo_image
+                self.icon_images[name] = ctk.CTkImage(light_image=image, dark_image=image, size=size)
         except Exception as e:
             print(f"Warning: Could not load icon '{name}' from {path}. Error: {e}")
-        return None
 
     def open_browser_remote_debug(self, browser_name):
-        if browser_name == 'chrome':
-            port = "9222"
-            profile_dir_name = "ChromeProfileForNREGA"
-            paths_to_check = {
-                "Darwin": ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"],
-                "Windows": ["C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"]
-            }
-            args = [f"--remote-debugging-port={port}"]
-        else:
-            messagebox.showerror("Error", f"Unsupported browser: {browser_name}")
-            return
-
+        port = "9222"
+        profile_dir_name = "ChromeProfileForNREGABot"
         profile_dir = os.path.join(os.path.expanduser("~"), profile_dir_name)
+        os.makedirs(profile_dir, exist_ok=True)
+        paths_to_check = {
+            "Darwin": ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"],
+            "Windows": ["C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"]
+        }
         browser_path = next((path for path in paths_to_check.get(config.OS_SYSTEM, []) if os.path.exists(path)), None)
-
         if not browser_path:
-            messagebox.showerror("Error", f"{browser_name.title()} not found in standard locations.")
+            messagebox.showerror("Error", "Google Chrome not found in standard locations.")
             return
-        
         try:
-            os.makedirs(profile_dir, exist_ok=True)
-            startup_url = "https://nrega.palojori.in"
-            command = [browser_path] + args + [f"--user-data-dir={profile_dir}", startup_url]
-            subprocess.Popen(command)
-            messagebox.showinfo(f"{browser_name.title()} Launched", f"{browser_name.title()} is starting with remote debugging.\nPlease log in to the NREGA website before starting automation.")
+            command = [browser_path, f"--remote-debugging-port={port}", f"--user-data-dir={profile_dir}", config.MAIN_WEBSITE_URL]
+            if config.OS_SYSTEM == "Windows":
+                subprocess.Popen(command, creationflags=0x00000008)
+            else:
+                subprocess.Popen(command, start_new_session=True)
+            messagebox.showinfo("Chrome Launched", "Chrome is starting with remote debugging.\nPlease log in to the NREGA website before starting automation.")
         except Exception as e:
             if SENTRY_DSN: sentry_sdk.capture_exception(e)
-            messagebox.showerror("Error", f"Failed to launch {browser_name.title()}:\n{e}")
+            messagebox.showerror("Error", f"Failed to launch Chrome:\n{e}")
 
     def _get_machine_id(self):
         try:
-            mac = get_mac_address()
-            if mac: return mac
-            return "unknown-device-" + str(uuid.getnode())
+            return get_mac_address() or "unknown-device-" + str(uuid.getnode())
         except Exception:
             return "error-getting-mac"
 
@@ -205,69 +252,55 @@ class NregaDashboard(ctk.CTk):
         self._load_icon("chrome", "assets/icons/chrome.png")
         self._load_icon("whatsapp", "assets/icons/whatsapp.png", size=(16, 16))
         self._load_icon("nrega", "assets/icons/nrega.png", size=(16, 16))
-
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
-
         self._create_header()
         self._create_main_layout()
         self._create_footer()
-        
-        # REMOVE the initial_tab logic from here
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def _create_header(self):
         header_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
         header_frame.grid(row=0, column=0, sticky="ew", padx=20, pady=(20,0))
-        
         try:
             logo_image = ctk.CTkImage(Image.open(resource_path("logo.png")), size=(50, 50))
             logo_label = ctk.CTkLabel(header_frame, image=logo_image, text="")
             logo_label.pack(side="left", padx=(0, 15))
         except Exception as e:
             print(f"Warning: logo.png not found: {e}")
-        
         title_container = ctk.CTkFrame(header_frame, fg_color="transparent")
         title_container.pack(side="left", fill="x", expand=True)
-        ctk.CTkLabel(title_container, text="NREGA Automation Dashboard", font=ctk.CTkFont(size=22, weight="bold")).pack(anchor="w")
+        ctk.CTkLabel(title_container, text=config.APP_NAME, font=ctk.CTkFont(size=22, weight="bold")).pack(anchor="w")
         ctk.CTkLabel(title_container, text=f"v{config.APP_VERSION} | Log in, then select a task from the left panel.", anchor="w").pack(anchor="w")
-        
         controls_frame = ctk.CTkFrame(header_frame, fg_color="transparent")
         controls_frame.pack(side="right")
-
         self.launch_chrome_btn = ctk.CTkButton(controls_frame, text="Launch Chrome", image=self.icon_images.get("chrome"), command=lambda: self.open_browser_remote_debug('chrome'), width=140)
         self.launch_chrome_btn.pack(side="left", padx=(0,10))
-        
         theme_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
         theme_frame.pack(side="left", padx=10, fill="y")
-        
         ctk.CTkLabel(theme_frame, text="Theme:").pack(side="left", padx=(0, 5))
         self.theme_combo = ctk.CTkOptionMenu(theme_frame, values=["System", "Light", "Dark"], command=self.on_theme_change)
         self.theme_combo.pack(side="left")
 
     def _create_main_layout(self):
-        main_frame = ctk.CTkFrame(self, corner_radius=0)
+        main_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
         main_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(10,0))
         main_frame.grid_rowconfigure(0, weight=1)
         main_frame.grid_columnconfigure(1, weight=1)
-
         self._create_nav_buttons(main_frame)
-        
-        self.content_area = ctk.CTkFrame(main_frame)
+        self.content_area = ctk.CTkFrame(main_frame, fg_color="transparent")
         self.content_area.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
         self.content_area.grid_rowconfigure(0, weight=1)
         self.content_area.grid_columnconfigure(0, weight=1)
-        
         self._create_content_frames()
 
     def _create_nav_buttons(self, parent):
-        nav_frame = ctk.CTkFrame(parent, width=220, corner_radius=10)
+        nav_frame = ctk.CTkFrame(parent, width=220)
         nav_frame.grid(row=0, column=0, sticky="nsw")
-        
         tabs_to_create = self.get_tabs_definition()
         for name, data in tabs_to_create.items():
             icon = data["icon"]
-            btn = ctk.CTkButton(nav_frame, text=f"{icon}  {name}", command=lambda n=name: self.show_frame(n), 
+            btn = ctk.CTkButton(nav_frame, text=f" {icon}  {name}", command=lambda n=name: self.show_frame(n), 
                                 anchor="w", font=ctk.CTkFont(size=14), height=40,
                                 corner_radius=8, fg_color="transparent", text_color=("gray10", "gray90"),
                                 hover_color=("gray75", "gray25"))
@@ -277,53 +310,51 @@ class NregaDashboard(ctk.CTk):
     def _create_content_frames(self):
         tabs_to_create = self.get_tabs_definition()
         for name, data in tabs_to_create.items():
-            frame = ctk.CTkFrame(self.content_area)
-            frame.grid(row=0, column=0, sticky="nsew")
-            data["creation_func"](frame, self)
-            self.content_frames[name] = frame
-    
+            frame_container = ctk.CTkFrame(self.content_area, fg_color="transparent")
+            frame_container.grid(row=0, column=0, sticky="nsew")
+            tab_instance = data["creation_func"](frame_container, self)
+            tab_instance.pack(expand=True, fill="both")
+            self.content_frames[name] = frame_container
+            self.tab_instances[name] = tab_instance
+
     def get_tabs_definition(self):
         return {
-            "MR Gen": {"creation_func": musterroll_gen_tab.create_tab, "icon": config.ICONS["MR Gen"]},
-            "MR Payment": {"creation_func": msr_tab.create_tab, "icon": config.ICONS["MR Payment"]},
-            "Gen Wagelist": {"creation_func": wagelist_gen_tab.create_tab, "icon": config.ICONS["Gen Wagelist"]},
-            "Send Wagelist": {"creation_func": wagelist_send_tab.create_tab, "icon": config.ICONS["Send Wagelist"]},
-            "FTO Generation": {"creation_func": fto_generation_tab.create_tab, "icon": config.ICONS["FTO Generation"]},
-            "Verify Jobcard": {"creation_func": jobcard_verify_tab.create_tab, "icon": config.ICONS["Verify Jobcard"]},
-            "eMB Entry⚠️": {"creation_func": mb_entry_tab.create_tab, "icon": config.ICONS["eMB Entry"]},
-            "WC Gen (Abua)": {"creation_func": wc_gen_tab.create_tab, "icon": config.ICONS["WC Gen (Abua)"]},
-            "IF Editor (Abua)⚠️": {"creation_func": if_edit_tab.create_tab, "icon": config.ICONS["IF Editor (Abua)"]},
-            "About": {"creation_func": about_tab.create_tab, "icon": config.ICONS["About"]},
+            "MR Gen": {"creation_func": MusterrollGenTab, "icon": config.ICONS["MR Gen"]},
+            "MR Payment": {"creation_func": MsrTab, "icon": config.ICONS["MR Payment"]},
+            "Gen Wagelist": {"creation_func": WagelistGenTab, "icon": config.ICONS["Gen Wagelist"]},
+            "Send Wagelist": {"creation_func": WagelistSendTab, "icon": config.ICONS["Send Wagelist"]},
+            "FTO Generation": {"creation_func": FtoGenerationTab, "icon": config.ICONS["FTO Generation"]},
+            "Verify Jobcard": {"creation_func": JobcardVerifyTab, "icon": config.ICONS["Verify Jobcard"]},
+            "eMB Entry⚠️": {"creation_func": MbEntryTab, "icon": config.ICONS["eMB Entry"]},
+            "WC Gen (Abua)": {"creation_func": WcGenTab, "icon": config.ICONS["WC Gen (Abua)"]},
+            "IF Editor (Abua)⚠️": {"creation_func": IfEditTab, "icon": config.ICONS["IF Editor (Abua)"]},
+            "Add Activity": {"creation_func": AddActivityTab, "icon": config.ICONS["Add Activity"]},
+            "Verify ABPS": {"creation_func": AbpsVerifyTab, "icon": config.ICONS["Verify ABPS"]},
+            "Workcode Extractor": {"creation_func": WorkcodeExtractorTab, "icon": config.ICONS["Workcode Extractor"]},
+            "About": {"creation_func": AboutTab, "icon": config.ICONS["About"]},
         }
 
     def show_frame(self, page_name):
         frame_to_show = self.content_frames[page_name]
         frame_to_show.tkraise()
         for name, button in self.nav_buttons.items():
-            if name == page_name:
-                button.configure(fg_color=("white", "gray28"))
-            else:
-                button.configure(fg_color="transparent")
+            button.configure(fg_color=("gray90", "gray28") if name == page_name else "transparent")
     
     def _create_footer(self):
         footer_frame = ctk.CTkFrame(self, height=40, corner_radius=0)
         footer_frame.grid(row=2, column=0, sticky="ew", padx=20, pady=(10,15))
-        
         copyright_label = ctk.CTkLabel(footer_frame, text="© 2025 Made with ❤️ by Rajat Poddar.", text_color="gray50")
         copyright_label.pack(side="left", padx=15)
         copyright_label.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://github.com/rajatpoddar"))
-        
         button_container = ctk.CTkFrame(footer_frame, fg_color="transparent")
         button_container.pack(side="right", padx=15)
-
         whatsapp_link = "https://chat.whatsapp.com/Bup3hDCH3wn2shbUryv8wn?mode=r_c"
         whatsapp_btn = ctk.CTkButton(button_container, text="Join WhatsApp Group", image=self.icon_images.get("whatsapp"),
                                   command=lambda: webbrowser.open_new_tab(whatsapp_link), fg_color="transparent", hover=False,
                                   text_color=("gray10", "gray80"))
         whatsapp_btn.pack(side="right", padx=(10, 0))
-
-        nrega_btn = ctk.CTkButton(button_container, text="Nrega Palojori ↗", image=self.icon_images.get("nrega"),
-                                  command=lambda: webbrowser.open_new_tab("https://nrega.palojori.in"), fg_color="transparent", hover=False,
+        nrega_btn = ctk.CTkButton(button_container, text="NREGA Bot Website ↗", image=self.icon_images.get("nrega"),
+                                  command=lambda: webbrowser.open_new_tab(config.MAIN_WEBSITE_URL), fg_color="transparent", hover=False,
                                   text_color=("gray10", "gray80"))
         nrega_btn.pack(side="right")
 
@@ -332,50 +363,64 @@ class NregaDashboard(ctk.CTk):
         self.after(100, self.restyle_all_treeviews)
 
     def restyle_all_treeviews(self):
-        """Helper function to find and restyle all Treeview widgets."""
-        if hasattr(musterroll_gen_tab, 'style_treeview'): musterroll_gen_tab.style_treeview(self)
-        if hasattr(msr_tab, 'style_treeview'): msr_tab.style_treeview(self)
-        if hasattr(wagelist_gen_tab, 'style_treeview'): wagelist_gen_tab.style_treeview(self)
-        if hasattr(fto_generation_tab, 'style_treeview'): fto_generation_tab.style_treeview(self)
-        if hasattr(mb_entry_tab, 'style_treeview'): mb_entry_tab.style_treeview(self)
-        if hasattr(wagelist_send_tab, 'style_treeview'): wagelist_send_tab.style_treeview(self)
-
-    def check_license(self):
-        license_file = get_data_path('license.dat')
+        for tab in self.tab_instances.values():
+            if hasattr(tab, 'style_treeview') and hasattr(tab, 'results_tree'):
+                tab.style_treeview(tab.results_tree)
+    
+    def _update_about_tab_info(self):
         try:
-            if os.path.exists(license_file):
-                with open(license_file, 'r') as f: self.license_info = json.load(f)
-                if self.validate_on_server(self.license_info.get('key'), is_startup_check=True): return True
-                else: return False
-            else: return False
+            about_tab_instance = self.tab_instances.get("About")
+            if about_tab_instance:
+                about_tab_instance.update_subscription_details(self.license_info)
+                
+                info = self.update_info
+                if info['status'] == 'available':
+                    about_tab_instance.latest_version_label.configure(text=f"Latest Version: {info['version']}")
+                    about_tab_instance.update_button.configure(
+                        text=f"Download & Install v{info['version']}",
+                        state="normal",
+                        fg_color=ctk.ThemeManager.theme["CTkButton"]["fg_color"],
+                        command=lambda: about_tab_instance.download_and_install_update(info['url'], info['version'])
+                    )
+                elif info['status'] == 'updated':
+                    about_tab_instance.latest_version_label.configure(text=f"Latest Version: {config.APP_VERSION}")
+                    about_tab_instance.update_button.configure(text="You are up to date", state="disabled")
+                else:
+                    about_tab_instance.latest_version_label.configure(text=f"Latest Version: {info['status'].capitalize()}")
+                    about_tab_instance.update_button.configure(text="Check for Updates", state="normal")
         except Exception as e:
+            print(f"Could not update About tab UI: {e}")
             if SENTRY_DSN: sentry_sdk.capture_exception(e)
-            if os.path.exists(license_file): os.remove(license_file)
-            return False
 
     def validate_on_server(self, key, is_startup_check=False):
-        server_url = "https://nrega-server.palojori.in/validate"
+        server_url = f"{config.LICENSE_SERVER_URL}/validate"
         try:
             response = requests.post(server_url, json={"key": key, "machine_id": self.machine_id}, timeout=10)
             data = response.json()
             if response.status_code == 200 and data.get("status") == "valid":
-                self.license_info = {'key': key, 'expires_at': data.get('expires_at')}
+                self.license_info = {
+                    'key': key, 
+                    'expires_at': data.get('expires_at'),
+                    'user_name': data.get('user_name'),
+                    'key_type': data.get('key_type', 'paid') # Ensure key_type is saved
+                }
+                with open(get_data_path('license.dat'), 'w') as f:
+                    json.dump(self.license_info, f)
                 if not is_startup_check: messagebox.showinfo("License Valid", f"Activation successful!\nExpires on: {self.license_info['expires_at'].split('T')[0]}")
                 return True
             else:
                 reason = data.get("reason", "Unknown error.")
                 if not is_startup_check: messagebox.showerror("Validation Failed", f"License validation failed: {reason}")
-                self.license_info['reason'] = reason
                 return False
         except requests.exceptions.RequestException as e:
             if not is_startup_check: messagebox.showerror("Connection Error", f"Could not connect to the license server: {e}")
-            self.license_info['reason'] = "Connection Error"
             return False
 
     def show_activation_window(self):
         activation_window = ctk.CTkToplevel(self)
         activation_window.title("Activate Product")
-        win_width, win_height = 450, 480
+        # Increased height to fit new links
+        win_width, win_height = 450, 440
         x = (self.winfo_screenwidth() // 2) - (win_width // 2)
         y = (self.winfo_screenheight() // 2) - (win_height // 2)
         activation_window.geometry(f'{win_width}x{win_height}+{x}+{y}')
@@ -386,42 +431,19 @@ class NregaDashboard(ctk.CTk):
         main_frame = ctk.CTkFrame(activation_window, fg_color="transparent")
         main_frame.pack(expand=True, fill="both", padx=20, pady=20)
         ctk.CTkLabel(main_frame, text="Product Activation", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(0, 10))
+        
         is_activated = tkinter.BooleanVar(value=False)
 
-        def on_start_trial():
-            server_url = "https://nrega-server.palojori.in/request-trial"
-            try:
-                headers = {'User-Agent': f'{config.APP_NAME}/{config.APP_VERSION}'}
-                response = requests.post(server_url, json={"machine_id": self.machine_id}, timeout=15, headers=headers)
-                data = response.json()
-                if response.status_code == 200 and data.get("status") == "success":
-                    self.license_info = {'key': data.get("key"), 'expires_at': data.get('expires_at')}
-                    with open(get_data_path('license.dat'), 'w') as f: json.dump(self.license_info, f)
-                    messagebox.showinfo("Trial Started", f"Your 30-day free trial has started!\nExpires on: {self.license_info['expires_at'].split('T')[0]}")
-                    is_activated.set(True)
-                    activation_window.destroy()
-                else:
-                    messagebox.showerror("Trial Error", data.get("reason", "Could not start trial."))
-            except requests.exceptions.RequestException:
-                messagebox.showerror("Connection Error", "Could not connect to the server to start a trial.")
+        def open_trial_form():
+            activation_window.withdraw()
+            if self.show_trial_registration_window():
+                is_activated.set(True)
+                activation_window.destroy()
+            else:
+                activation_window.deiconify()
 
-        ctk.CTkButton(main_frame, text="Start 30-Day Free Trial", command=on_start_trial).pack(pady=5, ipady=4, fill='x')
+        ctk.CTkButton(main_frame, text="Start 30-Day Free Trial", command=open_trial_form).pack(pady=5, ipady=4, fill='x')
         ctk.CTkLabel(main_frame, text="— OR —").pack(pady=10)
-
-        machine_id_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
-        machine_id_frame.pack(pady=(10, 5), fill='x')
-        ctk.CTkLabel(machine_id_frame, text="Your Machine ID (for support):").pack(anchor='w')
-        id_display_frame = ctk.CTkFrame(machine_id_frame, fg_color="transparent")
-        id_display_frame.pack(fill='x', expand=True, pady=(2, 10))
-        id_entry = ctk.CTkEntry(id_display_frame, textvariable=ctk.StringVar(value=self.machine_id))
-        id_entry.configure(state="readonly")
-        id_entry.pack(side='left', fill='x', expand=True)
-        def copy_id():
-            self.clipboard_clear(); self.clipboard_append(self.machine_id)
-            copy_button.configure(text="Copied!")
-            self.after(2000, lambda: copy_button.configure(text="Copy"))
-        copy_button = ctk.CTkButton(id_display_frame, text="Copy", command=copy_id, width=60)
-        copy_button.pack(side='left', padx=(5, 0))
 
         ctk.CTkLabel(main_frame, text="Enter a purchased license key:").pack(pady=(5, 5))
         key_entry = ctk.CTkEntry(main_frame, width=300)
@@ -432,31 +454,110 @@ class NregaDashboard(ctk.CTk):
             key = key_entry.get().strip()
             if not key: messagebox.showwarning("Input Required", "Please enter a license key."); return
             if self.validate_on_server(key):
-                with open(get_data_path('license.dat'), 'w') as f: json.dump(self.license_info, f)
                 is_activated.set(True)
                 activation_window.destroy()
 
         ctk.CTkButton(main_frame, text="Activate with Key", command=on_activate_paid).pack(pady=10, ipady=4, fill='x')
-        ctk.CTkLabel(main_frame, text="Need help? Contact support at rajatpoddar@outlook.com", text_color="gray50").pack(pady=(15,0))
+        ctk.CTkLabel(main_frame, text=f"Need help? Contact support at {config.SUPPORT_EMAIL}", text_color="gray50").pack(pady=(15,0))
+        
+        # --- ADDED: Links for purchasing and website ---
+        links_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
+        links_frame.pack(pady=(15,0), fill="x")
+
+        buy_link_label = ctk.CTkLabel(links_frame, text="Purchase a License Key", text_color=("blue", "cyan"), cursor="hand2")
+        buy_link_label.pack()
+        buy_link_label.bind("<Button-1>", lambda e: webbrowser.open_new_tab(f"{config.LICENSE_SERVER_URL}/buy"))
+
+        website_link_label = ctk.CTkLabel(links_frame, text="Visit our Website", text_color=("blue", "cyan"), cursor="hand2")
+        website_link_label.pack(pady=(5,0))
+        website_link_label.bind("<Button-1>", lambda e: webbrowser.open_new_tab(config.MAIN_WEBSITE_URL))
         
         self.wait_window(activation_window)
         return is_activated.get()
 
+    def show_trial_registration_window(self):
+        trial_window = ctk.CTkToplevel(self)
+        trial_window.title("Trial Registration")
+        win_width, win_height = 480, 600
+        x = (self.winfo_screenwidth() // 2) - (win_width // 2)
+        y = (self.winfo_screenheight() // 2) - (win_height // 2)
+        trial_window.geometry(f'{win_width}x{win_height}+{x}+{y}')
+        trial_window.resizable(False, False)
+        trial_window.transient(self)
+        trial_window.grab_set()
+
+        scroll_frame = ctk.CTkScrollableFrame(trial_window, fg_color="transparent", label_fg_color="transparent")
+        scroll_frame.pack(expand=True, fill="both", padx=10, pady=10)
+        
+        ctk.CTkLabel(scroll_frame, text="Start Your Free Trial", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(0, 5))
+        ctk.CTkLabel(scroll_frame, text="Please provide your details to begin.", text_color="gray50").pack(pady=(0, 15))
+
+        entries = {}
+        fields = ["Full Name", "Email", "Mobile", "Block", "District", "State", "Pincode"]
+        for field in fields:
+            key = field.lower().replace(" ", "_")
+            ctk.CTkLabel(scroll_frame, text=field, anchor="w").pack(fill="x", padx=10)
+            entry = ctk.CTkEntry(scroll_frame)
+            entry.pack(fill="x", padx=10, pady=(0, 10))
+            entries[key] = entry
+        
+        is_successful = tkinter.BooleanVar(value=False)
+
+        def submit_trial_request():
+            user_data = {key: entry.get().strip() for key, entry in entries.items()}
+            user_data["name"] = user_data.pop("full_name")
+            user_data["machine_id"] = self.machine_id
+
+            if not all(user_data.values()):
+                messagebox.showwarning("Input Required", "All fields are required to start a trial.", parent=trial_window)
+                return
+
+            submit_btn.configure(state="disabled", text="Requesting...")
+            
+            server_url = f"{config.LICENSE_SERVER_URL}/api/request-trial"
+            try:
+                headers = {'User-Agent': f'{config.APP_NAME}/{config.APP_VERSION}'}
+                response = requests.post(server_url, json=user_data, timeout=15, headers=headers)
+                data = response.json()
+                if response.status_code == 200 and data.get("status") == "success":
+                    self.license_info = {
+                        'key': data.get("key"), 
+                        'expires_at': data.get('expires_at'),
+                        'user_name': user_data['name'],
+                        'key_type': 'trial'
+                    }
+                    with open(get_data_path('license.dat'), 'w') as f: json.dump(self.license_info, f)
+                    messagebox.showinfo("Trial Started", f"Your 30-day free trial has started!\nExpires on: {self.license_info['expires_at'].split('T')[0]}")
+                    is_successful.set(True)
+                    trial_window.destroy()
+                else:
+                    messagebox.showerror("Trial Error", data.get("reason", "Could not start trial."), parent=trial_window)
+            except requests.exceptions.RequestException:
+                messagebox.showerror("Connection Error", "Could not connect to the server to start a trial.", parent=trial_window)
+            finally:
+                submit_btn.configure(state="normal", text="Start Trial")
+
+        submit_btn = ctk.CTkButton(scroll_frame, text="Start Trial", command=submit_trial_request)
+        submit_btn.pack(pady=20, ipady=4, fill='x', padx=10)
+        
+        self.wait_window(trial_window)
+        return is_successful.get()
+
     def check_expiry_and_notify(self):
         expires_at_str = self.license_info.get('expires_at')
-        if not expires_at_str: return False  # Add this line
+        if not expires_at_str: return False
         try:
             expiry_date = datetime.fromisoformat(expires_at_str.split('T')[0]).date()
             days_left = (expiry_date - datetime.now().date()).days
-            if 0 <= days_left < 3:
-                message = f"Your license expires today." if days_left == 0 else f"Your license will expire in {days_left} day{'s' if days_left > 1 else ''}."
-                messagebox.showwarning("License Expiring Soon", f"{message}\nPlease renew your subscription.")
+            if 0 <= days_left < 7:
+                message = f"Your license expires today." if days_left == 0 else f"Your license will expire in {days_left} day{'s' if days_left != 1 else ''}."
+                messagebox.showwarning("License Expiring Soon", f"{message}\nPlease renew your subscription from the website.")
                 self.open_on_about_tab = True
-                return True # Add this line
+                return True
         except (ValueError, TypeError) as e:
             print(f"Could not parse expiry date: {expires_at_str}. Error: {e}")
             if SENTRY_DSN: sentry_sdk.capture_exception(e)
-        return False # Add this line
+        return False
 
     def start_automation_thread(self, key, target_func, args=()):
         if self.automation_threads.get(key) and self.automation_threads[key].is_alive():
@@ -469,7 +570,7 @@ class NregaDashboard(ctk.CTk):
         
         def thread_wrapper():
             try:
-                target_func(self, *args)
+                target_func(*args)
             finally:
                 self.after(0, self.on_automation_finished, key)
 
@@ -503,11 +604,12 @@ class NregaDashboard(ctk.CTk):
 
     def on_closing(self):
         if messagebox.askokcancel("Quit", "Do you want to quit? This will stop any running automations."):
+            self.attributes("-alpha", 0.0)
             self.active_automations.clear()
             self.allow_sleep()
-            for event in self.stop_events.values(): event.set()
-            time.sleep(0.5)
-            self.destroy()
+            for event in self.stop_events.values():
+                event.set()
+            self.after(100, self.destroy)
 
     def prevent_sleep(self):
         if not self.active_automations:
@@ -529,52 +631,27 @@ class NregaDashboard(ctk.CTk):
         if key in self.active_automations: self.active_automations.remove(key)
         if not self.active_automations: self.allow_sleep()
 
-    def _update_about_tab_info(self):
-        """Refreshes all dynamic info on the About page after validation."""
-        try:
-            if 'update_button' in about_tab.widgets:
-                # Update License Info
-                key_text = self.license_info.get('key', 'N/A')
-                expires_text = self.license_info.get('expires_at', 'N/A').split('T')[0]
-                about_tab.widgets['license_key_label'].configure(text=key_text)
-                about_tab.widgets['expires_on_label'].configure(text=expires_text)
-
-                # Update Update Info
-                info = self.update_info
-                about_widgets = about_tab.widgets
-                if info['status'] == 'available':
-                    about_widgets['latest_version_label'].configure(text=f"Latest Version: {info['version']}")
-                    about_widgets['update_button'].configure(
-                        text=f"Download & Install v{info['version']}",
-                        state="normal",
-                        fg_color=ctk.ThemeManager.theme["CTkButton"]["fg_color"],
-                        command=lambda: about_tab.download_and_install_update(self, about_widgets, info['url'], info['version'])
-                    )
-                    # self.show_update_prompt(info['version'])
-                elif info['status'] == 'updated':
-                    about_widgets['latest_version_label'].configure(text=f"Latest Version: {config.APP_VERSION}")
-                    about_widgets['update_button'].configure(text="You are up to date", state="disabled")
-                else:
-                    about_widgets['latest_version_label'].configure(text="Latest Version: Error")
-                    about_widgets['update_button'].configure(text="Check for Updates", state="normal")
-            else:
-                self.after(100, self._update_about_tab_info)
-        except Exception as e:
-            print(f"Could not update About tab UI: {e}")
-
     def check_for_updates_background(self):
         def _check():
             time.sleep(2)
-            update_url = "https://nrega-dashboard.palojori.in/version.json"
+            update_url = f"{config.MAIN_WEBSITE_URL}/version.json"
             try:
                 response = requests.get(update_url, timeout=10)
                 response.raise_for_status()
                 data = response.json()
                 latest_version = data.get("latest_version")
-                url_key = f"download_url_{sys.platform}" if sys.platform in ["win32", "darwin"] else f"download_url_windows"
+                
+                if sys.platform == "win32":
+                    url_key = "download_url_windows"
+                elif sys.platform == "darwin":
+                    url_key = "download_url_macos"
+                else:
+                    url_key = "download_url_windows"
                 download_url = data.get(url_key)
+
                 if latest_version and parse_version(latest_version) > parse_version(config.APP_VERSION):
                     self.update_info = {"status": "available", "version": latest_version, "url": download_url}
+                    self.after(0, self.show_update_prompt, latest_version)
                 else:
                     self.update_info = {"status": "updated", "version": latest_version, "url": download_url}
             except Exception as e:
@@ -585,13 +662,25 @@ class NregaDashboard(ctk.CTk):
         threading.Thread(target=_check, daemon=True).start()
 
     def show_update_prompt(self, version):
-        if messagebox.askyesno("Update Available", f"A new version ({version}) is available. Go to the 'About' page to download?"):
+        # --- MODIFIED: This now switches to the "Updates" tab ---
+        if messagebox.askyesno("Update Available", f"A new version ({version}) is available. Go to the 'Updates' tab to download?"):
             self.show_frame("About")
+            about_tab_instance = self.tab_instances.get("About")
+            if about_tab_instance:
+                about_tab_instance.tab_view.set("Updates")
+
+    def update_history(self, field_key: str, value: str):
+        self.history_manager.save_entry(field_key, value)
+
 
 if __name__ == '__main__':
+    # Add basic logging configuration
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     try:
-        app = NregaDashboard()
+        app = NregaBotApp()
         app.mainloop()
     except Exception as e:
-        if SENTRY_DSN: sentry_sdk.capture_exception(e)
+        if SENTRY_DSN:
+            sentry_sdk.capture_exception(e)
+        logging.critical(f"A fatal error occurred on startup: {e}", exc_info=True)
         messagebox.showerror("Fatal Startup Error", f"A critical error occurred on startup:\n\n{e}\n\nThe application will now close.")

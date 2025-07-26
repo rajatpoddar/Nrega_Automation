@@ -27,7 +27,7 @@
     "hover_color": ["#36719F", "#144870"],
     "border_color": ["#3B8ED0", "#1F6AA5"],
     "text_color": ["#FFFFFF", "#DCE4EE"],
-    "text_color_disabled": ["#969696", "#727272"]
+    "text_color_disabled": ["#FFFFFF", "#FFFFFF"]
   },
   "CTkLabel": {
     "corner_radius": 0,
@@ -119,5 +119,15 @@
     "fg_color": ["#F9F9FA", "#2B2B2B"],
     "hover_color": ["#3B8ED0", "#1F6AA5"],
     "text_color": ["#000000", "#DCE4EE"]
-  }
+  },
+"CTkCheckBox": {
+      "fg_color": ["gray75", "gray25"],
+      "text_color": ["#000000", "#FFFFFF"],
+      "text_color_disabled": ["gray60", "gray50"],
+      "border_color": ["#565B5E", "#8A9093"],
+      "hover_color": ["gray70", "gray30"],
+      "checkmark_color": ["#1F6AA5", "#DCE4EE"],
+      "border_width": 2,
+      "corner_radius": 6
+    }
 }

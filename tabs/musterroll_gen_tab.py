@@ -1,432 +1,272 @@
-# tabs/musterroll_gen_tab.py (Upgraded to CustomTkinter with Orientation Selector)
+# tabs/musterroll_gen_tab.py (Updated with Autocomplete)
 import tkinter
 from tkinter import ttk, messagebox
 import customtkinter as ctk
-import os, json, time, re
-import base64
+import os, json, time, base64, sys, subprocess
 from datetime import datetime
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
 import config
+from .base_tab import BaseAutomationTab
+from .autocomplete_widget import AutocompleteEntry # Import the new widget
 
-widgets = {}
-LAST_INPUTS_FILE = "muster_roll_inputs.json"
+class MusterrollGenTab(BaseAutomationTab):
+    def __init__(self, parent, app_instance):
+        super().__init__(parent, app_instance, automation_key="muster")
+        self.config_file = self.app.get_data_path("muster_roll_inputs.json")
+        self.success_count = 0; self.skipped_count = 0
+        self.grid_columnconfigure(0, weight=1); self.grid_rowconfigure(2, weight=1)
+        self._create_widgets(); self.load_inputs()
 
-def style_treeview(app):
-    """
-    Applies customtkinter-like styling to the ttk.Treeview widget.
-    This function needs to be called after the theme changes.
-    """
-    style = ttk.Style()
-    
-    # Get current theme colors from customtkinter
-    bg_color = app._apply_appearance_mode(ctk.ThemeManager.theme["CTkFrame"]["fg_color"])
-    text_color = app._apply_appearance_mode(ctk.ThemeManager.theme["CTkLabel"]["text_color"])
-    header_bg = app._apply_appearance_mode(ctk.ThemeManager.theme["CTkButton"]["fg_color"])
-    selected_color = app._apply_appearance_mode(ctk.ThemeManager.theme["CTkButton"]["hover_color"])
-
-    style.theme_use("default")
-    
-    style.configure("Treeview", 
-        background=bg_color,
-        foreground=text_color,
-        fieldbackground=bg_color,
-        borderwidth=0)
-    
-    style.map('Treeview', background=[('selected', selected_color)])
-    
-    style.configure("Treeview.Heading", 
-        background=header_bg,
-        foreground=text_color,
-        relief="flat")
+    def _create_widgets(self):
+        controls_frame = ctk.CTkFrame(self)
+        controls_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10,0))
+        controls_frame.grid_columnconfigure((1,3), weight=1)
         
-    style.map("Treeview.Heading",
-        background=[('active', selected_color)])
-
-
-def create_tab(parent_frame, app_instance):
-    """Creates the Muster Roll Generation tab GUI with CustomTkinter."""
-    parent_frame.grid_columnconfigure(0, weight=1)
-    parent_frame.grid_rowconfigure(1, weight=1)
-
-    # --- Controls Frame ---
-    controls_frame = ctk.CTkFrame(parent_frame)
-    controls_frame.grid(row=0, column=0, sticky="ew")
-    controls_frame.grid_columnconfigure((1,3), weight=1)
-
-    ctk.CTkLabel(controls_frame, text="Panchayat Name:").grid(row=0, column=0, sticky='w', padx=15, pady=(15,0))
-    widgets['panchayat_entry'] = ctk.CTkEntry(controls_frame)
-    widgets['panchayat_entry'].grid(row=0, column=1, columnspan=3, sticky='ew', padx=15, pady=(15,0))
-    instructional_label = ctk.CTkLabel(controls_frame, text="Note: Must exactly match the name of Panchayat & Staff on the NREGA website.", text_color="gray50")
-    instructional_label.grid(row=1, column=1, columnspan=3, sticky='w', padx=15, pady=(0,10))
-
-    ctk.CTkLabel(controls_frame, text="तारीख से (DD/MM/YYYY):").grid(row=2, column=0, sticky='w', padx=15, pady=5)
-    widgets['start_date_entry'] = ctk.CTkEntry(controls_frame)
-    widgets['start_date_entry'].grid(row=2, column=1, sticky='ew', padx=(15,5), pady=5)
-    ctk.CTkLabel(controls_frame, text="तारीख को (DD/MM/YYYY):").grid(row=2, column=2, sticky='w', padx=10, pady=5)
-    widgets['end_date_entry'] = ctk.CTkEntry(controls_frame)
-    widgets['end_date_entry'].grid(row=2, column=3, sticky='ew', padx=(5,15), pady=5)
-
-    ctk.CTkLabel(controls_frame, text="Select Designation:").grid(row=3, column=0, sticky='w', padx=15, pady=5)
-    designation_options = [
-        "Junior Engineer--BP", "Assistant Engineer--BP", "Technical Assistant--BP",
-        "Acrited Engineer(AE)--GP", "Junior Engineer--GP", "Technical Assistant--GP"
-    ]
-    widgets['designation_combobox'] = ctk.CTkComboBox(controls_frame, values=designation_options)
-    widgets['designation_combobox'].grid(row=3, column=1, sticky='ew', padx=(15,5), pady=5)
-    ctk.CTkLabel(controls_frame, text="Select Technical Staff:").grid(row=3, column=2, sticky='w', padx=10, pady=5)
-    widgets['staff_entry'] = ctk.CTkEntry(controls_frame)
-    widgets['staff_entry'].grid(row=3, column=3, sticky='ew', padx=(5,15), pady=5)
-
-    # --- NEW: PDF Orientation Selector ---
-    ctk.CTkLabel(controls_frame, text="PDF Orientation:").grid(row=4, column=0, sticky='w', padx=15, pady=5)
-    orientation_options = ["Landscape", "Portrait"]
-    widgets['orientation_combobox'] = ctk.CTkComboBox(controls_frame, values=orientation_options)
-    widgets['orientation_combobox'].set("Landscape") # Default to Landscape
-    widgets['orientation_combobox'].grid(row=4, column=1, sticky='ew', padx=(15,5), pady=5)
-
-    ctk.CTkLabel(controls_frame, text="Work Search Keys (or leave blank for auto):").grid(row=5, column=0, sticky='nw', padx=15, pady=5)
-    widgets['work_codes_text'] = ctk.CTkTextbox(controls_frame, height=100)
-    widgets['work_codes_text'].grid(row=5, column=1, columnspan=3, sticky='ew', padx=15, pady=5)
-
-    info_label = ctk.CTkLabel(controls_frame, text="ℹ️ All generated Muster Rolls are saved in a 'NREGA_MR_Output' folder inside your Downloads.", text_color="gray50")
-    info_label.grid(row=6, column=1, columnspan=3, sticky='w', padx=15, pady=(10,0))
-
-    action_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
-    action_frame.grid(row=7, column=0, columnspan=4, sticky='ew', pady=(15, 15))
-    action_frame.grid_columnconfigure((0, 1, 2), weight=1)
-    widgets['start_button'] = ctk.CTkButton(action_frame, text="▶ Start Generation", command=lambda: start_automation(app_instance))
-    widgets['stop_button'] = ctk.CTkButton(action_frame, text="Stop", command=lambda: app_instance.stop_events["muster"].set(), state=tkinter.DISABLED, fg_color="gray50")
-    widgets['reset_button'] = ctk.CTkButton(action_frame, text="Reset", command=lambda: reset_ui(app_instance), fg_color="transparent", border_width=2, border_color=("gray70", "gray40"), text_color=("gray10", "#DCE4EE"))
-    widgets['start_button'].grid(row=0, column=0, sticky="ew", padx=(15, 5))
-    widgets['stop_button'].grid(row=0, column=1, sticky="ew", padx=(5, 5))
-    widgets['reset_button'].grid(row=0, column=2, sticky='ew', padx=(5, 15))
-    
-    # --- Data Tabs ---
-    data_notebook = ctk.CTkTabview(parent_frame)
-    data_notebook.grid(row=1, column=0, sticky="nsew", pady=(10,0))
-    results_tab_frame = data_notebook.add("Results")
-    logs_tab_frame = data_notebook.add("Logs & Status")
-    
-    # --- Results Tab ---
-    results_tab_frame.grid_columnconfigure(0, weight=1)
-    results_tab_frame.grid_rowconfigure(1, weight=1) 
-    
-    summary_frame = ctk.CTkFrame(results_tab_frame, fg_color="transparent")
-    summary_frame.grid(row=0, column=0, sticky="ew", pady=(0, 10))
-    summary_frame.grid_columnconfigure((0, 1), weight=1)
-
-    widgets['success_label'] = ctk.CTkLabel(summary_frame, text="Success: 0", text_color="#2E8B57", font=ctk.CTkFont(weight="bold"))
-    widgets['success_label'].grid(row=0, column=0, sticky='w')
-    
-    widgets['skipped_label'] = ctk.CTkLabel(summary_frame, text="Skipped/Failed: 0", text_color="#DAA520", font=ctk.CTkFont(weight="bold"))
-    widgets['skipped_label'].grid(row=0, column=1, sticky='w')
-
-    cols = ("Timestamp", "Work Code/Key", "Status", "Details")
-    widgets['results_tree'] = ttk.Treeview(results_tab_frame, columns=cols, show='headings')
-    for col in cols:
-        widgets['results_tree'].heading(col, text=col)
-    widgets['results_tree'].column("Timestamp", width=80, anchor='center')
-    widgets['results_tree'].column("Work Code/Key", width=250)
-    widgets['results_tree'].column("Status", width=100, anchor='center')
-    widgets['results_tree'].column("Details", width=400)
-    widgets['results_tree'].grid(row=1, column=0, sticky='nsew')
-    
-    scrollbar = ctk.CTkScrollbar(results_tab_frame, command=widgets['results_tree'].yview)
-    widgets['results_tree'].configure(yscroll=scrollbar.set)
-    scrollbar.grid(row=1, column=1, sticky='ns')
-    style_treeview(app_instance) # Apply initial style
-
-    # --- Logs Tab ---
-    logs_tab_frame.grid_columnconfigure(0, weight=1)
-    logs_tab_frame.grid_rowconfigure(1, weight=1)
-    status_bar = ctk.CTkFrame(logs_tab_frame, fg_color="transparent")
-    status_bar.grid(row=0, column=0, sticky='ew')
-    status_bar.grid_columnconfigure(0, weight=1)
-    widgets['status_label'] = ctk.CTkLabel(status_bar, text="Status: Ready")
-    widgets['status_label'].grid(row=0, column=0, sticky='ew')
-    widgets['copy_logs_button'] = ctk.CTkButton(status_bar, text="Copy Logs", width=100, command=lambda: copy_logs_to_clipboard(app_instance))
-    widgets['copy_logs_button'].grid(row=0, column=1, sticky='e', padx=5)
-    widgets['log_text'] = ctk.CTkTextbox(logs_tab_frame, state=tkinter.DISABLED)
-    widgets['log_text'].grid(row=1, column=0, sticky='nsew', pady=(10, 0))
-
-    load_inputs(app_instance)
-
-# The rest of the logic functions remain largely the same, only UI update calls change.
-def _log_result(app, item_key, status, details, success_counter, skipped_counter):
-    timestamp = datetime.now().strftime("%H:%M:%S")
-    values = (timestamp, item_key, status, details)
-    
-    if status == "Success":
-        success_counter[0] += 1
-        app.after(0, lambda: widgets['success_label'].configure(text=f"Success: {success_counter[0]}"))
-    else:
-        skipped_counter[0] += 1
-        app.after(0, lambda: widgets['skipped_label'].configure(text=f"Skipped/Failed: {skipped_counter[0]}"))
+        # --- UPDATED: Use AutocompleteEntry for text fields ---
+        ctk.CTkLabel(controls_frame, text="Panchayat Name:").grid(row=0, column=0, sticky='w', padx=15, pady=(15,0))
+        self.panchayat_entry = AutocompleteEntry(controls_frame, suggestions_list=self.app.history_manager.get_suggestions("panchayat_name"))
+        self.panchayat_entry.grid(row=0, column=1, columnspan=3, sticky='ew', padx=15, pady=(15,0))
         
-    app.after(0, lambda: widgets['results_tree'].insert("", "end", values=values))
-
-def copy_logs_to_clipboard(app):
-    log_content = widgets['log_text'].get('1.0', tkinter.END).strip()
-    if log_content:
-        app.clipboard_clear()
-        app.clipboard_append(log_content)
-        messagebox.showinfo("Copied", "Logs have been copied to the clipboard.")
-
-def get_inputs_path(app):
-    return app.get_data_path(LAST_INPUTS_FILE)
-
-def save_inputs(app, inputs):
-    try:
-        with open(get_inputs_path(app), 'w') as f:
-            json.dump({k: v for k, v in inputs.items() if 'work' not in k}, f)
-    except Exception as e:
-        print(f"Error saving inputs: {e}")
-
-def load_inputs(app):
-    try:
-        path = get_inputs_path(app)
-        if os.path.exists(path):
-            with open(path, 'r') as f:
-                data = json.load(f)
-                widgets['panchayat_entry'].insert(0, data.get('panchayat', ''))
-                widgets['start_date_entry'].insert(0, data.get('start_date', ''))
-                widgets['end_date_entry'].insert(0, data.get('end_date', ''))
-                widgets['designation_combobox'].set(data.get('designation', ''))
-                widgets['staff_entry'].insert(0, data.get('staff', ''))
-                widgets['orientation_combobox'].set(data.get('orientation', 'Landscape'))
-    except Exception as e:
-        print(f"Error loading inputs: {e}")
-
-def reset_ui(app):
-    if messagebox.askokcancel("Reset Form?", "Are you sure you want to clear all inputs and logs?"):
-        for key in ['panchayat_entry', 'start_date_entry', 'end_date_entry', 'staff_entry']:
-            widgets[key].delete(0, tkinter.END)
-        widgets['designation_combobox'].set('')
-        widgets['orientation_combobox'].set('Landscape')
-        widgets['work_codes_text'].delete('1.0', tkinter.END)
-        for item in widgets['results_tree'].get_children():
-            widgets['results_tree'].delete(item)
-        app.clear_log(widgets['log_text'])
-        widgets['status_label'].configure(text="Status: Ready")
-        widgets['success_label'].configure(text="Success: 0")
-        widgets['skipped_label'].configure(text="Skipped/Failed: 0")
-        app.log_message(widgets['log_text'], "Form has been reset.")
-
-def set_ui_state(running):
-    state = "disabled" if running else "normal"
-    for name in ['panchayat_entry', 'start_date_entry', 'end_date_entry', 'staff_entry',
-                 'work_codes_text', 'start_button', 'reset_button', 'copy_logs_button', 
-                 'designation_combobox', 'orientation_combobox']:
-        widgets[name].configure(state=state)
-    widgets['stop_button'].configure(state="normal" if running else "disabled")
-
-def start_automation(app):
-    for item in widgets['results_tree'].get_children():
-        widgets['results_tree'].delete(item)
-    widgets['success_label'].configure(text="Success: 0")
-    widgets['skipped_label'].configure(text="Skipped/Failed: 0")
-
-    inputs = {
-        'panchayat': widgets['panchayat_entry'].get().strip(),
-        'start_date': widgets['start_date_entry'].get().strip(),
-        'end_date': widgets['end_date_entry'].get().strip(),
-        'designation': widgets['designation_combobox'].get().strip(),
-        'staff': widgets['staff_entry'].get().strip(),
-        'orientation': widgets['orientation_combobox'].get(),
-        'work_codes_raw': widgets['work_codes_text'].get("1.0", tkinter.END).strip()
-    }
-    
-    if not all(inputs[k] for k in ['panchayat', 'start_date', 'end_date', 'designation', 'staff']):
-        messagebox.showwarning("Input Error", "All fields are required (except Work Search Keys for auto mode).")
-        return
+        ctk.CTkLabel(controls_frame, text="Note: Must exactly match the name on the NREGA website.", text_color="gray50").grid(row=1, column=1, columnspan=3, sticky='w', padx=15, pady=(0,10))
+        ctk.CTkLabel(controls_frame, text="तारीख से (DD/MM/YYYY):").grid(row=2, column=0, sticky='w', padx=15, pady=5)
+        self.start_date_entry = ctk.CTkEntry(controls_frame)
+        self.start_date_entry.grid(row=2, column=1, sticky='ew', padx=(15,5), pady=5)
+        ctk.CTkLabel(controls_frame, text="तारीख को (DD/MM/YYYY):").grid(row=2, column=2, sticky='w', padx=10, pady=5)
+        self.end_date_entry = ctk.CTkEntry(controls_frame)
+        self.end_date_entry.grid(row=2, column=3, sticky='ew', padx=(5,15), pady=5)
         
-    inputs['work_codes'] = [line.strip() for line in inputs['work_codes_raw'].split('\n') if line.strip()]
-    inputs['auto_mode'] = not bool(inputs['work_codes'])
-
-    save_inputs(app, inputs)
-    app.start_automation_thread("muster", run_automation_logic, args=(inputs,))
-
-def run_automation_logic(app, inputs):
-    app.after(0, set_ui_state, True)
-    app.clear_log(widgets['log_text'])
-    app.log_message(widgets['log_text'], f"Starting Muster Roll generation for Panchayat: {inputs['panchayat']}")
-
-    success_count = [0]
-    skipped_count = [0]
-
-    try:
-        driver = app.connect_to_chrome() # Using the new direct method
-        if not driver:
-            app.after(0, set_ui_state, False) 
-            return
+        ctk.CTkLabel(controls_frame, text="Select Designation:").grid(row=3, column=0, sticky='w', padx=15, pady=5)
+        designation_options = ["Junior Engineer--BP", "Assistant Engineer--BP", "Technical Assistant--BP", "Acrited Engineer(AE)--GP", "Junior Engineer--GP", "Technical Assistant--GP"]
+        self.designation_combobox = ctk.CTkComboBox(controls_frame, values=designation_options)
+        self.designation_combobox.grid(row=3, column=1, sticky='ew', padx=(15,5), pady=5)
         
-        wait = WebDriverWait(driver, 20)
-
-        downloads_dir = app.get_user_downloads_path()
-        output_dir = os.path.join(downloads_dir, 'NREGA_MR_Output', datetime.now().strftime('%Y-%m-%d'), inputs['panchayat'])
-        os.makedirs(output_dir, exist_ok=True)
-        app.log_message(widgets['log_text'], f"PDFs will be saved to: {output_dir}", "info")
+        ctk.CTkLabel(controls_frame, text="Select Technical Staff:").grid(row=3, column=2, sticky='w', padx=10, pady=5)
+        self.staff_entry = AutocompleteEntry(controls_frame, suggestions_list=self.app.history_manager.get_suggestions("staff_name"))
+        self.staff_entry.grid(row=3, column=3, sticky='ew', padx=(5,15), pady=5)
+        ctk.CTkLabel(controls_frame, text="PDF Orientation:").grid(row=4, column=0, sticky='w', padx=15, pady=5)
+        self.orientation_combobox = ctk.CTkComboBox(controls_frame, values=["Landscape", "Portrait"])
+        self.orientation_combobox.set("Landscape")
+        self.orientation_combobox.grid(row=4, column=1, sticky='ew', padx=(15,5), pady=5)
+        ctk.CTkLabel(controls_frame, text="ℹ️ Generated Muster Rolls are saved in 'Downloads/NREGA_MR_Output'.", text_color="gray50").grid(row=5, column=1, columnspan=3, sticky='w', padx=15, pady=(10,15))
         
-        # --- PRE-VALIDATION for Panchayat Name ---
+        action_frame_container = ctk.CTkFrame(self)
+        action_frame_container.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
+        action_frame = self._create_action_buttons(parent_frame=action_frame_container)
+        action_frame.pack(expand=True, fill='x')
+
+        data_notebook = ctk.CTkTabview(self)
+        data_notebook.grid(row=2, column=0, sticky="nsew", padx=10, pady=(0,10))
+        work_codes_tab = data_notebook.add("Work Search Keys (or auto)"); results_tab = data_notebook.add("Results")
+        self._create_log_and_status_area(parent_notebook=data_notebook)
+        
+        # Work Codes tab with Clear button
+        work_codes_tab.grid_columnconfigure(0, weight=1); work_codes_tab.grid_rowconfigure(1, weight=1)
+        wc_controls = ctk.CTkFrame(work_codes_tab, fg_color="transparent")
+        wc_controls.grid(row=0, column=0, sticky='ew')
+        clear_button = ctk.CTkButton(wc_controls, text="Clear", width=80, command=lambda: self.work_codes_text.delete("1.0", tkinter.END))
+        clear_button.pack(side='right', pady=(5,0), padx=(0,5))
+        self.work_codes_text = ctk.CTkTextbox(work_codes_tab, height=100); self.work_codes_text.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
+        
+        # Results tab
+        results_tab.grid_columnconfigure(0, weight=1); results_tab.grid_rowconfigure(1, weight=1)
+        summary_frame = ctk.CTkFrame(results_tab, fg_color="transparent"); summary_frame.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+        summary_frame.grid_columnconfigure((0, 1), weight=1)
+        self.success_label = ctk.CTkLabel(summary_frame, text="Success: 0", text_color="#2E8B57", font=ctk.CTkFont(weight="bold")); self.success_label.grid(row=0, column=0, sticky='w')
+        self.skipped_label = ctk.CTkLabel(summary_frame, text="Skipped/Failed: 0", text_color="#DAA520", font=ctk.CTkFont(weight="bold")); self.skipped_label.grid(row=0, column=1, sticky='w')
+        cols = ("Timestamp", "Work Code/Key", "Status", "Details"); self.results_tree = ttk.Treeview(results_tab, columns=cols, show='headings')
+        for col in cols: self.results_tree.heading(col, text=col)
+        self.results_tree.column("Timestamp", width=80, anchor='center'); self.results_tree.column("Work Code/Key", width=250); self.results_tree.column("Status", width=100, anchor='center'); self.results_tree.column("Details", width=400)
+        self.results_tree.grid(row=1, column=0, sticky='nsew')
+        scrollbar = ctk.CTkScrollbar(results_tab, command=self.results_tree.yview); self.results_tree.configure(yscroll=scrollbar.set); scrollbar.grid(row=1, column=1, sticky='ns')
+        self.style_treeview(self.results_tree)
+
+    def set_ui_state(self, running: bool):
+        self.set_common_ui_state(running)
+        state = "disabled" if running else "normal"
+        self.panchayat_entry.configure(state=state); self.start_date_entry.configure(state=state)
+        self.end_date_entry.configure(state=state); self.staff_entry.configure(state=state)
+        self.designation_combobox.configure(state=state); self.orientation_combobox.configure(state=state)
+        self.work_codes_text.configure(state=state)
+
+    # ... The rest of the file (start_automation, reset_ui, run_automation_logic, etc.) remains unchanged ...
+    def start_automation(self):
+        for item in self.results_tree.get_children(): self.results_tree.delete(item)
+        self.success_count = 0; self.skipped_count = 0
+        self.success_label.configure(text="Success: 0"); self.skipped_label.configure(text="Skipped/Failed: 0")
+        inputs = {'panchayat': self.panchayat_entry.get().strip(), 'start_date': self.start_date_entry.get().strip(), 'end_date': self.end_date_entry.get().strip(), 'designation': self.designation_combobox.get().strip(), 'staff': self.staff_entry.get().strip(), 'orientation': self.orientation_combobox.get(), 'work_codes_raw': self.work_codes_text.get("1.0", tkinter.END).strip()}
+        if not all(inputs[k] for k in ['panchayat', 'start_date', 'end_date', 'designation', 'staff']):
+            messagebox.showwarning("Input Error", "All fields are required (except Work Search Keys)."); return
+        inputs['work_codes'] = [line.strip() for line in inputs['work_codes_raw'].split('\n') if line.strip()]
+        inputs['auto_mode'] = not bool(inputs['work_codes'])
+        self.save_inputs(inputs)
+        self.app.start_automation_thread(self.automation_key, self.run_automation_logic, args=(inputs,))
+    def reset_ui(self):
+        if messagebox.askokcancel("Reset Form?", "Clear all inputs and logs?"):
+            self.panchayat_entry.delete(0, tkinter.END); self.start_date_entry.delete(0, tkinter.END)
+            self.end_date_entry.delete(0, tkinter.END); self.staff_entry.delete(0, tkinter.END)
+            self.designation_combobox.set(''); self.orientation_combobox.set('Landscape')
+            self.work_codes_text.delete('1.0', tkinter.END)
+            for item in self.results_tree.get_children(): self.results_tree.delete(item)
+            self.app.clear_log(self.log_display)
+            self.update_status("Ready", 0.0)
+            self.success_label.configure(text="Success: 0"); self.skipped_label.configure(text="Skipped/Failed: 0")
+            self.app.log_message(self.log_display, "Form has been reset.")
+    def save_inputs(self, inputs):
         try:
-            app.log_message(widgets['log_text'], "Validating Panchayat name...")
+            with open(self.config_file, 'w') as f: json.dump({k: v for k, v in inputs.items() if 'work' not in k}, f, indent=4)
+        except Exception as e: print(f"Error saving inputs: {e}")
+    def load_inputs(self):
+        try:
+            if os.path.exists(self.config_file):
+                with open(self.config_file, 'r') as f: data = json.load(f)
+                self.panchayat_entry.insert(0, data.get('panchayat', '')); self.start_date_entry.insert(0, data.get('start_date', ''))
+                self.end_date_entry.insert(0, data.get('end_date', '')); self.designation_combobox.set(data.get('designation', ''))
+                self.staff_entry.insert(0, data.get('staff', '')); self.orientation_combobox.set(data.get('orientation', 'Landscape'))
+        except Exception as e: print(f"Error loading inputs: {e}")
+    # In tabs/musterroll_gen_tab.py, inside the MusterrollGenTab class
+
+    def run_automation_logic(self, inputs):
+        self.app.after(0, self.set_ui_state, True)
+        self.app.clear_log(self.log_display)
+        self.app.log_message(self.log_display, f"Starting MR generation for: {inputs['panchayat']}")
+        
+        output_dir = None # Initialize here to be accessible in 'finally'
+        
+        try:
+            driver = self.app.connect_to_chrome()
+            if not driver: self.app.after(0, self.set_ui_state, False); return
+            wait = WebDriverWait(driver, 20)
+            
+            downloads_dir = self.app.get_user_downloads_path()
+            output_dir = os.path.join(downloads_dir, config.MUSTER_ROLL_CONFIG['output_folder_name'], datetime.now().strftime('%Y-%m-%d'), inputs['panchayat'])
+            os.makedirs(output_dir, exist_ok=True)
+            self.app.log_message(self.log_display, f"PDFs will be saved to: {output_dir}", "info")
+            
+            if not self._validate_panchayat(driver, wait, inputs['panchayat']):
+                self.app.after(0, self.set_ui_state, False); return
+            
+            self.app.update_history("panchayat_name", inputs['panchayat'])
+            self.app.update_history("designation", inputs['designation'])
+            self.app.update_history("staff_name", inputs['staff'])
+
+            items_to_process = self._get_items_to_process(driver, wait, inputs)
+            session_skip_list = set()
+            total_items = len(items_to_process)
+
+            for index, item in enumerate(items_to_process):
+                if self.app.stop_events[self.automation_key].is_set(): 
+                    self.app.log_message(self.log_display, "Stop signal received.", "warning"); break
+                
+                self.app.log_message(self.log_display, f"\n--- Processing item ({index+1}/{total_items}): {item} ---", "info")
+                self.app.after(0, self.update_status, f"Processing {item}", (index+1)/total_items)
+                self._process_single_item(driver, wait, inputs, item, output_dir, session_skip_list)
+        
+        except Exception as e:
+            self.app.log_message(self.log_display, f"A critical error occurred: {e}", "error")
+            if "in str" not in str(e): messagebox.showerror("Critical Error", f"An unexpected error stopped the automation:\n\n{e}")
+        
+        finally:
+            self.app.after(0, self.set_ui_state, False)
+            self.app.after(0, self.update_status, "Automation Finished.", 1.0)
+            
+            summary = f"Automation complete.\n\nSuccess: {self.success_count}\nSkipped/Failed: {self.skipped_count}"
+            
+            # --- NEW: ASK TO OPEN THE OUTPUT FOLDER ---
+            if self.success_count > 0 and output_dir and os.path.exists(output_dir):
+                if messagebox.askyesno("Task Finished", f"{summary}\n\nDo you want to open the output folder?"):
+                    try:
+                        if sys.platform == "win32":
+                            os.startfile(output_dir)
+                        elif sys.platform == "darwin": # macOS
+                            subprocess.call(["open", output_dir])
+                        else: # linux
+                            subprocess.call(["xdg-open", output_dir])
+                    except Exception as e:
+                        messagebox.showerror("Error", f"Could not open the folder automatically.\n\nPath: {output_dir}\nError: {e}")
+            else:
+                messagebox.showinfo("Task Finished", summary)
+            
+    def _validate_panchayat(self, driver, wait, panchayat_name):
+        try:
+            self.app.log_message(self.log_display, "Validating Panchayat name...")
             driver.get(config.MUSTER_ROLL_CONFIG["base_url"])
             panchayat_dropdown = Select(wait.until(EC.presence_of_element_located((By.ID, "exe_agency"))))
-            panchayat_options = [opt.text for opt in panchayat_dropdown.options]
-            target_panchayat = f"Gram Panchayat -{inputs['panchayat']}"
-            if target_panchayat not in panchayat_options:
-                messagebox.showerror("Validation Error", f"Panchayat or Agency name '{inputs['panchayat']}' not found.\n\nPlease check the spelling and try again.")
-                raise ValueError("Panchayat not found")
-            app.log_message(widgets['log_text'], "Panchayat name is valid.", "success")
-        except Exception as e:
-            app.log_message(widgets['log_text'], f"Validation failed: {e}", "error")
-            app.after(0, set_ui_state, False)
-            return
-        # --- END PRE-VALIDATION ---
-
-        items_to_process = []
+            target_panchayat = config.AGENCY_PREFIX + panchayat_name
+            if target_panchayat not in [opt.text for opt in panchayat_dropdown.options]: messagebox.showerror("Validation Error", f"Panchayat name '{panchayat_name}' not found."); return False
+            self.app.log_message(self.log_display, "Panchayat name is valid.", "success"); return True
+        except Exception as e: self.app.log_message(self.log_display, f"Validation failed: {e}", "error"); return False
+    def _get_items_to_process(self, driver, wait, inputs):
         if inputs['auto_mode']:
-            app.log_message(widgets['log_text'], "Auto Mode: Fetching available work codes...")
-            Select(driver.find_element(By.ID, "exe_agency")).select_by_visible_text(f"Gram Panchayat -{inputs['panchayat']}")
+            self.app.log_message(self.log_display, "Auto Mode: Fetching available work codes...")
+            Select(driver.find_element(By.ID, "exe_agency")).select_by_visible_text(config.AGENCY_PREFIX + inputs['panchayat'])
             wait.until(lambda d: len(Select(d.find_element(By.ID, "ddlWorkCode")).options) > 1)
-            all_options = Select(driver.find_element(By.ID, "ddlWorkCode")).options
-            items_to_process = [opt.text for opt in all_options if opt.get_attribute("value")]
-            app.log_message(widgets['log_text'], f"Found {len(items_to_process)} available work codes.")
+            items = [opt.text for opt in Select(driver.find_element(By.ID, "ddlWorkCode")).options if opt.get_attribute("value")]
+            self.app.log_message(self.log_display, f"Found {len(items)} available work codes."); return items
+        else: self.app.log_message(self.log_display, f"Processing {len(inputs['work_codes'])} work keys."); return inputs['work_codes']
+    def _process_single_item(self, driver, wait, inputs, item, output_dir, session_skip_list):
+        try:
+            driver.get(config.MUSTER_ROLL_CONFIG["base_url"])
+            Select(wait.until(EC.presence_of_element_located((By.ID, "exe_agency")))).select_by_visible_text(config.AGENCY_PREFIX + inputs['panchayat'])
+            full_work_code_text = self._select_work_code(driver, wait, item, inputs['auto_mode'])
+            if full_work_code_text in session_skip_list: self._log_result(item, "Skipped", "Already processed this session"); return
+            driver.find_element(By.ID, "txtDateFrom").send_keys(inputs['start_date'])
+            driver.find_element(By.ID, "txtDateTo").send_keys(inputs['end_date'])
+            Select(wait.until(EC.element_to_be_clickable((By.ID, "ddldesg")))).select_by_visible_text(inputs['designation'])
+            wait.until(EC.element_to_be_clickable((By.XPATH, "//select[@id='ddlstaff']/option[position()>1]")))
+            staff_dropdown = Select(driver.find_element(By.ID, "ddlstaff"))
+            if inputs['staff'] not in [opt.text for opt in staff_dropdown.options]: raise ValueError(f"Staff name '{inputs['staff']}' not found for the selected designation. Stopping.")
+            staff_dropdown.select_by_visible_text(inputs['staff'])
+            body_element = driver.find_element(By.TAG_NAME, 'body')
+            driver.find_element(By.ID, "btnProceed").click()
+            self.app.log_message(self.log_display, "Waiting for page to reload..."); wait.until(EC.staleness_of(body_element)); time.sleep(2) 
+            if self._check_for_page_errors(driver): self._log_result(item, "Skipped", "Page error (Geotag/Limit/No Worker)"); session_skip_list.add(full_work_code_text); return
+            self.app.log_message(self.log_display, "Muster Roll is valid. Saving PDF...")
+            pdf_filename = f"{full_work_code_text.split('/')[-1][-6:]}.pdf"
+            save_path = os.path.join(output_dir, pdf_filename)
+            print_options = config.MUSTER_ROLL_CONFIG['pdf_options'] if inputs['orientation'] == 'Landscape' else config.MUSTER_ROLL_CONFIG['pdf_options_portrait']
+            result = driver.execute_cdp_cmd("Page.printToPDF", print_options)
+            pdf_data = base64.b64decode(result['data'])
+            with open(save_path, 'wb') as f: f.write(pdf_data)
+            self._log_result(item, "Success", f"Saved as {pdf_filename}"); session_skip_list.add(full_work_code_text); time.sleep(1)
+        except (NoSuchElementException, TimeoutException, StaleElementReferenceException) as e:
+            error_message = str(e).split('\n')[0]; self.app.log_message(self.log_display, f"ERROR on '{item}': {error_message}", "error"); self._log_result(item, "Failed", error_message)
+        except ValueError as e: 
+            error_message = str(e).split('\n')[0]; self.app.log_message(self.log_display, f"CRITICAL ERROR: {error_message}", "error"); self._log_result(item, "Failed", error_message); raise e
+    def _select_work_code(self, driver, wait, item, is_auto_mode):
+        if is_auto_mode:
+            wait.until(lambda d: len(Select(d.find_element(By.ID, "ddlWorkCode")).options) > 1)
+            Select(driver.find_element(By.ID, "ddlWorkCode")).select_by_visible_text(item)
+            return item
         else:
-            items_to_process = inputs['work_codes']
-            app.log_message(widgets['log_text'], f"Processing {len(items_to_process)} work keys from user input.")
-        
-        session_skip_list = set()
-
-        for index, item in enumerate(items_to_process):
-            if app.stop_events["muster"].is_set():
-                app.log_message(widgets['log_text'], "Stop signal received.", "warning"); break
-            
-            full_work_code_text = ""
-            app.log_message(widgets['log_text'], f"\n--- Processing item ({index+1}/{len(items_to_process)}): {item} ---", "info")
-            app.after(0, lambda i=item: widgets['status_label'].configure(text=f"Status: Processing {i}"))
-            
-            try:
-                driver.get(config.MUSTER_ROLL_CONFIG["base_url"])
-                Select(wait.until(EC.presence_of_element_located((By.ID, "exe_agency")))).select_by_visible_text(f"Gram Panchayat -{inputs['panchayat']}")
-                
-                if inputs['auto_mode']:
-                    full_work_code_text = item
-                    if full_work_code_text in session_skip_list:
-                        _log_result(app, item, "Skipped", "Already processed", success_count, skipped_count)
-                        continue
-                    wait.until(lambda d: len(Select(d.find_element(By.ID, "ddlWorkCode")).options) > 1)
-                    Select(driver.find_element(By.ID, "ddlWorkCode")).select_by_visible_text(full_work_code_text)
-                else: 
-                    search_key = item
-                    search_box = wait.until(EC.presence_of_element_located((By.ID, "txtWork")))
-                    search_box.clear(); search_box.send_keys(search_key)
-                    driver.find_element(By.ID, "imgButtonSearch").click()
-                    app.log_message(widgets['log_text'], f"Searching for key: {search_key}")
-                    time.sleep(2) # Added wait time
-                    wait.until(lambda d: len(Select(d.find_element(By.ID, "ddlWorkCode")).options) > 1)
-                    work_code_dropdown = Select(driver.find_element(By.ID, "ddlWorkCode"))
-                    found_option = next((opt for opt in work_code_dropdown.options if search_key in opt.text and opt.get_attribute("value")), None)
-                    if found_option:
-                        full_work_code_text = found_option.text
-                        if full_work_code_text in session_skip_list:
-                            _log_result(app, item, "Skipped", "Already processed", success_count, skipped_count)
-                            continue
-                        Select(driver.find_element(By.ID, "ddlWorkCode")).select_by_visible_text(full_work_code_text)
-                        app.log_message(widgets['log_text'], f"Found and selected work: {full_work_code_text}")
-                    else:
-                        raise NoSuchElementException(f"Could not find work for search key '{item}'.")
-                
-                driver.find_element(By.ID, "txtDateFrom").send_keys(inputs['start_date'])
-                driver.find_element(By.ID, "txtDateTo").send_keys(inputs['end_date'])
-                
-                Select(wait.until(EC.element_to_be_clickable((By.ID, "ddldesg")))).select_by_visible_text(inputs['designation'])
-                time.sleep(1) 
-                
-                staff_dropdown = Select(wait.until(EC.element_to_be_clickable((By.ID, "ddlstaff"))))
-                staff_options = [opt.text for opt in staff_dropdown.options]
-                if inputs['staff'] not in staff_options:
-                    messagebox.showerror("Automation Stopped", f"Technical Staff Name Not Matched: '{inputs['staff']}'\n\nPlease check the spelling and try again.")
-                    raise ValueError(f"Staff name '{inputs['staff']}' not found. Stopping automation.")
-                staff_dropdown.select_by_visible_text(inputs['staff'])
-                
-                body_element = driver.find_element(By.TAG_NAME, 'body')
-                driver.find_element(By.ID, "btnProceed").click()
-                
-                app.log_message(widgets['log_text'], "Waiting for page to reload...")
-                wait.until(EC.staleness_of(body_element))
-                time.sleep(1)
-                
-                page_error = None
-                if driver.find_elements(By.XPATH, "//*[contains(text(), 'Geotag is not received')]"):
-                    page_error = "Geotag status error"
-                elif driver.find_elements(By.XPATH, "//*[contains(text(), 'greater than allowed limit')]"):
-                    page_error = "Work limit error"
-                
-                if page_error:
-                    _log_result(app, item, "Skipped", page_error, success_count, skipped_count)
-                    session_skip_list.add(full_work_code_text)
-                    continue
-
-                try:
-                    short_wait = WebDriverWait(driver, 2)
-                    short_wait.until(EC.visibility_of_element_located((By.XPATH, "//*[contains(text(), 'No Worker Available')]")))
-                    _log_result(app, item, "Skipped", "No Worker Available", success_count, skipped_count)
-                    session_skip_list.add(full_work_code_text)
-                    continue
-                except TimeoutException:
-                    app.log_message(widgets['log_text'], "Muster Roll is valid. Saving PDF...")
-
-                work_id_part = full_work_code_text.split('/')[-1]
-                short_name = work_id_part[-6:]
-                pdf_filename = f"{short_name}.pdf"
-                save_path = os.path.join(output_dir, pdf_filename)
-
-                # --- Dynamically Set PDF Options Based on User Input ---
-                is_landscape = (inputs['orientation'] == 'Landscape')
-                
-                print_options = {
-                    'landscape': is_landscape,
-                    'displayHeaderFooter': False,
-                    'printBackground': False,
-                    'preferCSSPageSize': False,
-                    'paperWidth': 11.69 if is_landscape else 8.27,
-                    'paperHeight': 8.27 if is_landscape else 11.69,
-                    'marginTop': 0.4,
-                    'marginBottom': 0.4,
-                    'marginLeft': 0.4,
-                    'marginRight': 0.4
-                }
-                result = driver.execute_cdp_cmd("Page.printToPDF", print_options)
-                pdf_data = base64.b64decode(result['data'])
-                
-                with open(save_path, 'wb') as f: f.write(pdf_data)
-                
-                _log_result(app, item, "Success", f"Saved as {pdf_filename}", success_count, skipped_count)
-                session_skip_list.add(full_work_code_text)
-                time.sleep(1)
-
-            except (NoSuchElementException, TimeoutException, StaleElementReferenceException) as e:
-                error_message = str(e).split('\n')[0]
-                app.log_message(widgets['log_text'], f"ERROR processing '{item}': {error_message}", "error")
-                _log_result(app, item, "Failed", error_message, success_count, skipped_count)
-                continue
-            except ValueError as e: 
-                error_message = str(e).split('\n')[0]
-                app.log_message(widgets['log_text'], f"CRITICAL ERROR: {error_message}", "error")
-                _log_result(app, item, "Failed", error_message, success_count, skipped_count)
-                break 
-
-    except Exception as e:
-        app.log_message(widgets['log_text'], f"A critical error occurred: {e}", "error")
-        if "in str" not in str(e):
-            messagebox.showerror("Critical Error", f"An unexpected error stopped the automation:\n\n{e}")
-    finally:
-        app.after(0, set_ui_state, False)
-        app.after(0, lambda: widgets['status_label'].configure(text="Status: Automation Finished."))
-        
-        summary_message = f"Automation complete.\n\nSuccessfully generated: {success_count[0]}\nSkipped/Failed: {skipped_count[0]}"
-        app.after(0, lambda: messagebox.showinfo("Task Finished", summary_message))
+            search_key = item
+            search_box = wait.until(EC.presence_of_element_located((By.ID, "txtWork")))
+            search_box.clear(); search_box.send_keys(search_key)
+            driver.find_element(By.ID, "imgButtonSearch").click()
+            self.app.log_message(self.log_display, f"Searching for key: {search_key}"); time.sleep(2)
+            wait.until(lambda d: len(Select(d.find_element(By.ID, "ddlWorkCode")).options) > 1)
+            work_code_dropdown = Select(driver.find_element(By.ID, "ddlWorkCode"))
+            found_option = next((opt for opt in work_code_dropdown.options if search_key in opt.text and opt.get_attribute("value")), None)
+            if found_option:
+                full_work_code_text = found_option.text
+                work_code_dropdown.select_by_visible_text(full_work_code_text)
+                self.app.log_message(self.log_display, f"Found and selected work: {full_work_code_text}"); return full_work_code_text
+            else: raise NoSuchElementException(f"Could not find work for search key '{item}'.")
+    def _check_for_page_errors(self, driver):
+        page_source = driver.page_source
+        if "Geotag is not received" in page_source: return True
+        if "greater than allowed limit" in page_source: return True
+        if "No Worker Available" in page_source: return True
+        return False
+    def _log_result(self, item_key, status, details):
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        values = (timestamp, item_key, status, details)
+        if status == "Success":
+            self.success_count += 1
+            self.app.after(0, lambda: self.success_label.configure(text=f"Success: {self.success_count}"))
+        else:
+            self.skipped_count += 1
+            self.app.after(0, lambda: self.skipped_label.configure(text=f"Skipped/Failed: {self.skipped_count}"))
+        self.app.after(0, lambda: self.results_tree.insert("", "end", values=values))

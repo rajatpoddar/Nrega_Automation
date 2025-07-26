@@ -1,0 +1,61 @@
+{
+  "2.5.0": [
+    "Major Rebranding: Application has been renamed from NREGA Dashboard to NREGA Bot.",
+    "Subscription UI Overhaul: The 'About' page now features a dynamic subscription status card with color-coded status, days remaining, and plan type.",
+    "Improved User Experience: Added a dynamic action panel to renew or manage your subscription directly from the app.",
+    "New Trial Process: Implemented a detailed registration form to support the new server-side trial activation requirements.",
+    "Enhanced Navigation: The update notification pop-up now takes you directly to the 'Updates' tab.",
+    "Activation Links: Added 'Purchase Key' and 'Visit Website' links to the activation window for easier access.",
+    "Bug Fixes: Resolved various startup crashes and UI rendering issues for a smoother experience."
+  ],
+  "2.4.4": [
+    "✨ New Feature: Added a 'Verify ABPS' tab to automate checking worker Aadhaar numbers with NPCI.",
+    "🛠️ Improvement (Verify ABPS): Implemented an auto-mode to process all villages in a panchayat sequentially if the village field is left empty.",
+    "🛠️ Improvement (Verify ABPS): Automation now intelligently handles multi-page record lists (pagination), saving after each page and continuing until all pages are processed.",
+    "🛠️ Improvement (FTO Generation): Login fields are now optional. If left empty, the automation assumes the user is already logged in and proceeds directly.",
+    "🐞 Bug Fix (Verify ABPS): Resolved a critical infinite loop by adding a session memory to prevent re-processing the same records.",
+    "🐞 Bug Fix (Verify ABPS): Corrected the logic to process records one-at-a-time, fixing numerous 'StaleElementReferenceException' errors.",
+    "🐞 Bug Fix (Verify ABPS): The automation now gracefully skips villages with no records instead of crashing.",
+    "🐞 Bug Fix (FTO Generation): The script now stops immediately with an error if login fields are empty and the browser is not on the correct FTO home page."
+  ],
+  "2.4.3": [
+    "✨ New Feature: Added an 'Add Activity' tab to automate the process of adding a default activity (ACT105) to IAY/PMAYG work codes.",
+    "🛠️ Improvement (Add Activity): Unit Price and Quantity can now be set directly in the UI, instead of being fixed values.",
+    "🛠️ Improvement (MR Gen): The application now prompts to automatically open the folder containing the generated PDF muster rolls upon completion.",
+    "🛠️ Improvement (Licensing): The app now uses an offline-first license check, allowing it to start without an internet connection if a valid license file is present.",
+    "🤖 Improvement (Automation): Replaced fixed delays with intelligent waits in the 'Add Activity' tab, making the automation more reliable and efficient.",
+    "🐞 Bug Fix (Critical): Completely overhauled the application startup sequence to fix multiple issues where the main window would fail to appear after the splash screen.",
+    "🐞 Bug Fix (Activation): Fixed a bug where the activation window's pop-up messages (e.g., 'Trial Started') would appear behind the splash screen.",
+    "🐞 Bug Fix (Add Activity): Resolved a recurring 'stale element reference' error that caused the automation to fail on alternating work keys.",
+    "🐞 Bug Fix (Add Activity): Fixed an issue where the 'Quantity' field was not being filled due to an incorrect element ID."
+  ],
+  "2.4.2": [
+    "✨ New Feature: Added a 'Workcode Extractor' utility tab to easily parse and list work codes from copied text.",
+    "✨ New Feature: The app now remembers successfully used inputs (like Panchayat, JE, and Village names) and provides autocomplete suggestions as you type.",
+    "🛠️ Improvement: Added a 'Copy Log' button to all tabs that display logs.",
+    "🛠️ Improvement: Added a 'Clear' button to easily clear the work code/key input areas on relevant tabs.",
+    "🛠️ Improvement: Centralized all automation values into `config.py` for easier future updates.",
+    "🛠️ Improvement: Restructured all automation tabs to use a common base template, improving consistency and maintainability.",
+    "🐞 Bug Fix: Fixed a critical issue where the product activation window would not appear on the first launch after deleting the license file.",
+    "🐞 Bug Fix: Fixed an issue where the Chrome browser would automatically close when the dashboard application was closed.",
+    "🐞 Bug Fix: Fixed a crash that occurred when changing the app's theme (Light/Dark).",
+    "🐞 Bug Fix: Corrected the unreadable text on the 'Reset' button when using the light theme.",
+    "🐞 Bug Fix: Fixed intermittent 'stale element' and 'Staff name not found' errors in the 'MR Gen' tab by making the automation more patient with the website."
+  ],
+  "2.4.1": [
+    "Implemented a new, professional two-tone color theme.",
+    "Added Machine ID to 'About' page with 'Copy' button.",
+    "Fixed update checker status display at startup.",
+    "Updated pricing display to show a promotional offer."
+  ],
+  "2.4.0": [
+    "Complete UI Overhaul to CustomTkinter.",
+    "Modern, vertical IDE-style navigation.",
+    "In-App Updates: Check, download, and install directly."
+  ],
+  "2.3.1": [
+    "Muster Roll Gen: Fixed crash with user-provided work keys.",
+    "FTO Generation: Improved error handling.",
+    "eMB Entry: Added optional 'Panchayat' field."
+  ]
+}

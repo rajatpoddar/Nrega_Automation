@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Get Your License - NREGA Automation Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .plan-card { transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out, background-color 0.2s ease-in-out; }
+        .plan-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); }
+        .plan-selected {
+            border-color: rgb(37 99 235);
+            box-shadow: 0 0 0 2px rgb(191 219 254);
+            background-color: rgb(239 246 255);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased">
+
+    <header class="bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-50 border-b border-gray-200">
+        <div class="container mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
+            <a href="https://nrega-dashboard.palojori.in" class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <img src="https://nrega-dashboard.palojori.in/logo.png" alt="NREGA Dashboard Logo" class="h-8 w-8 rounded-full">
+                <span>NREGA Dashboard</span>
+            </a>
+            <a href="https://nrega-dashboard.palojori.in/#support" class="hidden md:inline-block bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors">Back to Main Site</a>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-12 sm:py-16">
+        <div class="max-w-3xl mx-auto">
+            <div class="text-center mb-10">
+                <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900">Get Your License Key</h1>
+                <p class="text-lg text-gray-600 mt-3">Select your plan, fill out the form, and get your key instantly after payment.</p>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-lg p-6 sm:p-8 border border-gray-200">
+                <div id="details-step">
+                     <form id="registration-form" class="space-y-6">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-5 text-center">1. Choose Your Plan</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <label for="monthly" class="plan-card block p-6 border-2 border-gray-200 rounded-lg cursor-pointer">
+                                <input type="radio" id="monthly" name="plan_type" value="monthly" class="hidden" checked>
+                                <h3 class="font-bold text-lg text-gray-800">Monthly Plan</h3>
+                                <p class="text-3xl font-extrabold my-2 flex items-baseline gap-x-2"><span>₹99</span><del class="text-xl font-medium text-gray-400">₹199</del></p>
+                                <p class="text-sm text-gray-500">per device</p>
+                            </label>
+                            <label for="yearly" class="plan-card block p-6 border-2 border-gray-200 rounded-lg cursor-pointer">
+                                <input type="radio" id="yearly" name="plan_type" value="yearly" class="hidden">
+                                <h3 class="font-bold text-lg text-gray-800">Yearly Plan</h3>
+                                <p class="text-3xl font-extrabold my-2 flex items-baseline gap-x-2"><span>₹999</span><del class="text-xl font-medium text-gray-400">₹1999</del></p>
+                                <p class="text-sm text-gray-500">per device (Save 17%)</p>
+                            </label>
+                        </div>
+                        <div class="mt-6">
+                            <label for="max_devices" class="block text-sm font-medium text-gray-700 mb-2">Number of Devices</label>
+                            <select id="max_devices" name="max_devices" class="block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="1">1 Device</option>
+                                <option value="2">2 Devices</option>
+                                <option value="3">3 Devices</option>
+                            </select>
+                        </div>
+                        
+                        <hr class="my-8">
+
+                        <h2 class="text-xl font-semibold text-gray-800 mb-5 text-center">2. Enter Your Details</h2>
+                        <div>
+                            <label for="name" class="block text-sm font-medium text-gray-700">Full Name</label>
+                            <input type="text" id="name" name="name" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="email" class="block text-sm font-medium text-gray-700">Email Address</label>
+                                <input type="email" id="email" name="email" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="mobile" class="block text-sm font-medium text-gray-700">Mobile Number</label>
+                                <input type="tel" id="mobile" name="mobile" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="block" class="block text-sm font-medium text-gray-700">Block</label>
+                            <input type="text" id="block" name="block" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                                <label for="district" class="block text-sm font-medium text-gray-700">District</label>
+                                <input type="text" id="district" name="district" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="state" class="block text-sm font-medium text-gray-700">State</label>
+                                <input type="text" id="state" name="state" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="pincode" class="block text-sm font-medium text-gray-700">Pincode</label>
+                                <input type="text" id="pincode" name="pincode" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                        </div>
+
+                        <div class="!mt-8 p-4 bg-gray-100 rounded-lg text-center">
+                            <p class="text-gray-600">Total Amount to Pay</p>
+                            <p id="total-price" class="text-3xl font-bold text-gray-900">₹99</p>
+                        </div>
+
+                        <div>
+                            <button type="submit" id="submit-button" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                Proceed to Payment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <div id="message-area" class="mt-6 text-center hidden"></div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-white border-t mt-16">
+        <div class="container mx-auto px-6 py-8 text-center text-gray-600 text-sm">
+            <p>&copy; 2025 NREGA Automation Dashboard by Rajat Poddar. All rights reserved.</p>
+            <p class="mt-2">For questions or support, email us at: <a href="mailto:rajatpoddar@outlook.com" class="text-blue-600 hover:underline">rajatpoddar@outlook.com</a></p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const registrationForm = document.getElementById('registration-form');
+            const messageArea = document.getElementById('message-area');
+            const planRadios = document.querySelectorAll('input[name="plan_type"]');
+            const devicesInput = document.getElementById('max_devices');
+            const priceDisplay = document.getElementById('total-price');
+            const detailsStep = document.getElementById('details-step');
+            const planCards = document.querySelectorAll('.plan-card');
+
+            const prices = { monthly: 99, yearly: 999 };
+
+            function updatePrice() {
+                const selectedPlan = document.querySelector('input[name="plan_type"]:checked').value;
+                const deviceCount = parseInt(devicesInput.value) || 1;
+                const totalPrice = prices[selectedPlan] * deviceCount;
+                priceDisplay.textContent = `₹${totalPrice}`;
+            }
+            
+            function selectPlan() {
+                planCards.forEach(card => card.classList.remove('plan-selected'));
+                const selectedRadio = document.querySelector('input[name="plan_type"]:checked');
+                if (selectedRadio) {
+                    selectedRadio.closest('.plan-card').classList.add('plan-selected');
+                }
+            }
+
+            planRadios.forEach(radio => radio.addEventListener('change', () => {
+                selectPlan();
+                updatePrice();
+            }));
+            devicesInput.addEventListener('change', updatePrice);
+            
+            updatePrice();
+            selectPlan();
+
+            registrationForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const submitButton = document.getElementById('submit-button');
+                submitButton.disabled = true;
+                submitButton.textContent = 'Initializing Payment...';
+
+                const formData = new FormData(registrationForm);
+                const registrationData = Object.fromEntries(formData.entries());
+                registrationData.plan_type = document.querySelector('input[name="plan_type"]:checked').value;
+                registrationData.max_devices = devicesInput.value;
+
+                const selectedPlan = registrationData.plan_type;
+                const deviceCount = parseInt(registrationData.max_devices) || 1;
+                const totalPrice = prices[selectedPlan] * deviceCount;
+                const productinfo = `NREGA Dashboard - ${deviceCount} Device(s) - ${selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)} Plan`;
+                
+                try {
+                    // 1. Create a secure order from your server
+                    const orderResponse = await fetch('/api/create-order', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            amount: totalPrice,
+                            productinfo: productinfo,
+                            firstname: registrationData.name,
+                        })
+                    });
+                    const orderResult = await orderResponse.json();
+                    if (!orderResponse.ok) throw new Error(orderResult.error || 'Could not create payment order.');
+
+                    // 2. Configure and open Razorpay Checkout
+                    const options = {
+                        key: orderResult.key_id,
+                        amount: orderResult.amount,
+                        currency: "INR",
+                        name: "NREGA Dashboard",
+                        description: productinfo,
+                        order_id: orderResult.order_id,
+                        handler: async function (response){
+                            // 3. Send payment details to your server for verification
+                            const verificationResponse = await fetch('/api/verify-payment', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    razorpay_payment_id: response.razorpay_payment_id,
+                                    razorpay_order_id: response.razorpay_order_id,
+                                    razorpay_signature: response.razorpay_signature,
+                                    registration_data: registrationData
+                                })
+                            });
+                            const verificationResult = await verificationResponse.json();
+                            if (verificationResponse.ok && verificationResult.status === 'success') {
+                                detailsStep.style.display = 'none';
+                                document.querySelector('.text-center.mb-10').style.display = 'none';
+                                displayMessage('success', 'Registration Successful!', `Your new license key has been generated and sent to your email. Please save it in a safe place. <div class="mt-4 p-3 bg-green-100 font-mono text-center rounded-md text-lg break-all">${verificationResult.key}</div>`);
+                            } else {
+                                throw new Error(verificationResult.reason || "Payment verification failed.");
+                            }
+                        },
+                        prefill: {
+                            name: registrationData.name,
+                            email: registrationData.email,
+                            contact: registrationData.mobile
+                        },
+                        theme: {
+                            color: "#2563EB"
+                        }
+                    };
+                    const rzp1 = new Razorpay(options);
+                    rzp1.on('payment.failed', function (response){
+                        displayMessage('error', 'Payment Failed', `Error: ${response.error.description}`);
+                    });
+                    rzp1.open();
+
+                } catch (error) {
+                    displayMessage('error', 'Payment Initialization Failed', error.message);
+                } finally {
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Proceed to Payment';
+                }
+            });
+            
+            function displayMessage(type, title, message) {
+                const bgColor = type === 'success' ? 'bg-green-50 text-green-800 border-green-200' : 'bg-red-50 text-red-800 border-red-200';
+                messageArea.innerHTML = `
+                    <div class="p-6 ${bgColor} rounded-lg border">
+                        <h3 class="font-bold text-lg">${title}</h3>
+                        <p class="mt-2">${message}</p>
+                    </div>
+                `;
+                messageArea.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
