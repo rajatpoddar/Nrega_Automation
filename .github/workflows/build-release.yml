@@ -31,7 +31,6 @@ jobs:
         with:
           python-version: '3.11'
 
-      # --- NEW: Set environment variables for universal builds on macOS ---
       - name: Set Universal Architecture Flags
         if: runner.os == 'macOS'
         run: echo "ARCHFLAGS=-arch arm64 -arch x86_64" >> $GITHUB_ENV
@@ -53,7 +52,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt -v
+          # --- FIXED: Added --no-cache-dir to force re-installation of universal binaries ---
+          pip install --no-cache-dir -r requirements.txt -v
           
       - name: Install macOS specific dependencies
         if: runner.os == 'macOS'
