@@ -2,7 +2,7 @@
 
 # --- Define app details here ---
 APP_NAME="NREGA-Dashboard"
-APP_VERSION="2.4.4" #<-- I've updated this to your latest version
+APP_VERSION="2.5.0" #<-- I've updated this to your latest version
 OUTPUT_DMG_NAME="dist/${APP_NAME}-v${APP_VERSION}-macOS.dmg"
 
 # --- Step 1: Run PyInstaller ---
