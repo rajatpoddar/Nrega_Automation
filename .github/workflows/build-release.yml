@@ -47,7 +47,7 @@ jobs:
           fi
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4 # FIXED: Updated to v4
         with:
           name: nrega-bot-${{ runner.os }}
           path: |
@@ -63,7 +63,7 @@ jobs:
     
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4 # FIXED: Updated to v4
         with:
           path: artifacts/
 
