@@ -1,0 +1,86 @@
+name: Build and Release NREGA Bot
+
+on:
+  push:
+    branches:
+      - main # Triggers the workflow on pushes to the main branch
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          
+      - name: Install macOS specific dependencies
+        if: runner.os == 'macOS'
+        run: pip install create-dmg
+
+      # --- NEW STEP TO HANDLE THE SECRET ---
+      - name: Create .env file
+        run: echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" > .env
+        shell: bash
+
+      - name: Build the application
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            ./build_windows.bat
+          elif [ "${{ runner.os }}" == "macOS" ]; then
+            chmod +x build_macos.sh
+            ./build_macos.sh
+          fi
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: nrega-bot-${{ runner.os }}
+          path: |
+            dist/*.dmg
+            installer/*.exe
+            dist/*.exe
+          if-no-files-found: ignore
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts/
+
+      - name: Get Version from config.py
+        id: get_version
+        run: |
+          VERSION=$(grep "APP_VERSION =" config.py | awk -F'"' '{print $2}')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}
+          name: NREGA Bot v${{ steps.get_version.outputs.version }}
+          body: "New release of NREGA Bot. Download the appropriate installer for your operating system below."
+          files: |
+            artifacts/nrega-bot-Windows/installer/*.exe
+            artifacts/nrega-bot-macOS/dist/*.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
