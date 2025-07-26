@@ -22,11 +22,18 @@ jobs:
         with:
           python-version: '3.11'
 
-      # --- FIXED: Added caching for pip dependencies ---
+      # --- FIXED: Get the platform-specific pip cache directory ---
+      - name: Get pip cache dir
+        id: pip-cache
+        run: |
+          echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
+        shell: bash
+
+      # --- FIXED: Use the correct cache directory path ---
       - name: Cache pip packages
         uses: actions/cache@v4
         with:
-          path: ~/.cache/pip
+          path: ${{ steps.pip-cache.outputs.dir }}
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
@@ -34,7 +41,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          # --- FIXED: Added verbose flag -v to get more detailed logs ---
+          pip install -r requirements.txt -v
           
       - name: Install macOS specific dependencies
         if: runner.os == 'macOS'
