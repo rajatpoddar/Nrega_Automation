@@ -4,7 +4,7 @@ REM  Windows Build Script for NREGA Bot
 REM =======================================================
 
 REM --- Configuration ---
-SET APP_VERSION=2.5.0
+REM The APP_VERSION is now set by the GitHub Actions workflow environment variable.
 SET APP_NAME="NREGA Bot"
 SET INNO_SETUP_COMPILER="C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 
