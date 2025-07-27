@@ -1,14 +1,16 @@
 <p align="center">
-  <img src="https://img.icons8.com/color/96/robot-2.png" alt="NREGA Automation Dashboard Logo" width="80"/>
-  <h1 align="center">NREGA Automation Dashboard</h1>
-  <p align="center"><b>Version 2.4.2 | Automate repetitive NREGA portal tasks with ease!</b></p>
+  <img src="https://img.icons8.com/color/96/robot-2.png" alt="NREGA Bot Logo" width="80"/>
 </p>
+
+<h1 align="center">NREGA Bot</h1>
+
+<p align="center"><b>Version 2.5.0 | Automate repetitive NREGA portal tasks with ease!</b></p>
 
 ---
 
 ## 📌 Overview
 
-The **NREGA Automation Dashboard** is a powerful desktop tool built with Python and Tkinter that automates various **repetitive data entry and processing tasks** on the [NREGA portal](https://nrega.nic.in). It interacts with a web browser (Google Chrome) to simplify your daily workflow.
+**NREGA Bot** is a powerful desktop tool built with Python that automates various repetitive data entry and processing tasks on the NREGA portal. It interacts with a web browser (Google Chrome) to simplify your daily workflow.
 
 This tool is designed for users who handle large volumes of data and want to reduce manual effort and save significant time.
 
@@ -16,24 +18,28 @@ This tool is designed for users who handle large volumes of data and want to red
 
 ## 🚀 Features
 
-🧭 An intuitive, tab-based interface for each automation task:
-- 🗂️ **MR Generator** – Automatically generates and downloads Muster Roll PDFs.
-- ✍️ **MR Fill & Absent** – Pre-fills Muster Rolls and marks the 7th day absent, then pauses for your manual review and save.
-- 🆕 **FTO Generation** – Generate FTO for both Aadhar based & Top-up Automatically with detailed FTO No. on results.
-- ⚙️ **MSR Processor** – Fills & saves Muster Rolls for a list of work codes with detailed results.
-- 🧾 **Generate Wagelist** – Creates wagelists automatically by processing all available items.
-- 📤 **Send Wagelist** – Marks generated wagelists for e-FMS payment processing.
-- 💳 **Jobcard Verify & Photo** – Verifies all job cards for a village and intelligently uploads the correct family photo from a folder.
-- 📏 **eMB Entry** – Automates Measurement Book (eMB) entry for multiple work codes.
-- 🛠️ **Workcode Generator (Abua)** – Creates new Abua Awas work codes in bulk from a CSV file.
-- 💧 **IF Editor (Abua)** – Automates the multi-page Irrigation Facility (IF) editing process from a CSV.
-- 🎨 **Dark/Light Theme Toggle** – For a comfortable UI experience.
+🧭 **Tab-based interface** for each automation task:
+
+- 🗂️ **MR Gen** – Automatically generates and downloads Muster Roll PDFs.  
+- 💳 **MR Payment** – Fills & saves Muster Rolls for a list of work codes with detailed results.  
+- 📤 **FTO Generation** – Generate FTO for both Aadhar based & Top-up Automatically with detailed FTO No. on results.  
+- 📋 **Gen Wagelist** – Creates wagelists automatically by processing all available items.  
+- ➡️ **Send Wagelist** – Marks generated wagelists for e-FMS payment processing.  
+- ✅ **Verify Jobcard** – Verifies all job cards for a village and intelligently uploads the correct family photo from a folder.  
+- ✏️ **eMB Entry** – Automates Measurement Book (eMB) entry for multiple work codes.  
+- 🏗️ **WC Gen (Abua)** – Creates new Abua Awas work codes in bulk from a CSV file.  
+- 🔧 **IF Editor (Abua)** – Automates the multi-page Irrigation Facility (IF) editing process from a CSV.  
+- 🪄 **Add Activity** – Adds 'Earth work' activity to work codes in bulk.  
+- 💳 **Verify ABPS** – Checks Aadhaar Based Payment System (ABPS) status for job cards.  
+- ✂️ **Workcode Extractor** – Extracts work codes from pasted text.  
+- 🎨 **Dark/Light Theme Toggle** – For a comfortable UI experience.  
 
 ---
 
 ## 🛠 Prerequisites
 
-Before using the app, you only need to have **Google Chrome** installed.
+You only need to have **Google Chrome** installed on your system.
+
 - 🌐 [Google Chrome](https://www.google.com/chrome/)
 
 ---
@@ -41,64 +47,70 @@ Before using the app, you only need to have **Google Chrome** installed.
 ## ⚙️ Installation & Setup
 
 ### 1️⃣ Download the Application
-Download the latest version for your operating system from the project's website or releases page.
 
-- **For Windows**: Download `NREGA-Dashboard-Windows.exe`
-- **For macOS**: Download `NREGA-Dashboard-macOS.dmg`
+Download the latest version from the [GitHub Releases](https://github.com/rajatpoddar/Nrega_Automation/releases) or the project website.
 
-Place the downloaded application file in a convenient folder.
+- **For Windows**: `NREGABot-v2.5.0-Setup.exe`  
+- **For macOS**: `NREGA-Bot-v2.5.0-macOS.dmg`  
 
-### 2️⃣ First-Time Launch
-When you run the app for the first time, it will automatically start a **30-day free trial**. No license key is needed to begin.
+Place the downloaded file in a convenient folder.
 
 ---
 
-## ▶️ Running the Application
+### 2️⃣ First-Time Launch
 
-1.  **Close All Chrome Windows:** Before starting, make sure Google Chrome is completely closed.
-2.  **Launch the Dashboard App:** Double-click the `NREGA-Dashboard` application file.
-3.  **Launch Chrome from the App:**
-    - Click the **"Chrome (macOS)"** or **"Chrome (Windows)"** button at the top-right of the dashboard.
-    - This will open a special, controlled Chrome window. This is the **only** window the automation will work with.
-4.  **Log In:** In the newly opened Chrome window, log in to the NREGA portal with your credentials.
-5.  You are now ready to start automating!
+- Start a **30-day free trial** — no license key required.  
+- Just launch the application to get started.
+
+---
+
+### ▶️ Running the Application
+
+1. **Close all Chrome windows** before starting.  
+2. **Launch NREGA Bot** by double-clicking the application file.  
+3. Click **"Launch Chrome"** from the top-right of the dashboard.  
+4. **Log in** to the NREGA portal in the newly opened special Chrome window.  
+5. You're ready to start automating!
 
 ---
 
 ## 📘 Usage Guide
 
-1.  🧭 Launch the dashboard and use the in-app buttons to open the special Chrome window.
-2.  🔐 Log in to the NREGA portal manually inside that Chrome window.
-3.  🔀 Select the automation tab you want to use (e.g., MSR Processor, Wagelist Gen, etc.).
-4.  📋 Fill in the required details (like Panchayat name) and paste your work codes or select a file.
-5.  ✅ Click the **Start** button for that tab.
-6.  🔍 Monitor the real-time progress in the "Logs & Status" area.
-7.  🛑 Click **Stop** at any time to safely halt the current process.
+- 🧭 Open the dashboard and launch Chrome using the button provided.
+- 🔐 Log in manually to the NREGA portal inside that controlled Chrome window.
+- 🔀 Select your desired automation tab.
+- 📋 Enter the required details (e.g., Panchayat name, work codes).
+- ✅ Click **Start Automation**.
+- 🔍 Monitor progress in the **Logs & Status** area.
+- 🛑 Use the **Stop** button to halt any process safely.
 
 ---
 
 ## ⚠️ Disclaimer
 
-> ⚡ This tool interacts with a **live government website**.  
-> 🔄 If the portal's structure or element IDs change, some features may break until updated.  
-> 🛠️ Use this tool responsibly. The author provides no warranties and is not liable for any data entry errors. Always double-check automated work.
+- ⚡ This tool interacts with a **live government website**.
+- 🔄 If the portal's structure or elements change, the automation may break.
+- 🛠️ Use responsibly. The author provides **no warranties**. Always **double-check** automated data.
 
 ---
 
 ## 📸 Screenshots
 
-<img src="assets/FTO_Generation.png" width="500" />
-<img src="assets/about.png" width="500" /> 
-<img src="assets/eMB_entry.png" width="500" /> 
+> _Note: Replace broken links with direct GitHub asset URLs if needed._
+
+<img src="https://github.com/rajatpoddar/Nrega_Automation/assets/56649334/3483b8a1-7c91-450a-8d76-e176378e9063" width="600"/>
+<img src="https://github.com/rajatpoddar/Nrega_Automation/assets/56649334/41f89c67-3e05-4b05-b384-9c59521350a8" width="600"/>
+<img src="https://github.com/rajatpoddar/Nrega_Automation/assets/56649334/f228d9c1-4045-4277-a89f-85661d44c92b" width="600"/>
 
 ---
 
 ## 🧑‍💻 Author
 
-**Rajat Poddar** 🔗 [GitHub](https://github.com/rajatpoddar)
+**Rajat Poddar**  
+🔗 [GitHub Profile](https://github.com/rajatpoddar)
 
 ---
 
 ## 🪄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is **proprietary**. All rights reserved.

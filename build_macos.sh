@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # --- Define app details here ---
-APP_NAME="NREGA-Bot"
+APP_NAME="NREGABot"
 APP_VERSION="2.5.0" #<-- I've updated this to your latest version
 OUTPUT_DMG_NAME="dist/${APP_NAME}-v${APP_VERSION}-macOS.dmg"
 
