@@ -14,7 +14,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]
+        os: [windows-latest] # FIXED: Removed macos-latest
 
     steps:
       - name: Checkout code
@@ -31,24 +31,19 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Set Universal Architecture Flags
-        if: runner.os == 'macOS'
-        run: echo "ARCHFLAGS=-arch arm64 -arch x86_64" >> $GITHUB_ENV
-
       - name: Get pip cache dir
         id: pip-cache
         run: |
           echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
         shell: bash
 
-      # --- FIXED: Made the cache key architecture-aware to prevent conflicts ---
       - name: Cache pip packages
         uses: actions/cache@v4
         with:
           path: ${{ steps.pip-cache.outputs.dir }}
-          key: ${{ runner.os }}-pip-${{ env.ARCHFLAGS }}-${{ hashFiles('**/requirements.txt') }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
-            ${{ runner.os }}-pip-${{ env.ARCHFLAGS }}-
+            ${{ runner.os }}-pip-
 
       - name: Install dependencies on Windows
         if: runner.os == 'Windows'
@@ -56,16 +51,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt -v
           
-      - name: Install dependencies on macOS
-        if: runner.os == 'macOS'
-        run: |
-          python -m pip install --upgrade pip
-          pip install --no-binary :all: -r requirements.txt -v
-          
-      - name: Install macOS specific dependencies
-        if: runner.os == 'macOS'
-        run: brew install create-dmg
-
       - name: Create .env file
         run: echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" > .env
         shell: bash
@@ -75,9 +60,6 @@ jobs:
         run: |
           if [ "${{ runner.os }}" == "Windows" ]; then
             ./build_windows.bat
-          elif [ "${{ runner.os }}" == "macOS" ]; then
-            chmod +x build_macos.sh
-            ./build_macos.sh
           fi
 
       - name: List build artifacts
@@ -92,7 +74,6 @@ jobs:
         with:
           name: nrega-bot-${{ runner.os }}
           path: |
-            dist/*.dmg
             installer/*.exe
             dist/*.exe
           if-no-files-found: ignore
@@ -157,4 +138,3 @@ jobs:
             Download the appropriate installer for your operating system below.
           files: |
             artifacts/nrega-bot-Windows/installer/*.exe
-            artifacts/nrega-bot-macOS/dist/*.dmg
