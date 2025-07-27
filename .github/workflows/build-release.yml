@@ -31,6 +31,10 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Set Universal Architecture Flags
+        if: runner.os == 'macOS'
+        run: echo "ARCHFLAGS=-arch arm64 -arch x86_64" >> $GITHUB_ENV
+
       - name: Get pip cache dir
         id: pip-cache
         run: |
@@ -45,10 +49,18 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      - name: Install dependencies
+      - name: Install dependencies on Windows
+        if: runner.os == 'Windows'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt -v
+          
+      - name: Install dependencies on macOS
+        if: runner.os == 'macOS'
+        run: |
+          python -m pip install --upgrade pip
+          # --- FIXED: Force all packages with binary components to be built from source ---
+          pip install --no-cache-dir --no-binary :all: -r requirements.txt -v
           
       - name: Install macOS specific dependencies
         if: runner.os == 'macOS'
@@ -105,7 +117,6 @@ jobs:
           VERSION=$(grep "APP_VERSION =" config.py | awk -F'"' '{print $2}')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      # --- NEW: Read and format the changelog for the current version ---
       - name: Format Changelog for Release
         id: format_changelog
         run: |
@@ -125,7 +136,6 @@ jobs:
           except Exception as e:
               changelog_body = f'Could not generate changelog: {e}'
           
-          # Use a delimiter for multiline output
           delimiter = 'ghadelimiter_' + str(os.urandom(16).hex())
           with open(os.environ['GITHUB_OUTPUT'], 'a') as hf:
               print(f'changelog_text<<{delimiter}', file=hf)
@@ -140,7 +150,6 @@ jobs:
         with:
           tag_name: v${{ steps.get_version.outputs.version }}
           name: NREGA Bot v${{ steps.get_version.outputs.version }}
-          # --- FIXED: The body now includes the formatted changelog ---
           body: |
             ${{ steps.format_changelog.outputs.changelog_text }}
 
