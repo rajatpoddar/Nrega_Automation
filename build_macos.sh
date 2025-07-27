@@ -1,8 +1,29 @@
 #!/bin/bash
 
-# --- App version is now set by the GitHub Actions environment variable 'APP_VERSION' ---
+# --- Read version directly from config.py for local builds ---
+APP_VERSION=$(grep "APP_VERSION =" config.py | awk -F'"' '{print $2}')
+if [ -z "$APP_VERSION" ]; then
+    echo "Error: Could not determine APP_VERSION from config.py"
+    exit 1
+fi
+
 APP_NAME="NREGA Bot"
 OUTPUT_DMG_NAME="dist/${APP_NAME}-v${APP_VERSION}-macOS.dmg"
+
+echo "Building ${APP_NAME} v${APP_VERSION} for Universal (Intel & Apple Silicon)..."
+
+# --- Set ARCHFLAGS for universal build and export it ---
+export ARCHFLAGS="-arch arm64 -arch x86_64"
+
+# --- Re-install dependencies from source to ensure they are universal ---
+echo "Installing/re-installing dependencies to ensure they are universal..."
+pip install --no-cache-dir --no-binary :all: -r requirements.txt
+
+# Check if pip install failed
+if [ $? -ne 0 ]; then
+    echo "Dependency installation FAILED."
+    exit 1
+fi
 
 # --- Step 1: Run PyInstaller ---
 echo "Building the application with PyInstaller..."
