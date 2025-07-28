@@ -26,6 +26,7 @@ pyinstaller --noconfirm --windowed --onefile ^
 --add-data="assets;assets" ^
 --add-data=".env;." ^
 --add-data="jobcard.jpeg;." ^
+--add-data="tabs;tabs" ^
 --collect-data fpdf ^
 main_app.py
 
