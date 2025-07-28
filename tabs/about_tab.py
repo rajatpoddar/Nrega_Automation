@@ -204,18 +204,22 @@ class AboutTab(ctk.CTkFrame):
         user_name = self.license_info.get('user_name', 'N/A')
         license_key = self.license_info.get('key', 'N/A')
         
+        # Perform the replacement and store it in a variable first
+        activated_devices_str = self.license_info.get('activated_machines', 'N/A').replace(',', '\n')
+
         subject = "Request for Device Deactivation"
         body = (
             f"Hello Support Team,\n\n"
             f"I would like to request the deactivation of a device from my license.\n\n"
             f"Please specify which Machine ID you would like to remove from the list below:\n\n"
             f"My Activated Devices:\n"
-            f"{self.license_info.get('activated_machines', 'N/A').replace(',', '\n')}\n\n"
+            # Use the new variable here
+            f"{activated_devices_str}\n\n"
             f"--- My License Details ---\n"
             f"Name: {user_name}\n"
             f"License Key: {license_key}\n\n"
             f"Thank you."
-        )
+        [cite_start]) [cite: 5]
         
         # URL Encode the subject and body
         encoded_subject = urlencode({'subject': subject})[8:]
