@@ -80,6 +80,7 @@ class NregaBotApp(ctk.CTk):
         self.is_licensed = False
         self.license_info = {}
         self.machine_id = self._get_machine_id()
+        self.is_validating_license = False
         self.update_info = {"status": "Checking...", "version": None, "url": None}
         
         if SENTRY_DSN:
@@ -166,11 +167,25 @@ class NregaBotApp(ctk.CTk):
 
     def _on_window_focus(self, event=None):
         """Called when the application window gains focus."""
-        if self.is_licensed:
-            # Re-ping the server to get the latest license details
+        # Check if licensed and if a validation isn't already running
+        if self.is_licensed and not self.is_validating_license:
+            # Start the validation in a separate thread to avoid blocking the UI
+            validation_thread = threading.Thread(target=self._validate_in_background, daemon=True)
+            validation_thread.start()
+
+    def _validate_in_background(self):
+        """Runs the server validation in a background thread."""
+        try:
+            self.is_validating_license = True
+            # The actual blocking call is now in the background
             self.validate_on_server(self.license_info['key'], is_startup_check=True)
-            # Update the UI with the fresh data
-            self.after(100, self._update_about_tab_info)
+            # Schedule the UI update to run on the main thread
+            self.after(0, self._update_about_tab_info)
+        except Exception as e:
+            logging.error(f"Background validation failed: {e}")
+        finally:
+            # Ensure the flag is reset even if an error occurs
+            self.is_validating_license = False
 
     def check_license(self):
         license_file = get_data_path('license.dat')
