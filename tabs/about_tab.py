@@ -82,7 +82,6 @@ class AboutTab(ctk.CTkFrame):
         self.expires_on_value_label = ctk.CTkLabel(details_frame, text="N/A", font=ctk.CTkFont(weight="bold"))
         self.expires_on_value_label.grid(row=2, column=1, sticky="w", padx=10, pady=(5,0))
         
-        # --- NEW: Device Count ---
         ctk.CTkLabel(details_frame, text="Devices Used:", text_color="gray50").grid(row=3, column=0, sticky="w", pady=(5,0))
         self.devices_used_label = ctk.CTkLabel(details_frame, text="N/A", font=ctk.CTkFont(weight="bold"))
         self.devices_used_label.grid(row=3, column=1, sticky="w", padx=10, pady=(5,0))
@@ -144,7 +143,6 @@ class AboutTab(ctk.CTkFrame):
         self.action_panel_container.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
         self.action_panel_container.grid_columnconfigure(0, weight=1)
         self.action_panel_container.grid_rowconfigure(0, weight=1)
-        # Initially populate with a placeholder
         self._update_action_panel("Loading", "N/A")
 
     def _update_action_panel(self, status, key_type):
@@ -152,7 +150,6 @@ class AboutTab(ctk.CTkFrame):
             widget.destroy()
 
         if key_type == 'trial':
-            # ACTION PANEL FOR TRIAL USERS
             panel = ctk.CTkFrame(self.action_panel_container, border_color="#3B82F6", border_width=2)
             panel.grid(row=0, column=0, sticky="nsew")
             panel.grid_columnconfigure(0, weight=1)
@@ -161,7 +158,6 @@ class AboutTab(ctk.CTkFrame):
             ctk.CTkButton(panel, text="Upgrade to Full License", command=lambda: self.app.show_purchase_window(context='upgrade')).pack(pady=20, ipady=5)
         
         elif status in ["Expired", "Expires Soon"]:
-            # ACTION PANEL FOR EXPIRING/EXPIRED USERS
             panel = ctk.CTkFrame(self.action_panel_container, border_color="#DD6B20", border_width=2)
             panel.grid(row=0, column=0, sticky="nsew")
             panel.grid_columnconfigure(0, weight=1)
@@ -169,63 +165,90 @@ class AboutTab(ctk.CTkFrame):
             ctk.CTkLabel(panel, text="Renew your subscription to continue using all features without interruption.", wraplength=300, justify="center").pack(pady=5, padx=20)
             ctk.CTkButton(panel, text="Renew Subscription Now", command=lambda: self.app.show_purchase_window(context='renew')).pack(pady=20, ipady=5)
         
-        else:
-            # --- NEW: USER MANAGEMENT PANEL FOR PAID USERS ---
+        else: # ENHANCED PAID USER PANEL
             panel = ctk.CTkFrame(self.action_panel_container)
             panel.grid(row=0, column=0, sticky="nsew")
             panel.grid_columnconfigure(0, weight=1)
-            ctk.CTkLabel(panel, text="User Management", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(20,10), padx=20)
             
-            # Display list of activated devices (view only)
-            scrollable_frame = ctk.CTkScrollableFrame(panel, label_text="Activated Devices")
-            scrollable_frame.pack(expand=True, fill="both", padx=15, pady=5)
+            ctk.CTkLabel(panel, text="Account Management", font=ctk.CTkFont(size=18, weight="bold")).pack(pady=(20, 5), padx=20, anchor="w")
+            ctk.CTkButton(panel, text="Renew / Upgrade Plan", command=lambda: self.app.show_purchase_window(context='renew')).pack(fill="x", padx=15, pady=5, ipady=4)
             
+            # --- Activated Devices Section ---
+            devices_frame = ctk.CTkFrame(panel)
+            devices_frame.pack(expand=True, fill="both", padx=15, pady=(15, 10))
+            
+            max_devices = self.license_info.get('max_devices', 1)
             activated_machines_str = self.license_info.get('activated_machines', '')
             activated_machines = activated_machines_str.split(',') if activated_machines_str else []
+            activated_count = len(activated_machines)
+
+            devices_frame.configure(fg_color="transparent")
+            ctk.CTkLabel(devices_frame, text=f"Activated Devices ({activated_count} of {max_devices} used)", font=ctk.CTkFont(weight="bold")).pack(anchor="w", pady=(0, 10))
 
             if not activated_machines:
-                scrollable_frame.configure(label_text="No devices activated yet.")
+                ctk.CTkLabel(devices_frame, text="No devices activated yet.", text_color="gray50").pack(pady=10)
             else:
                 for machine_id in activated_machines:
                     is_current_device = (machine_id == self.app.machine_id)
-                    label_text = f"  {machine_id}" + (" (This Device)" if is_current_device else "")
+                    device_entry_frame = ctk.CTkFrame(devices_frame, fg_color=("gray90", "gray20"))
+                    device_entry_frame.pack(fill="x", pady=2)
                     
-                    device_label = ctk.CTkLabel(scrollable_frame, text=label_text, anchor="w", font=ctk.CTkFont(family="monospace"))
-                    device_label.pack(side="left", expand=True, fill="x", padx=10, pady=5)
+                    label_text = f"{machine_id}" + (" (This Device)" if is_current_device else "")
+                    device_label = ctk.CTkLabel(device_entry_frame, text=label_text, anchor="w", font=ctk.CTkFont(family="monospace"))
+                    device_label.pack(side="left", fill="x", expand=True, padx=10, pady=8)
 
-            # Button to request deactivation via email
-            ctk.CTkButton(panel, text="Request Device Deactivation", command=self.request_deactivation_email).pack(pady=(10,5), padx=15, fill='x')
+                    deactivate_btn = ctk.CTkButton(
+                        device_entry_frame, text="Deactivate",
+                        command=lambda mid=machine_id: self.request_single_device_deactivation(mid),
+                        width=90, fg_color="transparent", text_color=("#3B82F6", "#60A5FA"), hover=False,
+                        border_spacing=0
+                    )
+                    deactivate_btn.pack(side="right", padx=(0, 10))
 
-            # Link to website for general management
-            ctk.CTkLabel(panel, text="Visit our website to manage your subscription or view payment history.", wraplength=300, justify="center").pack(pady=(15, 5), padx=20)
-            ctk.CTkButton(panel, text="Go to Website", command=lambda: webbrowser.open(config.MAIN_WEBSITE_URL)).pack(pady=(0, 20))
+            # --- Bottom Action Buttons ---
+            bottom_frame = ctk.CTkFrame(panel, fg_color="transparent")
+            bottom_frame.pack(fill='x', padx=15, pady=(5, 15))
+            bottom_frame.grid_columnconfigure((0, 1), weight=1)
 
-    def request_deactivation_email(self):
+            ctk.CTkButton(bottom_frame, text="Manage on Website", fg_color="transparent", border_width=1, text_color=("gray10", "#DCE4EE"), command=lambda: webbrowser.open(f"{config.MAIN_WEBSITE_URL}/account")).grid(row=0, column=0, sticky="ew", padx=(0, 5))
+            ctk.CTkButton(bottom_frame, text="Contact Support", fg_color="transparent", border_width=1, text_color=("gray10", "#DCE4EE"), command=self.contact_support_email).grid(row=0, column=1, sticky="ew", padx=(5, 0))
+
+
+    def request_single_device_deactivation(self, machine_id_to_deactivate):
         user_name = self.license_info.get('user_name', 'N/A')
         license_key = self.license_info.get('key', 'N/A')
         
-        # Perform the replacement and store it in a variable first
-        activated_devices_str = self.license_info.get('activated_machines', 'N/A').replace(',', '\n')
-
-        subject = "Request for Device Deactivation"
+        subject = f"Request for Deactivation: Device {machine_id_to_deactivate[:12]}..."
         body = (
             f"Hello Support Team,\n\n"
-            f"I would like to request the deactivation of a device from my license.\n\n"
-            f"Please specify which Machine ID you would like to remove from the list below:\n\n"
-            f"My Activated Devices:\n"
-            # Use the new variable here
-            f"{activated_devices_str}\n\n"
+            f"I would like to request the deactivation of the following device from my license:\n\n"
+            f"Machine ID to remove: {machine_id_to_deactivate}\n\n"
             f"--- My License Details ---\n"
             f"Name: {user_name}\n"
             f"License Key: {license_key}\n\n"
             f"Thank you."
-        [cite_start]) [cite: 5]
+        )
+        self._open_mailto_url(subject, body)
+
+    def contact_support_email(self):
+        user_name = self.license_info.get('user_name', 'N/A')
+        license_key = self.license_info.get('key', 'N/A')
+        subject = "NREGA Bot Support Request"
+        body = (
+            f"Hello Support Team,\n\n"
+            f"[Please describe your issue here]\n\n"
+            f"--- My License Details for Reference ---\n"
+            f"Name: {user_name}\n"
+            f"License Key: {license_key}\n"
+            f"App Version: {config.APP_VERSION}\n"
+            f"Machine ID: {self.app.machine_id}\n"
+        )
+        self._open_mailto_url(subject, body)
         
-        # URL Encode the subject and body
-        encoded_subject = urlencode({'subject': subject})[8:]
-        encoded_body = urlencode({'body': body})[5:]
-        
-        mailto_url = f"mailto:{config.SUPPORT_EMAIL}?subject={encoded_subject}&body={encoded_body}"
+    def _open_mailto_url(self, subject, body):
+        params = {'subject': subject, 'body': body}
+        encoded_params = urlencode(params)
+        mailto_url = f"mailto:{config.SUPPORT_EMAIL}?{encoded_params}"
         
         try:
             webbrowser.open(mailto_url)
@@ -233,7 +256,7 @@ class AboutTab(ctk.CTkFrame):
             messagebox.showerror("Error", f"Could not open email client. Please manually email {config.SUPPORT_EMAIL}.\n\nError: {e}")
 
     def update_subscription_details(self, license_info):
-        self.license_info = license_info # Store for internal use
+        self.license_info = license_info
         self.welcome_label.configure(text=f"Welcome, {license_info.get('user_name', 'Valued User')}!")
         self.machine_id_label.configure(text=self.app.machine_id)
 
@@ -245,12 +268,9 @@ class AboutTab(ctk.CTkFrame):
                 expiry_date = datetime.fromisoformat(expires_at_str.split('T')[0]).date()
                 delta = expiry_date - datetime.now().date()
                 days_remaining = delta.days
-                if days_remaining < 0:
-                    status, status_color = "Expired", "#E53E3E" # Red
-                elif days_remaining <= 15:
-                    status, status_color = "Expires Soon", "#DD6B20" # Orange
-                else:
-                    status, status_color = "Active", "#38A169" # Green
+                if days_remaining < 0: status, status_color = "Expired", "#E53E3E"
+                elif days_remaining <= 15: status, status_color = "Expires Soon", "#DD6B20"
+                else: status, status_color = "Active", "#38A169"
             except (ValueError, TypeError): pass
 
         self.status_label.configure(text=status.upper(), fg_color=status_color)
@@ -265,13 +285,11 @@ class AboutTab(ctk.CTkFrame):
         self.key_label.configure(text=license_info.get('key', 'N/A'))
         self.expires_on_value_label.configure(text=expires_at_str.split('T')[0] if expires_at_str else 'N/A')
         
-        # --- Update Device Count ---
         max_devices = license_info.get('max_devices', 1)
         activated_machines_str = license_info.get('activated_machines', '')
         activated_count = len(activated_machines_str.split(',')) if activated_machines_str else 0
         self.devices_used_label.configure(text=f"{activated_count} of {max_devices} used")
 
-        # --- Update the action panel based on new info ---
         self._update_action_panel(status, key_type)
 
     def _copy_key(self):
