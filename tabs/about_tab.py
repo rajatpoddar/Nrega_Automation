@@ -103,9 +103,12 @@ class AboutTab(ctk.CTkFrame):
         # --- Updates Tab ---
         update_tab = self.tab_view.tab("Updates")
         update_tab.grid_columnconfigure(0, weight=1)
-        update_frame = ctk.CTkFrame(update_tab, fg_color="transparent")
-        update_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
-        update_frame.grid_columnconfigure(1, weight=1)
+        # Add a wrapping frame for padding
+        update_wrapper_frame = ctk.CTkFrame(update_tab, fg_color="transparent")
+        update_wrapper_frame.pack(expand=True, fill="both", padx=10, pady=10)
+
+        update_frame = ctk.CTkFrame(update_wrapper_frame, fg_color="transparent")
+        update_frame.pack(expand=True)
         
         self.current_version_label = ctk.CTkLabel(update_frame, text=f"Current Version: {config.APP_VERSION}")
         self.latest_version_label = ctk.CTkLabel(update_frame, text="Latest Version: Checking...")
@@ -113,9 +116,10 @@ class AboutTab(ctk.CTkFrame):
         self.update_progress = ctk.CTkProgressBar(update_frame)
         self.update_progress.set(0)
         
-        self.current_version_label.grid(row=0, column=0, sticky="w", pady=5)
-        self.latest_version_label.grid(row=0, column=1, sticky="w", pady=5)
-        self.update_button.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(10,0))
+        # FIXED: Added padding between the labels
+        self.current_version_label.pack(pady=5, padx=20)
+        self.latest_version_label.pack(pady=5, padx=20)
+        self.update_button.pack(pady=(20, 10), padx=20, ipady=4, fill='x')
     
     def _load_changelog_from_file(self):
         changelog_content = {}
@@ -149,6 +153,7 @@ class AboutTab(ctk.CTkFrame):
         for widget in self.action_panel_container.winfo_children():
             widget.destroy()
 
+        # Trial and Renew/Expired panels are unchanged and correct
         if key_type == 'trial':
             panel = ctk.CTkFrame(self.action_panel_container, border_color="#3B82F6", border_width=2)
             panel.grid(row=0, column=0, sticky="nsew")
@@ -156,7 +161,8 @@ class AboutTab(ctk.CTkFrame):
             ctk.CTkLabel(panel, text="Trial Version Active", font=ctk.CTkFont(size=16, weight="bold"), text_color="#3B82F6").pack(pady=(20,10), padx=20)
             ctk.CTkLabel(panel, text="Upgrade to a full license to unlock all features permanently and remove limitations.", wraplength=300, justify="center").pack(pady=5, padx=20)
             ctk.CTkButton(panel, text="Upgrade to Full License", command=lambda: self.app.show_purchase_window(context='upgrade')).pack(pady=20, ipady=5)
-        
+            return
+
         elif status in ["Expired", "Expires Soon"]:
             panel = ctk.CTkFrame(self.action_panel_container, border_color="#DD6B20", border_width=2)
             panel.grid(row=0, column=0, sticky="nsew")
@@ -164,56 +170,59 @@ class AboutTab(ctk.CTkFrame):
             ctk.CTkLabel(panel, text="Your License Needs Attention!", font=ctk.CTkFont(size=16, weight="bold"), text_color="#DD6B20").pack(pady=(20,10), padx=20)
             ctk.CTkLabel(panel, text="Renew your subscription to continue using all features without interruption.", wraplength=300, justify="center").pack(pady=5, padx=20)
             ctk.CTkButton(panel, text="Renew Subscription Now", command=lambda: self.app.show_purchase_window(context='renew')).pack(pady=20, ipady=5)
+            return
         
-        else: # ENHANCED PAID USER PANEL
-            panel = ctk.CTkFrame(self.action_panel_container)
-            panel.grid(row=0, column=0, sticky="nsew")
-            panel.grid_columnconfigure(0, weight=1)
-            
-            ctk.CTkLabel(panel, text="Account Management", font=ctk.CTkFont(size=18, weight="bold")).pack(pady=(20, 5), padx=20, anchor="w")
-            ctk.CTkButton(panel, text="Renew / Upgrade Plan", command=lambda: self.app.show_purchase_window(context='renew')).pack(fill="x", padx=15, pady=5, ipady=4)
-            
-            # --- Activated Devices Section ---
-            devices_frame = ctk.CTkFrame(panel)
-            devices_frame.pack(expand=True, fill="both", padx=15, pady=(15, 10))
-            
-            max_devices = self.license_info.get('max_devices', 1)
-            activated_machines_str = self.license_info.get('activated_machines', '')
-            activated_machines = activated_machines_str.split(',') if activated_machines_str else []
-            activated_count = len(activated_machines)
+        # --- CLEANED UP: Final User Management Panel for Paid Users ---
+        panel = ctk.CTkFrame(self.action_panel_container)
+        panel.grid(row=0, column=0, sticky="nsew")
+        panel.grid_rowconfigure(1, weight=1)
+        panel.grid_columnconfigure(0, weight=1)
+        
+        ctk.CTkLabel(panel, text="Account Management", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(20,10), padx=20)
+        
+        # --- Activated Devices Section ---
+        devices_frame = ctk.CTkFrame(panel, fg_color="transparent")
+        devices_frame.pack(expand=True, fill="both", padx=15, pady=(0, 10))
+        
+        max_devices = self.license_info.get('max_devices', 1)
+        activated_machines_str = self.license_info.get('activated_machines', '')
+        activated_machines = activated_machines_str.split(',') if activated_machines_str else []
+        activated_count = len(activated_machines)
 
-            devices_frame.configure(fg_color="transparent")
-            ctk.CTkLabel(devices_frame, text=f"Activated Devices ({activated_count} of {max_devices} used)", font=ctk.CTkFont(weight="bold")).pack(anchor="w", pady=(0, 10))
+        ctk.CTkLabel(devices_frame, text=f"Activated Devices ({activated_count} of {max_devices} used)", font=ctk.CTkFont(weight="bold")).pack(anchor="w", pady=(0, 5))
 
-            if not activated_machines:
-                ctk.CTkLabel(devices_frame, text="No devices activated yet.", text_color="gray50").pack(pady=10)
-            else:
-                for machine_id in activated_machines:
-                    is_current_device = (machine_id == self.app.machine_id)
-                    device_entry_frame = ctk.CTkFrame(devices_frame, fg_color=("gray90", "gray20"))
-                    device_entry_frame.pack(fill="x", pady=2)
-                    
-                    label_text = f"{machine_id}" + (" (This Device)" if is_current_device else "")
-                    device_label = ctk.CTkLabel(device_entry_frame, text=label_text, anchor="w", font=ctk.CTkFont(family="monospace"))
-                    device_label.pack(side="left", fill="x", expand=True, padx=10, pady=8)
+        # Create a scrollable area for the device list
+        scroll_area = ctk.CTkScrollableFrame(devices_frame, fg_color="transparent")
+        scroll_area.pack(expand=True, fill="both")
 
-                    deactivate_btn = ctk.CTkButton(
-                        device_entry_frame, text="Deactivate",
-                        command=lambda mid=machine_id: self.request_single_device_deactivation(mid),
-                        width=90, fg_color="transparent", text_color=("#3B82F6", "#60A5FA"), hover=False,
-                        border_spacing=0
-                    )
-                    deactivate_btn.pack(side="right", padx=(0, 10))
+        if not activated_machines:
+            ctk.CTkLabel(scroll_area, text="No devices activated yet.", text_color="gray50").pack(pady=10)
+        else:
+            for machine_id in activated_machines:
+                is_current_device = (machine_id == self.app.machine_id)
+                device_entry_frame = ctk.CTkFrame(scroll_area, fg_color=("gray85", "gray20"))
+                device_entry_frame.pack(fill="x", pady=(0, 5))
+                
+                label_text = f"  {machine_id}" + (" (This Device)" if is_current_device else "")
+                device_label = ctk.CTkLabel(device_entry_frame, text=label_text, anchor="w", font=ctk.CTkFont(family="monospace"))
+                device_label.pack(side="left", fill="x", expand=True, padx=10, pady=8)
 
-            # --- Bottom Action Buttons ---
-            bottom_frame = ctk.CTkFrame(panel, fg_color="transparent")
-            bottom_frame.pack(fill='x', padx=15, pady=(5, 15))
-            bottom_frame.grid_columnconfigure((0, 1), weight=1)
+                deactivate_btn = ctk.CTkButton(
+                    device_entry_frame, text="Request Deactivation",
+                    command=lambda mid=machine_id: self.request_single_device_deactivation(mid),
+                    width=140, fg_color="transparent", text_color=("#3B82F6", "#60A5FA"), hover=False,
+                )
+                deactivate_btn.pack(side="right", padx=(0, 10))
 
-            ctk.CTkButton(bottom_frame, text="Manage on Website", fg_color="transparent", border_width=1, text_color=("gray10", "#DCE4EE"), command=lambda: webbrowser.open(f"{config.MAIN_WEBSITE_URL}/account")).grid(row=0, column=0, sticky="ew", padx=(0, 5))
-            ctk.CTkButton(bottom_frame, text="Contact Support", fg_color="transparent", border_width=1, text_color=("gray10", "#DCE4EE"), command=self.contact_support_email).grid(row=0, column=1, sticky="ew", padx=(5, 0))
+        # --- Bottom Action Buttons ---
+        bottom_frame = ctk.CTkFrame(panel, fg_color="transparent")
+        bottom_frame.pack(fill='x', padx=15, pady=(5, 15), side='bottom')
+        bottom_frame.grid_columnconfigure((0, 1), weight=1)
 
-
+        manage_url = f"{config.LICENSE_SERVER_URL}/account"
+        ctk.CTkButton(bottom_frame, text="Manage on Website", fg_color="transparent", border_width=1, text_color=("gray10", "#DCE4EE"), command=lambda: webbrowser.open(manage_url)).grid(row=0, column=0, sticky="ew", padx=(0, 5))
+        ctk.CTkButton(bottom_frame, text="Contact Support", fg_color="transparent", border_width=1, text_color=("gray10", "#DCE4EE"), command=self.contact_support_email).grid(row=0, column=1, sticky="ew", padx=(5, 0))
+        
     def request_single_device_deactivation(self, machine_id_to_deactivate):
         user_name = self.license_info.get('user_name', 'N/A')
         license_key = self.license_info.get('key', 'N/A')

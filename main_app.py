@@ -95,7 +95,7 @@ class NregaBotApp(ctk.CTk):
         self.nav_buttons = {}
         self.content_frames = {}
         self.tab_instances = {}
-
+        self.bind("<FocusIn>", self._on_window_focus)
         self.after(0, self.start_app)
         
     def start_app(self):
@@ -163,6 +163,14 @@ class NregaBotApp(ctk.CTk):
                 logging.warning(f"Could not ping license server in background: {e}")
 
         threading.Thread(target=ping, daemon=True).start()
+
+    def _on_window_focus(self, event=None):
+        """Called when the application window gains focus."""
+        if self.is_licensed:
+            # Re-ping the server to get the latest license details
+            self.validate_on_server(self.license_info['key'], is_startup_check=True)
+            # Update the UI with the fresh data
+            self.after(100, self._update_about_tab_info)
 
     def check_license(self):
         license_file = get_data_path('license.dat')
