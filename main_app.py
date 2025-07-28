@@ -635,15 +635,19 @@ class NregaBotApp(ctk.CTk):
         log_widget.configure(state="normal"); log_widget.insert(tkinter.END, f"[{time.strftime('%H:%M:%S')}] {message}\n"); log_widget.configure(state="disabled"); log_widget.see(tkinter.END)
     def clear_log(self, log_widget): log_widget.configure(state="normal"); log_widget.delete("1.0", tkinter.END); log_widget.configure(state="disabled")
 
-    def on_closing(self):
-        if messagebox.askokcancel("Quit", "Do you want to quit? This will stop any running automations."):
-            self.attributes("-alpha", 0.0); self.active_automations.clear(); self.allow_sleep()
-            # --- MODIFIED: Quit the browser driver on exit ---
+    def on_closing(self, force_close=False):
+        do_close = force_close or messagebox.askokcancel("Quit", "Do you want to quit? This will stop any running automations.")
+        if do_close:
+            self.attributes("-alpha", 0.0)
+            self.active_automations.clear()
+            self.allow_sleep()
             if self.driver:
-                try: self.driver.quit()
-                except Exception as e: print(f"Error quitting driver: {e}")
-            # --- END MODIFICATION ---
-            for event in self.stop_events.values(): event.set()
+                try:
+                    self.driver.quit()
+                except Exception as e:
+                    print(f"Error quitting driver: {e}")
+            for event in self.stop_events.values():
+                event.set()
             self.after(100, self.destroy)
 
     def prevent_sleep(self):
@@ -660,9 +664,21 @@ class NregaBotApp(ctk.CTk):
             elif config.OS_SYSTEM == "Darwin":
                 if self.sleep_prevention_process: self.sleep_prevention_process.terminate(); self.sleep_prevention_process = None
 
+    def start_automation_thread(self, key, target_func, args=()):
+        if self.automation_threads.get(key) and self.automation_threads[key].is_alive(): messagebox.showwarning("In Progress", f"The '{key}' task is already running."); return
+        self.prevent_sleep(); self.active_automations.add(key); self.stop_events[key] = threading.Event()
+        def thread_wrapper():
+            try: target_func(*args)
+            finally: self.after(0, self.on_automation_finished, key)
+        thread = threading.Thread(target=thread_wrapper, daemon=True); self.automation_threads[key] = thread; thread.start()
+
     def on_automation_finished(self, key):
         if key in self.active_automations: self.active_automations.remove(key)
         if not self.active_automations: self.allow_sleep()
+
+    def log_message(self, log_widget, message, level="info"):
+        log_widget.configure(state="normal"); log_widget.insert(tkinter.END, f"[{time.strftime('%H:%M:%S')}] {message}\n"); log_widget.configure(state="disabled"); log_widget.see(tkinter.END)
+    def clear_log(self, log_widget): log_widget.configure(state="normal"); log_widget.delete("1.0", tkinter.END); log_widget.configure(state="disabled")
 
     def check_for_updates_background(self):
         def _check():
@@ -687,6 +703,54 @@ class NregaBotApp(ctk.CTk):
             if about_tab_instance: about_tab_instance.tab_view.set("Updates")
 
     def update_history(self, field_key: str, value: str): self.history_manager.save_entry(field_key, value)
+
+    def download_and_install_update(self, url, version):
+        about_tab = self.tab_instances.get("About")
+        if not about_tab:
+            messagebox.showerror("Error", "Could not find the About Tab to show progress.")
+            return
+
+        about_tab.update_button.configure(state="disabled")
+        about_tab.update_progress.pack(pady=(0, 10), padx=20, fill='x')
+
+        def _download_worker():
+            try:
+                filename = url.split('/')[-1]
+                download_path = os.path.join(self.get_user_downloads_path(), filename)
+                
+                self.after(0, lambda: about_tab.update_button.configure(text="Downloading..."))
+                
+                with requests.get(url, stream=True, timeout=60) as r:
+                    r.raise_for_status()
+                    total_size = int(r.headers.get('content-length', 0))
+                    bytes_downloaded = 0
+                    with open(download_path, 'wb') as f:
+                        for chunk in r.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                            bytes_downloaded += len(chunk)
+                            if total_size > 0:
+                                progress = bytes_downloaded / total_size
+                                self.after(0, about_tab.update_progress.set, progress)
+                
+                self.after(0, lambda: about_tab.update_button.configure(text="Download Complete. Installing..."))
+                
+                if sys.platform == "darwin": # macOS
+                    subprocess.call(["open", download_path])
+                    self.after(0, messagebox.showinfo, "Installation Instructions", f"The installer '{filename}' has been downloaded to your Downloads folder and opened.\n\nPlease drag the NREGA Bot icon into your Applications folder to install.\n\nThe application will now close.")
+                elif sys.platform == "win32": # Windows
+                    os.startfile(download_path)
+                
+                self.after(3000, self.on_closing, True)
+
+            except Exception as e:
+                self.after(0, messagebox.showerror, "Update Failed", f"Could not download or run the update.\n\nError: {e}")
+            finally:
+                if about_tab.winfo_exists():
+                    self.after(0, lambda: about_tab.update_button.configure(state="normal", text=f"Download & Install v{version}"))
+                    self.after(0, about_tab.update_progress.pack_forget)
+                    self.after(0, about_tab.update_progress.set, 0)
+        
+        threading.Thread(target=_download_worker, daemon=True).start()
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
