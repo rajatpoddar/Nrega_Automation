@@ -84,7 +84,7 @@ class WcGenTab(BaseAutomationTab):
         self.app.clear_log(self.log_display)
         self.app.log_message(self.log_display, "--- Starting Workcode Generation ---")
         try:
-            driver = self.app.connect_to_chrome()
+            driver = self.app.get_driver()
             if not driver: return
             panchayat_name = self.panchayat_entry.get()
             with open(self.csv_path, mode='r', encoding='utf-8') as csvfile:

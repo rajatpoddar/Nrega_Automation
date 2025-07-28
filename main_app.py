@@ -2,8 +2,8 @@
 import tkinter
 from tkinter import messagebox, filedialog
 import customtkinter as ctk
-import threading, time, subprocess, os, webbrowser, sys, requests, json, uuid, logging
-from urllib.parse import urlencode # ADDED THIS LINE
+import threading, time, subprocess, os, webbrowser, sys, requests, json, uuid, logging, socket
+from urllib.parse import urlencode
 from PIL import Image
 from packaging.version import parse as parse_version
 from getmac import get_mac_address
@@ -13,8 +13,12 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 from selenium import webdriver
-from selenium.common.exceptions import WebDriverException
+from selenium.common.exceptions import WebDriverException, SessionNotCreatedException
 from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
+from selenium.webdriver.firefox.service import Service as FirefoxService
+from webdriver_manager.firefox import GeckoDriverManager
+
 from tabs.history_manager import HistoryManager
 
 import config
@@ -80,15 +84,18 @@ class NregaBotApp(ctk.CTk):
         self.is_licensed = False
         self.license_info = {}
         self.machine_id = self._get_machine_id()
-        self.is_validating_license = False
         self.update_info = {"status": "Checking...", "version": None, "url": None}
         
         if SENTRY_DSN:
             sentry_sdk.set_user({"id": self.machine_id})
             sentry_sdk.set_tag("os.name", config.OS_SYSTEM)
         
+        self.driver = None
+        self.active_browser = None
+
         self.open_on_about_tab = False
         self.sleep_prevention_process = None
+        self.is_validating_license = False
         self.active_automations = set()
         self.icon_images = {}
         self.automation_threads = {}
@@ -166,25 +173,18 @@ class NregaBotApp(ctk.CTk):
         threading.Thread(target=ping, daemon=True).start()
 
     def _on_window_focus(self, event=None):
-        """Called when the application window gains focus."""
-        # Check if licensed and if a validation isn't already running
         if self.is_licensed and not self.is_validating_license:
-            # Start the validation in a separate thread to avoid blocking the UI
             validation_thread = threading.Thread(target=self._validate_in_background, daemon=True)
             validation_thread.start()
 
     def _validate_in_background(self):
-        """Runs the server validation in a background thread."""
         try:
             self.is_validating_license = True
-            # The actual blocking call is now in the background
             self.validate_on_server(self.license_info['key'], is_startup_check=True)
-            # Schedule the UI update to run on the main thread
             self.after(0, self._update_about_tab_info)
         except Exception as e:
             logging.error(f"Background validation failed: {e}")
         finally:
-            # Ensure the flag is reset even if an error occurs
             self.is_validating_license = False
 
     def check_license(self):
@@ -205,11 +205,13 @@ class NregaBotApp(ctk.CTk):
         for name, button in self.nav_buttons.items():
             if name != "About": button.configure(state="disabled")
         self.launch_chrome_btn.configure(state="disabled")
+        self.launch_firefox_btn.configure(state="disabled")
         self.theme_combo.configure(state="disabled")
 
     def _unlock_app(self):
         for button in self.nav_buttons.values(): button.configure(state="normal")
         self.launch_chrome_btn.configure(state="normal")
+        self.launch_firefox_btn.configure(state="normal")
         self.theme_combo.configure(state="normal")
 
     def get_data_path(self, filename): return get_data_path(filename)
@@ -224,27 +226,134 @@ class NregaBotApp(ctk.CTk):
         except Exception as e:
             print(f"Warning: Could not load icon '{name}' from {path}. Error: {e}")
 
-    def open_browser_remote_debug(self, browser_name):
-        port = "9222"; profile_dir = os.path.join(os.path.expanduser("~"), "ChromeProfileForNREGABot")
+    def launch_chrome_detached(self):
+        port = "9222"
+        profile_dir = os.path.join(os.path.expanduser("~"), "ChromeProfileForNREGABot")
         os.makedirs(profile_dir, exist_ok=True)
-        paths_to_check = {"Darwin": ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"], "Windows": ["C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"]}
+        paths_to_check = {
+            "Darwin": ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"],
+            "Windows": ["C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"]
+        }
         browser_path = next((path for path in paths_to_check.get(config.OS_SYSTEM, []) if os.path.exists(path)), None)
-        if not browser_path: messagebox.showerror("Error", "Google Chrome not found in standard locations."); return
+        if not browser_path:
+            messagebox.showerror("Error", "Google Chrome not found in standard locations.")
+            return
         try:
-            command = [browser_path, f"--remote-debugging-port={port}", f"--user-data-dir={profile_dir}", config.MAIN_WEBSITE_URL]
-            if config.OS_SYSTEM == "Windows": subprocess.Popen(command, creationflags=0x00000008)
-            else: subprocess.Popen(command, start_new_session=True)
-            messagebox.showinfo("Chrome Launched", "Chrome is starting with remote debugging.\nPlease log in to the NREGA website before starting automation.")
+            command = [browser_path, f"--remote-debugging-port={port}", f"--user-data-dir={profile_dir}", config.MAIN_WEBSITE_URL, "https://nrega.palojori.in/"]
+            if config.OS_SYSTEM == "Windows":
+                subprocess.Popen(command, creationflags=0x00000008)
+            else:
+                subprocess.Popen(command, start_new_session=True)
+            messagebox.showinfo("Chrome Launched", "Chrome is starting in detachable mode.\nPlease log in to the NREGA website before starting automation.")
         except Exception as e:
             if SENTRY_DSN: sentry_sdk.capture_exception(e)
             messagebox.showerror("Error", f"Failed to launch Chrome:\n{e}")
+
+    def launch_firefox_managed(self):
+        if self.driver:
+            if messagebox.askyesno("Browser Already Running", "A Firefox session is already active. Do you want to close it and start a new one?"):
+                self.driver.quit()
+                self.driver = None
+            else:
+                return
+
+        try:
+            profile_dir = os.path.join(os.path.expanduser("~"), "FirefoxProfileForNREGABot")
+            os.makedirs(profile_dir, exist_ok=True)
+            options = FirefoxOptions()
+            options.add_argument("-profile")
+            options.add_argument(profile_dir)
+            service = FirefoxService(GeckoDriverManager().install())
+            self.driver = webdriver.Firefox(service=service, options=options)
+            
+            self.active_browser = "firefox"
+            messagebox.showinfo("Browser Launched", "Firefox is starting.\nPlease log in to the NREGA website before starting automation.")
+            
+            self.driver.get(config.MAIN_WEBSITE_URL)
+            self.driver.execute_script("window.open(arguments[0], '_blank');", "https://nrega.palojori.in/")
+            self.driver.switch_to.window(self.driver.window_handles[0])
+
+        except SessionNotCreatedException as e:
+             messagebox.showerror("Browser Error", f"Could not create Firefox session. Ensure it's installed and not running with a conflicting profile.\n\nError: {e}")
+             self.driver = None; self.active_browser = None
+        except Exception as e:
+            if SENTRY_DSN: sentry_sdk.capture_exception(e)
+            messagebox.showerror("Error", f"Failed to launch Firefox:\n{e}")
+            self.driver = None; self.active_browser = None
+
+    def get_driver(self):
+        firefox_is_active = False
+        if self.driver:
+            try:
+                if self.driver.service.is_connectable():
+                    _ = self.driver.window_handles
+                    firefox_is_active = True
+            except WebDriverException:
+                self.driver = None
+
+        chrome_is_active = False
+        try:
+            with socket.create_connection(("127.0.0.1", 9222), timeout=0.1):
+                chrome_is_active = True
+        except (socket.timeout, ConnectionRefusedError):
+            pass
+
+        if firefox_is_active and chrome_is_active:
+            choice_dialog = ctk.CTkToplevel(self)
+            choice_dialog.title("Choose Browser")
+            choice_dialog.geometry("300x150")
+            choice_dialog.transient(self)
+            choice_dialog.grab_set()
+            ctk.CTkLabel(choice_dialog, text="Both browsers are running.\nWhich one to use?").pack(padx=20, pady=20)
+            chosen_browser = ctk.StringVar()
+            
+            def set_choice(browser):
+                chosen_browser.set(browser)
+                choice_dialog.destroy()
+
+            ctk.CTkButton(choice_dialog, text="Use Firefox", command=lambda: set_choice("firefox")).pack(pady=5, padx=20, fill='x')
+            ctk.CTkButton(choice_dialog, text="Use Chrome", command=lambda: set_choice("chrome")).pack(pady=(5,20), padx=20, fill='x')
+            
+            self.wait_window(choice_dialog)
+            
+            user_choice = chosen_browser.get()
+            if user_choice == "firefox":
+                self.active_browser = "firefox"
+                return self.driver
+            elif user_choice == "chrome":
+                return self._connect_to_chrome()
+            else:
+                return None
+
+        elif firefox_is_active:
+            self.active_browser = "firefox"
+            return self.driver
+        elif chrome_is_active:
+            return self._connect_to_chrome()
+        else:
+            messagebox.showerror("Connection Failed", "No browser is running. Please launch Chrome or Firefox first.")
+            return None
+    
+    def _connect_to_chrome(self):
+        try:
+            options = ChromeOptions()
+            options.add_experimental_option("debuggerAddress", "127.0.0.1:9222")
+            driver = webdriver.Chrome(options=options)
+            self.active_browser = 'chrome'
+            return driver
+        except WebDriverException as e:
+            messagebox.showerror("Connection Failed", f"Could not connect to Chrome.\nError: {e}")
+            return None
 
     def _get_machine_id(self):
         try: return get_mac_address() or "unknown-device-" + str(uuid.getnode())
         except Exception: return "error-getting-mac"
 
     def build_main_ui(self):
-        self._load_icon("chrome", "assets/icons/chrome.png"); self._load_icon("whatsapp", "assets/icons/whatsapp.png", size=(16, 16)); self._load_icon("nrega", "assets/icons/nrega.png", size=(16, 16))
+        self._load_icon("chrome", "assets/icons/chrome.png")
+        self._load_icon("firefox", "assets/icons/firefox.png")
+        self._load_icon("whatsapp", "assets/icons/whatsapp.png", size=(16, 16))
+        self._load_icon("nrega", "assets/icons/nrega.png", size=(16, 16))
         self.grid_rowconfigure(1, weight=1); self.grid_columnconfigure(0, weight=1)
         self._create_header(); self._create_main_layout(); self._create_footer()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -260,8 +369,13 @@ class NregaBotApp(ctk.CTk):
         ctk.CTkLabel(title_container, text=config.APP_NAME, font=ctk.CTkFont(size=22, weight="bold")).pack(anchor="w")
         ctk.CTkLabel(title_container, text=f"v{config.APP_VERSION} | Log in, then select a task from the left panel.", anchor="w").pack(anchor="w")
         controls_frame = ctk.CTkFrame(header_frame, fg_color="transparent"); controls_frame.pack(side="right")
-        self.launch_chrome_btn = ctk.CTkButton(controls_frame, text="Launch Chrome", image=self.icon_images.get("chrome"), command=lambda: self.open_browser_remote_debug('chrome'), width=140)
-        self.launch_chrome_btn.pack(side="left", padx=(0,10))
+        
+        self.launch_chrome_btn = ctk.CTkButton(controls_frame, text="Launch Chrome", image=self.icon_images.get("chrome"), command=self.launch_chrome_detached, width=140)
+        self.launch_chrome_btn.pack(side="left", padx=(0,5))
+        
+        self.launch_firefox_btn = ctk.CTkButton(controls_frame, text="Launch Firefox", image=self.icon_images.get("firefox"), command=self.launch_firefox_managed, width=140)
+        self.launch_firefox_btn.pack(side="left", padx=(0,10))
+
         theme_frame = ctk.CTkFrame(controls_frame, fg_color="transparent"); theme_frame.pack(side="left", padx=10, fill="y")
         ctk.CTkLabel(theme_frame, text="Theme:").pack(side="left", padx=(0, 5))
         self.theme_combo = ctk.CTkOptionMenu(theme_frame, values=["System", "Light", "Dark"], command=self.on_theme_change); self.theme_combo.pack(side="left")
@@ -330,23 +444,16 @@ class NregaBotApp(ctk.CTk):
             response = requests.post(f"{config.LICENSE_SERVER_URL}/validate", json={"key": key, "machine_id": self.machine_id}, timeout=10)
             data = response.json()
             if response.status_code == 200 and data.get("status") == "valid":
-                # The server's response doesn't include the key, so we must add it back in.
                 self.license_info = data
-                self.license_info['key'] = key # FIXED: Added the missing license key before saving
-
-                with open(get_data_path('license.dat'), 'w') as f:
-                    json.dump(self.license_info, f)
-                
-                if not is_startup_check:
-                    messagebox.showinfo("License Valid", f"Activation successful!\nExpires on: {self.license_info['expires_at'].split('T')[0]}")
+                self.license_info['key'] = key
+                with open(get_data_path('license.dat'), 'w') as f: json.dump(self.license_info, f)
+                if not is_startup_check: messagebox.showinfo("License Valid", f"Activation successful!\nExpires on: {self.license_info['expires_at'].split('T')[0]}")
                 return True
             else:
-                if not is_startup_check:
-                    messagebox.showerror("Validation Failed", f"License validation failed: {data.get('reason', 'Unknown error.')}")
+                if not is_startup_check: messagebox.showerror("Validation Failed", f"License validation failed: {data.get('reason', 'Unknown error.')}")
                 return False
         except requests.exceptions.RequestException as e:
-            if not is_startup_check:
-                messagebox.showerror("Connection Error", f"Could not connect to the license server: {e}")
+            if not is_startup_check: messagebox.showerror("Connection Error", f"Could not connect to the license server: {e}")
             return False
 
     def show_activation_window(self):
@@ -451,19 +558,14 @@ class NregaBotApp(ctk.CTk):
         main_frame.pack(expand=True, fill="both", padx=20, pady=20)
         
         ctk.CTkLabel(main_frame, text=title, font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(0, 15))
-
-        # --- Plan and Device Selection ---
         ctk.CTkLabel(main_frame, text="1. Choose Your Plan", font=ctk.CTkFont(size=14, weight="bold"), anchor="w").pack(fill="x", padx=10, pady=(10,5))
-        
         plan_menu = ctk.CTkOptionMenu(main_frame, values=["Monthly Plan (₹99 / device)", "Yearly Plan (₹999 / device)"])
         plan_menu.pack(fill="x", padx=10, pady=(0,5))
-        
         ctk.CTkLabel(main_frame, text="Number of Devices:", anchor="w").pack(fill="x", padx=10, pady=(15, 5))
         devices_input = ctk.CTkOptionMenu(main_frame, values=["1", "2", "3"])
         devices_input.set(str(self.license_info.get('max_devices', 1)))
         devices_input.pack(fill="x", padx=10)
 
-        # --- Price and Payment ---
         prices = {"monthly": 99, "yearly": 999}
         total_price_label = ctk.CTkLabel(main_frame, text="Total: ₹99", font=ctk.CTkFont(size=18, weight="bold"))
         total_price_label.pack(pady=25)
@@ -479,40 +581,27 @@ class NregaBotApp(ctk.CTk):
         devices_input.configure(command=lambda v: update_price())
         update_price()
 
-        # FIXED: This function is now correctly indented inside show_purchase_window
         def proceed_to_payment():
             submit_btn.configure(state="disabled", text="Initializing...")
-
             form_data = {
-                "name": self.license_info.get('user_name', ''),
-                "email": self.license_info.get('user_email', ''),
-                "mobile": self.license_info.get('user_mobile', ''),
-                "block": self.license_info.get('user_block', ''),
-                "district": self.license_info.get('user_district', ''),
-                "state": self.license_info.get('user_state', ''),
+                "name": self.license_info.get('user_name', ''), "email": self.license_info.get('user_email', ''),
+                "mobile": self.license_info.get('user_mobile', ''), "block": self.license_info.get('user_block', ''),
+                "district": self.license_info.get('user_district', ''), "state": self.license_info.get('user_state', ''),
                 "pincode": self.license_info.get('user_pincode', '')
             }
-
             if not all([form_data['name'], form_data['email'], form_data['mobile']]):
                 messagebox.showwarning("User Details Missing", "Your user details could not be found. Please contact support.", parent=purchase_window)
-                submit_btn.configure(state="normal", text="Proceed to Payment")
-                return
-            
+                submit_btn.configure(state="normal", text="Proceed to Payment"); return
             plan_selection = plan_menu.get()
             plan = "yearly" if "Yearly" in plan_selection else "monthly"
             device_count = int(devices_input.get())
-            
             form_data.update({'plan_type': plan, 'max_devices': device_count})
             if context == 'renew': form_data['existing_key'] = self.license_info.get('key')
-            
             try:
                 base_url = f"{config.LICENSE_SERVER_URL}/buy"
-                query_params = urlencode(form_data)
-                full_url = f"{base_url}?{query_params}"
-
+                query_params = urlencode(form_data); full_url = f"{base_url}?{query_params}"
                 webbrowser.open_new_tab(full_url)
                 submit_btn.configure(state="normal", text="Proceed to Payment")
-
             except Exception as e:
                 messagebox.showerror("Error", f"Could not open payment page: {e}", parent=purchase_window)
                 submit_btn.configure(state="normal", text="Proceed to Payment")
@@ -533,7 +622,7 @@ class NregaBotApp(ctk.CTk):
             print(f"Could not parse expiry date: {expires_at_str}. Error: {e}")
             if SENTRY_DSN: sentry_sdk.capture_exception(e)
         return False
-
+        
     def start_automation_thread(self, key, target_func, args=()):
         if self.automation_threads.get(key) and self.automation_threads[key].is_alive(): messagebox.showwarning("In Progress", f"The '{key}' task is already running."); return
         self.prevent_sleep(); self.active_automations.add(key); self.stop_events[key] = threading.Event()
@@ -546,18 +635,14 @@ class NregaBotApp(ctk.CTk):
         log_widget.configure(state="normal"); log_widget.insert(tkinter.END, f"[{time.strftime('%H:%M:%S')}] {message}\n"); log_widget.configure(state="disabled"); log_widget.see(tkinter.END)
     def clear_log(self, log_widget): log_widget.configure(state="normal"); log_widget.delete("1.0", tkinter.END); log_widget.configure(state="disabled")
 
-    def connect_to_chrome(self):
-        try:
-            options = ChromeOptions(); options.add_experimental_option("debuggerAddress", "127.0.0.1:9222"); return webdriver.Chrome(options=options)
-        except WebDriverException as e:
-            if SENTRY_DSN: sentry_sdk.capture_exception(e)
-            messagebox.showerror("Connection Failed", f"Could not connect to Chrome. Please ensure:\n\n1. You launched Chrome from the app.\n2. It is still running.\n\n" f"Error: {e}")
-            for event in self.stop_events.values(): event.set()
-            return None
-
     def on_closing(self):
         if messagebox.askokcancel("Quit", "Do you want to quit? This will stop any running automations."):
             self.attributes("-alpha", 0.0); self.active_automations.clear(); self.allow_sleep()
+            # --- MODIFIED: Quit the browser driver on exit ---
+            if self.driver:
+                try: self.driver.quit()
+                except Exception as e: print(f"Error quitting driver: {e}")
+            # --- END MODIFICATION ---
             for event in self.stop_events.values(): event.set()
             self.after(100, self.destroy)
 
@@ -605,6 +690,16 @@ class NregaBotApp(ctk.CTk):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    # --- NEW: Install webdriver-manager for Firefox on first run ---
+    try:
+        logging.info("Checking for GeckoDriver...")
+        GeckoDriverManager().install()
+        logging.info("GeckoDriver is up to date.")
+    except Exception as e:
+        logging.error(f"Could not download/update GeckoDriver: {e}")
+        messagebox.showerror("Driver Error", "Could not download the required Firefox driver (GeckoDriver). Please check your internet connection and try again.")
+        sys.exit(1)
+    # --- END NEW ---
     try: app = NregaBotApp(); app.mainloop()
     except Exception as e:
         if SENTRY_DSN: sentry_sdk.capture_exception(e)

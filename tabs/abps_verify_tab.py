@@ -47,8 +47,15 @@ class AbpsVerifyTab(BaseAutomationTab):
         results_frame = notebook.add("Results")
         self._create_log_and_status_area(parent_notebook=notebook)
 
+        #Results Frame Configuration
         results_frame.grid_columnconfigure(0, weight=1)
-        results_frame.grid_rowconfigure(0, weight=1)
+        results_frame.grid_rowconfigure(1, weight=1) # Make space for the button
+
+        results_action_frame = ctk.CTkFrame(results_frame, fg_color="transparent")
+        results_action_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(5, 10), padx=5)
+        self.export_csv_button = ctk.CTkButton(results_action_frame, text="Export to CSV", command=lambda: self.export_treeview_to_csv(self.results_tree, "abps_verify_results.csv"))
+        self.export_csv_button.pack(side="left")
+
         cols = ("Job Card No.", "Applicant Name", "Status", "Timestamp")
         self.results_tree = ttk.Treeview(results_frame, columns=cols, show='headings')
         for col in cols:
@@ -57,10 +64,10 @@ class AbpsVerifyTab(BaseAutomationTab):
         self.results_tree.column("Applicant Name", width=200)
         self.results_tree.column("Status", width=150, anchor='center')
         self.results_tree.column("Timestamp", width=100, anchor='center')
-        self.results_tree.grid(row=0, column=0, sticky='nsew', padx=5, pady=5)
+        self.results_tree.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
         scrollbar = ctk.CTkScrollbar(results_frame, command=self.results_tree.yview)
         self.results_tree.configure(yscroll=scrollbar.set)
-        scrollbar.grid(row=0, column=1, sticky='ns')
+        scrollbar.grid(row=1, column=1, sticky='ns')
         self.style_treeview(self.results_tree)
 
     def set_ui_state(self, running: bool):
@@ -97,7 +104,7 @@ class AbpsVerifyTab(BaseAutomationTab):
         session_processed_jobcards = set()
 
         try:
-            driver = self.app.connect_to_chrome()
+            driver = self.app.get_driver()
             if not driver: return
 
             wait = WebDriverWait(driver, 20) # Main wait

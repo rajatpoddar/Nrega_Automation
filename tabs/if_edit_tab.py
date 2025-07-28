@@ -93,7 +93,7 @@ class IfEditTab(BaseAutomationTab):
         self.app.clear_log(self.log_area)
         self.app.log_message(self.log_area, "--- Starting IF Editor Automation ---")
         try:
-            driver = self.app.connect_to_chrome()
+            driver = self.app.get_driver()
             if not driver: return
             
             with open(self.csv_path, mode='r', encoding='utf-8-sig') as csvfile:

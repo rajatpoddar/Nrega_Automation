@@ -3,7 +3,7 @@
 
 # --- Application & Brand Info ---
 APP_NAME = "NREGA Bot"
-APP_VERSION = "2.5.0" # Version bumped for rebranding and new features
+APP_VERSION = "2.5.1" # Version bumped for rebranding and new features
 LICENSE_SERVER_URL = "https://license.nregabot.com"
 MAIN_WEBSITE_URL = "https://nregabot.com"
 SUPPORT_EMAIL = "nregabot@gmail.com"
@@ -52,6 +52,7 @@ WAGELIST_GEN_CONFIG = {
 }
 
 WAGELIST_SEND_CONFIG = {
+    "url": "https://nregade4.nic.in/Netnrega/sendforpay.aspx",
     "defaults": {
         "start_row": "3",
         "end_row": "19"

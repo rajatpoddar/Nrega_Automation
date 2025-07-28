@@ -112,7 +112,7 @@ class JobcardVerifyTab(BaseAutomationTab):
         village_name = self.village_entry.get()
         
         try:
-            driver = self.app.connect_to_chrome()
+            driver = self.app.get_driver()
             if not driver: return
             wait = WebDriverWait(driver, 20)
             url = config.JOBCARD_VERIFY_CONFIG["url"]

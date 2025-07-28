@@ -11,3 +11,4 @@ ttkbootstrap
 darkdetect
 python-dotenv
 customtkinter
+tkcalendar

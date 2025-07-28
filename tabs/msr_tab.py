@@ -52,9 +52,20 @@ class MsrTab(BaseAutomationTab):
         # Results Tab
         results_frame.grid_columnconfigure(0, weight=1); results_frame.grid_rowconfigure(1, weight=1)
         results_action_frame = ctk.CTkFrame(results_frame, fg_color="transparent")
-        results_action_frame.grid(row=0, column=0, sticky='ew', pady=(0, 10))
-        self.export_pdf_button = ctk.CTkButton(results_action_frame, text="Export Results to PDF", command=self.export_to_pdf)
-        self.export_pdf_button.pack(side='left')
+        results_action_frame.grid(row=0, column=0, sticky='ew', pady=(5, 10)) # Added some padding
+        
+        self.export_pdf_button = ctk.CTkButton(results_action_frame, text="Export to PDF", command=self.export_to_pdf)
+        self.export_pdf_button.pack(side='left', padx=(0, 10))
+
+        # --- NEW: Add Export to CSV button ---
+        self.export_csv_button = ctk.CTkButton(
+            results_action_frame,
+            text="Export to CSV",
+            command=lambda: self.export_treeview_to_csv(self.results_tree, "msr_payment_results.csv")
+        )
+        self.export_csv_button.pack(side='left')
+        # --- END NEW ---
+
         cols = ("Workcode", "Status", "Details", "Timestamp")
         self.results_tree = ttk.Treeview(results_frame, columns=cols, show='headings')
         for col in cols: self.results_tree.heading(col, text=col)
@@ -92,7 +103,7 @@ class MsrTab(BaseAutomationTab):
         work_keys = [line.strip() for line in self.work_key_text.get("1.0", tkinter.END).strip().splitlines() if line.strip()]
         if not work_keys: messagebox.showerror("Input Error", "No work keys provided."); self.app.after(0, self.set_ui_state, False); return
         try:
-            driver = self.app.connect_to_chrome()
+            driver = self.app.get_driver()
             if not driver: return
             wait = WebDriverWait(driver, 15)
             if driver.current_url != config.MSR_CONFIG["url"]: driver.get(config.MSR_CONFIG["url"])

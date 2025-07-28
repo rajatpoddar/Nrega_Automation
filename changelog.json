@@ -1,4 +1,13 @@
 {
+  "2.5.1": [
+    "✨ New Feature: Added full support for the Mozilla Firefox browser, including a dedicated launch button and browser-specific automation logic.",
+    "✨ New Feature: Added an 'Export to CSV' option on all result tabs for easy data analysis and record-keeping.",
+    "✨ New Feature: Added a 'Print' option to the 'MR Gen' tab to send muster rolls directly to the default printer.",
+    "✨ New Feature: Replaced date text fields with an interactive calendar date-picker on the 'MR Gen' tab for easier and more accurate date selection.",
+    "🛠️ Improvement: Fully automated the 'Send Wagelist' tab. The app now handles page navigation and financial year selection automatically.",
+    "🛠️ Improvement: Implemented a Hybrid Browser Mode. Chrome is now 'detachable' to persist login sessions after the app closes, while Firefox remains managed by the app for stability.",
+    "🐞 Bug Fix (Critical): Resolved a major performance issue that caused the application to lag or become unresponsive when clicked on or brought into focus."
+  ],
   "2.5.0": [
     "Major Rebranding: Application has been renamed from NREGA Dashboard to NREGA Bot.",
     "Subscription UI Overhaul: The 'About' page now features a dynamic subscription status card with color-coded status, days remaining, and plan type.",

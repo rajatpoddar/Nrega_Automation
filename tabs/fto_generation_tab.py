@@ -24,7 +24,7 @@ class FtoGenerationTab(BaseAutomationTab):
         controls_frame.grid(row=0, column=0, sticky="ew", pady=(0, 10))
         controls_frame.grid_columnconfigure(0, weight=1)
 
-        note_text = "Instructions:\n1. Launch Chrome and log in to the NREGA website.\n2. Return here and click 'Start FTO Generation'."
+        note_text = "Instructions:\n1. Launch Chrome and log in to the 1st Signatory.\n2. Return here and click 'Start FTO Generation'."
         ctk.CTkLabel(controls_frame, text=note_text, justify="left").grid(row=0, column=0, sticky='w', padx=15, pady=10)
         
         action_frame = self._create_action_buttons(parent_frame=controls_frame)
@@ -111,7 +111,7 @@ class FtoGenerationTab(BaseAutomationTab):
         self.app.after(0, lambda: [self.results_tree.delete(item) for item in self.results_tree.get_children()])
         self.update_status("Starting...", 0)
         try:
-            driver = self.app.connect_to_chrome()
+            driver = self.app.get_driver()
             if not driver: return
             
             # --- REMOVED: The check for ftoindexframe.aspx is gone ---

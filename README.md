@@ -4,7 +4,7 @@
 
 <h1 align="center">NREGA Bot</h1>
 
-<p align="center"><b>Version 2.5.0 | Automate repetitive NREGA portal tasks with ease!</b></p>
+<p align="center"><b>Version 2.5.1 | Automate repetitive NREGA portal tasks with ease!</b></p>
 
 ---
 
@@ -50,8 +50,8 @@ You only need to have **Google Chrome** installed on your system.
 
 Download the latest version from the [GitHub Releases](https://github.com/rajatpoddar/Nrega_Automation/releases) or the project website.
 
-- **For Windows**: `NREGABot-v2.5.0-Setup.exe`  
-- **For macOS**: `NREGA-Bot-v2.5.0-macOS.dmg`  
+- **For Windows**: `NREGABot-v2.5.1-Setup.exe`  
+- **For macOS**: `NREGABot-v2.5.1-macOS.dmg`  
 
 Place the downloaded file in a convenient folder.
 
@@ -96,11 +96,9 @@ Place the downloaded file in a convenient folder.
 
 ## 📸 Screenshots
 
-> _Note: Replace broken links with direct GitHub asset URLs if needed._
-
-<img src="https://github.com/rajatpoddar/Nrega_Automation/assets/56649334/3483b8a1-7c91-450a-8d76-e176378e9063" width="600"/>
-<img src="https://github.com/rajatpoddar/Nrega_Automation/assets/56649334/41f89c67-3e05-4b05-b384-9c59521350a8" width="600"/>
-<img src="https://github.com/rajatpoddar/Nrega_Automation/assets/56649334/f228d9c1-4045-4277-a89f-85661d44c92b" width="600"/>
+<img src="assets/FTO_Generation.png" width="600"/>
+<img src="assets/about.png" width="600"/>
+<img src="assets/Muster_Roll_Generator.png" width="600"/>
 
 ---
 

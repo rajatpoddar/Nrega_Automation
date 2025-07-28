@@ -39,16 +39,23 @@ class WagelistGenTab(BaseAutomationTab):
         results_frame = notebook.add("Results")
         self._create_log_and_status_area(parent_notebook=notebook)
 
-        results_frame.grid_columnconfigure(0, weight=1); results_frame.grid_rowconfigure(0, weight=1)
+        results_frame.grid_columnconfigure(0, weight=1)
+        results_frame.grid_rowconfigure(1, weight=1) # Make space for the button
+
+        results_action_frame = ctk.CTkFrame(results_frame, fg_color="transparent")
+        results_action_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(5, 10), padx=5)
+        self.export_csv_button = ctk.CTkButton(results_action_frame, text="Export to CSV", command=lambda: self.export_treeview_to_csv(self.results_tree, "wagelist_gen_results.csv"))
+        self.export_csv_button.pack(side="left")
+        
         cols = ("Timestamp", "Work Code", "Status", "Job Card No.", "Applicant Name")
         self.results_tree = ttk.Treeview(results_frame, columns=cols, show='headings')
         for col in cols: self.results_tree.heading(col, text=col)
         self.results_tree.column("Timestamp", width=80, anchor='center'); self.results_tree.column("Work Code", width=220)
         self.results_tree.column("Status", width=150); self.results_tree.column("Job Card No.", width=200)
         self.results_tree.column("Applicant Name", width=150)
-        self.results_tree.grid(row=0, column=0, sticky='nsew')
+        self.results_tree.grid(row=1, column=0, sticky='nsew')
         scrollbar = ctk.CTkScrollbar(results_frame, command=self.results_tree.yview)
-        self.results_tree.configure(yscroll=scrollbar.set); scrollbar.grid(row=0, column=1, sticky='ns')
+        self.results_tree.configure(yscroll=scrollbar.set); scrollbar.grid(row=1, column=1, sticky='ns')
         self.style_treeview(self.results_tree)
 
     def set_ui_state(self, running: bool):
@@ -76,7 +83,7 @@ class WagelistGenTab(BaseAutomationTab):
         self.app.after(0, lambda: [self.results_tree.delete(item) for item in self.results_tree.get_children()])
         self.app.log_message(self.log_display, f"Starting wagelist generation for: {agency_name_part}")
         try:
-            driver = self.app.connect_to_chrome()
+            driver = self.app.get_driver()
             if not driver: return
             wait = WebDriverWait(driver, 20)
             total_errors_to_skip = 0

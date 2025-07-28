@@ -1,7 +1,9 @@
-# tabs/base_tab.py (Updated to include Copy Log button)
+# tabs/base_tab.py
 import tkinter
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog # Add filedialog
 import customtkinter as ctk
+import csv # Add csv import
+import os, sys, subprocess
 
 class BaseAutomationTab(ctk.CTkFrame):
     """A base template for tabs that run automation tasks."""
@@ -10,8 +12,50 @@ class BaseAutomationTab(ctk.CTkFrame):
         self.app = app_instance
         self.automation_key = automation_key
 
+    # --- NEW: Reusable method to export Treeview data to CSV ---
+    def export_treeview_to_csv(self, treeview_widget: ttk.Treeview, default_filename: str):
+        """Exports the contents of a ttk.Treeview to a CSV file."""
+        if not treeview_widget.get_children():
+            messagebox.showinfo("No Data", "There are no results to export.")
+            return
+
+        # Ask user for save location
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+            initialdir=self.app.get_user_downloads_path(),
+            initialfile=default_filename,
+            title="Save Results As"
+        )
+        
+        if not file_path:
+            return # User cancelled
+
+        try:
+            with open(file_path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                # Write headers
+                headers = treeview_widget['columns']
+                writer.writerow(headers)
+                # Write data rows
+                for item_id in treeview_widget.get_children():
+                    row = treeview_widget.item(item_id)['values']
+                    writer.writerow(row)
+            
+            if messagebox.askyesno("Export Successful", f"Results successfully exported to:\n{file_path}\n\nDo you want to open the file?"):
+                # Open the file with the default application
+                if sys.platform == "win32":
+                    os.startfile(file_path)
+                elif sys.platform == "darwin": # macOS
+                    subprocess.call(["open", file_path])
+                else: # linux
+                    subprocess.call(["xdg-open", file_path])
+
+        except Exception as e:
+            messagebox.showerror("Export Error", f"Failed to export data to CSV.\n\nError: {e}")
+    # --- END NEW METHOD ---
+
     def _create_action_buttons(self, parent_frame) -> ctk.CTkFrame:
-        # This method is unchanged
         action_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
         action_frame.grid_columnconfigure((0, 1, 2), weight=1)
         self.start_button = ctk.CTkButton(action_frame, text="▶ Start Automation", command=self.start_automation)
@@ -23,12 +67,10 @@ class BaseAutomationTab(ctk.CTkFrame):
         return action_frame
 
     def _create_log_and_status_area(self, parent_notebook) -> ctk.CTkFrame:
-        """Creates the standard 'Logs & Status' tab and now includes a Copy Log button."""
         log_frame = parent_notebook.add("Logs & Status")
         log_frame.grid_columnconfigure(0, weight=1)
         log_frame.grid_rowconfigure(2, weight=1)
         
-        # Frame to hold status label and copy button
         status_bar_frame = ctk.CTkFrame(log_frame, fg_color="transparent")
         status_bar_frame.grid(row=0, column=0, sticky='ew')
         status_bar_frame.grid_columnconfigure(0, weight=1)
@@ -36,7 +78,6 @@ class BaseAutomationTab(ctk.CTkFrame):
         self.status_label = ctk.CTkLabel(status_bar_frame, text="Status: Ready")
         self.status_label.grid(row=0, column=0, sticky='ew', pady=(5,0))
         
-        # NEW: Copy Log button is now created here automatically
         self.copy_logs_button = ctk.CTkButton(status_bar_frame, text="Copy Log", width=100, command=self.copy_logs_to_clipboard)
         self.copy_logs_button.grid(row=0, column=1, sticky='e', padx=5)
         
@@ -50,7 +91,6 @@ class BaseAutomationTab(ctk.CTkFrame):
         return log_frame
     
     def copy_logs_to_clipboard(self):
-        """Copies the content of the log display to the clipboard."""
         log_content = self.log_display.get('1.0', tkinter.END).strip()
         if log_content:
             self.app.clipboard_clear()
@@ -58,7 +98,6 @@ class BaseAutomationTab(ctk.CTkFrame):
             messagebox.showinfo("Copied", "Logs have been copied to the clipboard.")
 
     def style_treeview(self, treeview_widget: ttk.Treeview):
-        # This method is unchanged
         style = ttk.Style()
         bg_color = self.app._apply_appearance_mode(ctk.ThemeManager.theme["CTkFrame"]["fg_color"])
         text_color = self.app._apply_appearance_mode(ctk.ThemeManager.theme["CTkLabel"]["text_color"])
@@ -71,20 +110,24 @@ class BaseAutomationTab(ctk.CTkFrame):
         style.map("Treeview.Heading", background=[('active', selected_color)])
 
     def set_common_ui_state(self, running: bool):
-        # This method now also handles the copy logs button
         state = "disabled" if running else "normal"
         self.start_button.configure(state=state)
         self.reset_button.configure(state=state)
         self.stop_button.configure(state="normal" if running else "disabled")
         if hasattr(self, 'copy_logs_button'):
             self.copy_logs_button.configure(state=state)
+        # Also disable any export buttons
+        if hasattr(self, 'export_pdf_button'):
+            self.export_pdf_button.configure(state=state)
+        if hasattr(self, 'export_csv_button'):
+            self.export_csv_button.configure(state=state)
+
         if running:
             self.progress_bar.configure(mode="indeterminate"); self.progress_bar.start()
         else:
             self.progress_bar.stop(); self.progress_bar.configure(mode="determinate"); self.progress_bar.set(0)
 
     def update_status(self, text: str, progress: float = None):
-        # This method is unchanged
         self.status_label.configure(text=f"Status: {text}")
         if progress is not None:
             self.progress_bar.configure(mode="determinate"); self.progress_bar.set(progress)
