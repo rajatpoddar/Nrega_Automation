@@ -7,7 +7,7 @@ from datetime import datetime
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import NoSuchElementException, TimeoutException, UnexpectedAlertPresentException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException, UnexpectedAlertPresentException, StaleElementReferenceException
 
 import config
 from .base_tab import BaseAutomationTab
@@ -131,7 +131,8 @@ class AddActivityTab(BaseAutomationTab):
         self.app.log_message(self.log_display, "Starting 'Add Activity' automation...")
 
         try:
-            driver = self.app.connect_to_chrome()
+            # Replace connect_to_chrome with get_driver
+            driver = self.app.get_driver()
             if not driver:
                 return
 
@@ -141,7 +142,6 @@ class AddActivityTab(BaseAutomationTab):
                     self.app.log_message(self.log_display, "Automation stopped.", "warning")
                     break
                 self.app.after(0, self.update_status, f"Processing {i+1}/{total}: {work_key}", (i+1) / total)
-                # Pass inputs to the processing function
                 self._process_single_work_key(driver, work_key, unit_price, quantity)
 
             final_msg = "Automation finished." if not self.app.stop_events[self.automation_key].is_set() else "Stopped."

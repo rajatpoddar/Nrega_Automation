@@ -4,7 +4,7 @@
 
 <h1 align="center">NREGA Bot</h1>
 
-<p align="center"><b>Version 2.5.1 | Automate repetitive NREGA portal tasks with ease!</b></p>
+<p align="center"><b>Version 2.5.2 | Automate repetitive NREGA portal tasks with ease!</b></p>
 
 ---
 
@@ -50,8 +50,8 @@ You only need to have **Google Chrome** installed on your system.
 
 Download the latest version from the [GitHub Releases](https://github.com/rajatpoddar/Nrega_Automation/releases) or the project website.
 
-- **For Windows**: `NREGABot-v2.5.1-Setup.exe`  
-- **For macOS**: `NREGABot-v2.5.1-macOS.dmg`  
+- **For Windows**: `NREGABot-v2.5.2-Setup.exe`  
+- **For macOS**: `NREGABot-v2.5.2-macOS.dmg`  
 
 Place the downloaded file in a convenient folder.
 

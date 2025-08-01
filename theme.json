@@ -135,5 +135,16 @@
     "border_width": 0,
     "fg_color": ["#F9F9FA", "#2B2B2B"],
     "label_fg_color": ["#EAEAEA", "#212325"]
+  },
+  "CTkSwitch": {
+    "corner_radius": 1000,
+    "border_width": 0,
+    "button_length": 0,
+    "text_color": ["#000000", "#DCE4EE"],
+    "text_color_disabled": ["gray60", "gray50"],
+    "fg_color": ["#C9C9C9", "#565B5E"],
+    "progress_color": ["#3B8ED0", "#1F6AA5"],
+    "button_color": ["#FFFFFF", "#d3d3d3"],
+    "button_hover_color": ["#f0f0f0", "#e0e0e0"]
   }
 }

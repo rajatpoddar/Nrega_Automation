@@ -3,7 +3,7 @@
 
 # --- Application & Brand Info ---
 APP_NAME = "NREGA Bot"
-APP_VERSION = "2.5.1" # Version bumped for rebranding and new features
+APP_VERSION = "2.5.2" # Version bumped for rebranding and new features
 LICENSE_SERVER_URL = "https://license.nregabot.com"
 MAIN_WEBSITE_URL = "https://nregabot.com"
 SUPPORT_EMAIL = "nregabot@gmail.com"
@@ -67,19 +67,26 @@ MB_ENTRY_CONFIG = {
     }
 }
 
+# In config.py
+
 IF_EDIT_CONFIG = {
     "url": "https://nregade4.nic.in/netnrega/IFEdit.aspx",
     "page1": {
-        "estimated_pd": "0.090", "beneficiaries_count": "1", "present_status": "Not Exist",
+        "estimated_pd": "0.090", "beneficiaries_count": "1",
         "convergence_scheme_type": "State", "convergence_scheme_name": "ABUA AWAS YOJNA"
     },
     "page2": {
         "sanction_no": "1-06/{year}", "sanction_date": "20/06/{year}", "est_time_completion": "1",
         "avg_labour_per_day": "10", "expected_mandays": "0.090", "tech_sanction_amount": "0.25380",
-        "unskilled_labour_cost": "0.25380", "fin_sanction_no": "01-06/{year}",
+        "unskilled_labour_cost": "0.17266",
+        "mgnrega_material_cost": "0.07235",
+        "skilled_labour_cost": "0",
+        "semi_skilled_labour_cost": "0",
+        "scheme1_cost": "0",
+        "fin_sanction_no": "01-06/{year}",
         "fin_sanction_date": "20/06/{year}", "fin_sanction_amount": "0.25380", "fin_scheme_input": "0"
     },
-    "page3": {"activity_code": "ACT105", "unit_price": "282", "quantity": "90"}
+    "page3": {} # Page 3 now controlled by CSV
 }
 
 WC_GEN_CONFIG = {
@@ -115,4 +122,8 @@ ADD_ACTIVITY_CONFIG = {
 # --- ABPS Verification Configuration ---
 ABPS_VERIFY_CONFIG = {
     "url": "https://nregade4.nic.in/Netnrega/UID/VUID_NPCI.aspx"
+}
+
+DEL_WORK_ALLOC_CONFIG = {
+    "url": "https://nregade4.nic.in/Netnrega/delWrkAlloc.aspx"
 }

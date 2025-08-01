@@ -1,4 +1,14 @@
 {
+  "2.5.2": [
+    "✨ New Feature: Added 'Download Demo CSV' links to the app's footer for 'WC Gen' and 'IF Edit' tabs, making it easier for users to start with the correct file format.",
+    "🛠️ Major Overhaul (WC Gen): Replaced static defaults with a fully dynamic UI. Categories are now loaded live from the NREGA website for maximum flexibility.",
+    "🛠️ Major Overhaul (IF Edit): Replaced static defaults with a fully configurable UI, with separate settings for all three pages of the form.",
+    "🛠️ Improvement (IF Edit): Added a 'Convergence Work' switch to easily run automation for both single-page (non-convergence) and multi-page edits.",
+    "🛠️ Improvement (IF Edit): Automation now supports adding multiple activities and materials to a single work code in one run via an updated iterative CSV format.",
+    "🐞 Bug Fix (Critical): Fixed multiple startup crashes caused by missing theme definitions for new UI elements (KeyError: CTkSwitch, corner_radius, etc.).",
+    "🐞 Bug Fix: Fixed a startup crash (NameError: ttk not defined) in the 'IF Edit' tab by adding the required import.",
+    "🐞 Bug Fix: Corrected the UI logic for enabling/disabling the State and Centre scheme name dropdowns in the 'IF Edit' tab."
+  ],
   "2.5.1": [
     "✨ New Feature: Added full support for the Mozilla Firefox browser, including a dedicated launch button and browser-specific automation logic.",
     "✨ New Feature: Added an 'Export to CSV' option on all result tabs for easy data analysis and record-keeping.",

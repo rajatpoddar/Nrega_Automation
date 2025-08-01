@@ -2,7 +2,7 @@
 import tkinter
 from tkinter import messagebox, filedialog
 import customtkinter as ctk
-import threading, time, subprocess, os, webbrowser, sys, requests, json, uuid, logging, socket
+import threading, time, subprocess, os, webbrowser, sys, requests, json, uuid, logging, socket, shutil
 from urllib.parse import urlencode
 from PIL import Image
 from packaging.version import parse as parse_version
@@ -36,6 +36,7 @@ from tabs.fto_generation_tab import FtoGenerationTab
 from tabs.workcode_extractor_tab import WorkcodeExtractorTab
 from tabs.add_activity_tab import AddActivityTab
 from tabs.abps_verify_tab import AbpsVerifyTab
+from tabs.del_work_alloc_tab import DelWorkAllocTab
 
 if config.OS_SYSTEM == "Windows":
     import ctypes
@@ -402,19 +403,54 @@ class NregaBotApp(ctk.CTk):
             self.content_frames[name], self.tab_instances[name] = frame_container, tab_instance
 
     def get_tabs_definition(self):
-        return { "MR Gen": {"creation_func": MusterrollGenTab, "icon": config.ICONS["MR Gen"]}, "MR Payment": {"creation_func": MsrTab, "icon": config.ICONS["MR Payment"]}, "Gen Wagelist": {"creation_func": WagelistGenTab, "icon": config.ICONS["Gen Wagelist"]}, "Send Wagelist": {"creation_func": WagelistSendTab, "icon": config.ICONS["Send Wagelist"]}, "FTO Generation": {"creation_func": FtoGenerationTab, "icon": config.ICONS["FTO Generation"]}, "Verify Jobcard": {"creation_func": JobcardVerifyTab, "icon": config.ICONS["Verify Jobcard"]}, "eMB Entry⚠️": {"creation_func": MbEntryTab, "icon": config.ICONS["eMB Entry"]}, "WC Gen (Abua)": {"creation_func": WcGenTab, "icon": config.ICONS["WC Gen (Abua)"]}, "IF Editor (Abua)⚠️": {"creation_func": IfEditTab, "icon": config.ICONS["IF Editor (Abua)"]}, "Add Activity": {"creation_func": AddActivityTab, "icon": config.ICONS["Add Activity"]}, "Verify ABPS": {"creation_func": AbpsVerifyTab, "icon": config.ICONS["Verify ABPS"]}, "Workcode Extractor": {"creation_func": WorkcodeExtractorTab, "icon": config.ICONS["Workcode Extractor"]}, "About": {"creation_func": AboutTab, "icon": config.ICONS["About"]} }
+        return { "MR Gen": {"creation_func": MusterrollGenTab, "icon": config.ICONS["MR Gen"]}, "MR Payment": {"creation_func": MsrTab, "icon": config.ICONS["MR Payment"]}, "Gen Wagelist": {"creation_func": WagelistGenTab, "icon": config.ICONS["Gen Wagelist"]}, "Send Wagelist": {"creation_func": WagelistSendTab, "icon": config.ICONS["Send Wagelist"]}, "FTO Generation": {"creation_func": FtoGenerationTab, "icon": config.ICONS["FTO Generation"]}, "Verify Jobcard": {"creation_func": JobcardVerifyTab, "icon": config.ICONS["Verify Jobcard"]}, "eMB Entry⚠️": {"creation_func": MbEntryTab, "icon": config.ICONS["eMB Entry"]},"Del Work Alloc": {"creation_func": DelWorkAllocTab, "icon": "🗑️"},  "WC Gen": {"creation_func": WcGenTab, "icon": config.ICONS["WC Gen (Abua)"]}, "IF Editor": {"creation_func": IfEditTab, "icon": config.ICONS["IF Editor (Abua)"]}, "Add Activity": {"creation_func": AddActivityTab, "icon": config.ICONS["Add Activity"]}, "Verify ABPS": {"creation_func": AbpsVerifyTab, "icon": config.ICONS["Verify ABPS"]}, "Workcode Extractor": {"creation_func": WorkcodeExtractorTab, "icon": config.ICONS["Workcode Extractor"]}, "About": {"creation_func": AboutTab, "icon": config.ICONS["About"]} }
 
     def show_frame(self, page_name):
         self.content_frames[page_name].tkraise()
         for name, button in self.nav_buttons.items(): button.configure(fg_color=("gray90", "gray28") if name == page_name else "transparent")
     
     def _create_footer(self):
-        footer_frame = ctk.CTkFrame(self, height=40, corner_radius=0); footer_frame.grid(row=2, column=0, sticky="ew", padx=20, pady=(10,15))
-        copyright_label = ctk.CTkLabel(footer_frame, text="© 2025 Made with ❤️ by Rajat Poddar.", text_color="gray50"); copyright_label.pack(side="left", padx=15)
+        footer_frame = ctk.CTkFrame(self, height=40, corner_radius=0)
+        footer_frame.grid(row=2, column=0, sticky="ew", padx=20, pady=(10,15))
+        copyright_label = ctk.CTkLabel(footer_frame, text="© 2025 Made with ❤️ by Rajat Poddar.", text_color="gray50")
+        copyright_label.pack(side="left", padx=15)
         copyright_label.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://github.com/rajatpoddar"))
-        button_container = ctk.CTkFrame(footer_frame, fg_color="transparent"); button_container.pack(side="right", padx=15)
-        whatsapp_btn = ctk.CTkButton(button_container, text="Join WhatsApp Group", image=self.icon_images.get("whatsapp"), command=lambda: webbrowser.open_new_tab("https://chat.whatsapp.com/Bup3hDCH3wn2shbUryv8wn?mode=r_c"), fg_color="transparent", hover=False, text_color=("gray10", "gray80")); whatsapp_btn.pack(side="right", padx=(10, 0))
-        nrega_btn = ctk.CTkButton(button_container, text="NREGA Bot Website ↗", image=self.icon_images.get("nrega"), command=lambda: webbrowser.open_new_tab(config.MAIN_WEBSITE_URL), fg_color="transparent", hover=False, text_color=("gray10", "gray80")); nrega_btn.pack(side="right")
+        
+        button_container = ctk.CTkFrame(footer_frame, fg_color="transparent")
+        button_container.pack(side="right", padx=15)
+        
+        # --- NEW: Demo CSV Download Links ---
+        if_edit_csv_btn = ctk.CTkButton(button_container, text="Demo IF Edit CSV", command=lambda: self.save_demo_csv("if_edit"), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
+        if_edit_csv_btn.pack(side="right", padx=(10, 0))
+        
+        wc_gen_csv_btn = ctk.CTkButton(button_container, text="Demo WC Gen CSV", command=lambda: self.save_demo_csv("wc_gen"), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
+        wc_gen_csv_btn.pack(side="right", padx=(10, 0))
+        # --- END NEW ---
+
+        whatsapp_btn = ctk.CTkButton(button_container, text="Join WhatsApp Group", image=self.icon_images.get("whatsapp"), command=lambda: webbrowser.open_new_tab("https://chat.whatsapp.com/Bup3hDCH3wn2shbUryv8wn?mode=r_c"), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
+        whatsapp_btn.pack(side="right", padx=(10, 0))
+        nrega_btn = ctk.CTkButton(button_container, text="NREGA Bot Website ↗", image=self.icon_images.get("nrega"), command=lambda: webbrowser.open_new_tab(config.MAIN_WEBSITE_URL), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
+        nrega_btn.pack(side="right")
+        
+    def save_demo_csv(self, file_type: str):
+        try:
+            source_path = resource_path(f"assets/demo_{file_type}.csv")
+            if not os.path.exists(source_path):
+                messagebox.showerror("Error", f"Demo file not found in the application assets: demo_{file_type}.csv")
+                return
+
+            save_path = filedialog.asksaveasfilename(
+                defaultextension=".csv",
+                filetypes=[("CSV files", "*.csv")],
+                initialfile=f"{file_type}_data.csv",
+                title=f"Save Demo {file_type.upper()} CSV As"
+            )
+
+            if save_path:
+                shutil.copyfile(source_path, save_path)
+                messagebox.showinfo("Success", f"Demo file saved successfully to:\n{save_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not save the demo file.\n\nError: {e}")
 
     def on_theme_change(self, new_theme: str): ctk.set_appearance_mode(new_theme); self.after(100, self.restyle_all_treeviews)
     def restyle_all_treeviews(self):

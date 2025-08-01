@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>NREGA Bot | v2.5.1 | Automate NREGA Tasks</title>
+    <meta name="description" content="Automate your NREGA tasks with NREGA Bot v2.5.1. Featuring a new brand, subscription management, and a full suite of automation tools.">
+    <meta name="keywords" content="NREGA, MGNREGA, automation, FTO Generation, NREGA Bot, Jobcard Verification, MSR processor, wagelist, workcode generator, Palojori, Jharkhand, software, donation">
+    <meta name="author" content="Rajat Poddar">
+
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+
+    <meta property="og:title" content="NREGA Bot v2.5.1">
+    <meta property="og:description" content="The ultimate tool to save time and automate your tedious NREGA data entry tasks, now rebranded as NREGA Bot.">
+    <meta property="og:image" content="https://nregabot.com/og-logo.png">
+    <meta property="og:url" content="https://nregabot.com/">
+    <meta property="og:type" content="website">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        // On page load or when changing themes, best to add inline in `head` to avoid FOUC
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark')
+        } else {
+          document.documentElement.classList.remove('dark')
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .feature-card, .instruction-card { transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; }
+        .feature-card:hover, .instruction-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        .dark .feature-card:hover, .dark .instruction-card:hover { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1); }
+        html { scroll-behavior: smooth; }
+        #mobile-menu { transition: opacity 0.3s ease-in-out; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased dark:bg-gray-900 dark:text-gray-200">
+
+    <header class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm shadow-sm sticky top-0 z-50 dark:border-b dark:border-gray-800">
+        <div class="container mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
+            <a href="#home" class="text-xl font-bold text-gray-900 flex items-center gap-2 dark:text-white">
+                <img src="/logo.png" alt="NREGA Bot Logo" class="h-8 w-8 rounded-full">
+                <span>NREGA Bot</span>
+            </a>
+            <nav class="hidden md:flex items-center space-x-8">
+                <a href="#home" class="text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400">Home</a>
+                <a href="#how-to-use" class="text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400">How to Use</a>
+                <a href="#faq" class="text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400">FAQ</a>
+                <a href="contact.html" class="text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400">Contact</a>
+            </nav>
+            <a href="https://license.nregabot.com/buy" target="_blank" rel="noopener noreferrer" class="hidden md:inline-block bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors dark:bg-blue-500 dark:hover:bg-blue-600">Get License Key</a>
+            
+            <button id="mobile-menu-button" class="md:hidden p-2 text-gray-600 hover:text-gray-900 z-50 dark:text-gray-400 dark:hover:text-white" aria-label="Open menu">
+                <svg id="menu-open-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                </svg>
+                <svg id="menu-close-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+    </header>
+    
+    <div id="mobile-menu" class="hidden fixed inset-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm z-40 flex flex-col items-center justify-center">
+        <nav class="flex flex-col items-center space-y-8 text-xl">
+            <a href="#home" class="mobile-link text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400">Home</a>
+            <a href="#how-to-use" class="mobile-link text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400">How to Use</a>
+            <a href="#faq" class="mobile-link text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400">FAQ</a>
+            <a href="contact.html" class="mobile-link text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400">Contact</a>
+            <a href="https://license.nregabot.com/buy" target="_blank" rel="noopener noreferrer" class="bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors mt-8 dark:bg-blue-500 dark:hover:bg-blue-600">Get License Key</a>
+        </nav>
+    </div>
+
+    <div id="main-content">
+        <section id="home">
+            <div class="bg-blue-600 dark:bg-blue-500">
+                <div class="container mx-auto px-4 sm:px-6 py-3 text-center text-white">
+                    <p>
+                        <span class="font-bold bg-white text-blue-600 rounded-full px-2 py-0.5 text-xs mr-2">NEW</span>
+                        <strong>Version 2.5.1 is here!</strong> The app has been rebranded to NREGA Bot.
+                        <a href="#downloads" class="underline ml-2 hover:text-blue-200">Download Now &rarr;</a>
+                    </p>
+                </div>
+            </div>
+
+            <main class="container mx-auto px-6 pt-16 pb-12 text-center">
+                <h2 class="text-4xl md:text-5xl font-extrabold text-gray-900 leading-tight dark:text-white">
+                    Automate Your NREGA Tasks.
+                </h2>
+                <p class="mt-4 text-lg text-gray-600 max-w-3xl mx-auto dark:text-gray-400">
+                    Stop wasting hours on repetitive data entry. NREGA Bot handles your most tedious tasks so you can focus on what matters.
+                </p>
+                <div id="downloads" class="mt-10">
+                    <p class="text-gray-600 mb-4 dark:text-gray-400">Download the app and start your 30-day free trial instantly.</p>
+                    <div class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                        <a href="https://nregabot.com/updates/NREGABot-v2.5.1-Setup.exe" class="bg-blue-600 text-white font-bold px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors text-lg w-full sm:w-auto dark:bg-blue-500 dark:hover:bg-blue-600">Download for Windows</a>
+                        <a href="https://nregabot.com/updates/NREGABot-v2.5.1-macOS.dmg" class="bg-gray-700 text-white font-bold px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors text-lg w-full sm:w-auto dark:bg-gray-600 dark:hover:bg-gray-700">Download for macOS</a>
+                    </div>
+                    <p class="mt-6 text-sm text-gray-500 dark:text-gray-400">
+                        <a href="versions.html" class="underline hover:text-blue-600 dark:hover:text-blue-400">Looking for an older version?</a>
+                    </p>
+                </div>
+            </main>
+            
+            <section class="py-16 bg-white dark:bg-gray-800">
+                <div class="container mx-auto px-6">
+                    <div class="text-center mb-12">
+                        <h3 class="text-3xl font-bold text-gray-900 dark:text-white">A Modern Dashboard for Modern Needs</h3>
+                        <p class="text-gray-600 mt-2 dark:text-gray-400">Clean, intuitive, and powerful. Built to make your job easier.</p>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+                        <img src="/assets/MSR_Processor.png" alt="MSR Processor Screenshot" class="rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 hover:shadow-2xl transition-shadow duration-300">
+                        <img src="/assets/Generate_Wagelist.png" alt="Generate Wagelist Screenshot" class="rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 hover:shadow-2xl transition-shadow duration-300">
+                        <img src="/assets/Send_Wagelist.png" alt="Send Wagelist Screenshot" class="rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 hover:shadow-2xl transition-shadow duration-300">
+                        <img src="/assets/Workcode_Abuwa.png" alt="Workcode Generator Screenshot" class="rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 sm:col-span-2 lg:col-span-1 hover:shadow-2xl transition-shadow duration-300">
+                        <img src="/assets/eMB_entry.png" alt="MB Entry Screenshot" class="rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 hover:shadow-2xl transition-shadow duration-300">
+                        <img src="/assets/IF_Editor_Abuwa.png" alt="IF Editor Screenshot" class="rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 hover:shadow-2xl transition-shadow duration-300">
+                    </div>
+                </div>
+
+                <section id="support" class="py-20 bg-gray-100 dark:bg-black/50">
+                    <div class="container mx-auto px-6 text-center">
+                        <h3 class="text-3xl font-bold text-gray-900 dark:text-white">Support the Project</h3>
+                        <p class="text-gray-600 dark:text-gray-400 mt-2 max-w-3xl mx-auto">Your 30-day free trial starts automatically. After the trial, please consider purchasing a license to support app maintenance, bug fixes, and future updates.</p>
+                        
+                        <div class="mt-12 grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                            <div class="bg-white rounded-xl shadow-lg p-8 border dark:border-gray-700 flex flex-col dark:bg-gray-800">
+                                <h4 class="font-bold text-2xl">☕ Monthly Plan</h4>
+                                <p class="text-5xl font-extrabold my-4 flex justify-center items-baseline gap-x-3">
+                                    <span>₹99</span>
+                                    <del class="text-3xl font-medium text-gray-400 dark:text-gray-500">₹199</del>
+                                </p>
+                                <p class="text-gray-600 dark:text-gray-400 mb-8">Get a <span class="font-semibold">1-Month License Key</span> to continue using all features of the application.</p>
+                                <a href="https://license.nregabot.com/buy" target="_blank" rel="noopener noreferrer" class="mt-auto bg-gray-800 text-white font-semibold w-full py-3 rounded-lg hover:bg-black transition-colors dark:bg-gray-700 dark:hover:bg-gray-600">Get 1-Month Key</a>
+                            </div>
+                            <div class="bg-blue-600 text-white rounded-xl shadow-lg p-8 border border-blue-700 flex flex-col ring-4 ring-blue-300 dark:ring-blue-500/50">
+                                <h4 class="font-bold text-2xl">🍻 Yearly Plan</h4>
+                                <p class="text-5xl font-extrabold my-4 flex justify-center items-baseline gap-x-3">
+                                    <span>₹999</span>
+                                    <del class="text-3xl font-medium text-blue-200 opacity-90">₹1999</del>
+                                </p>
+                                <p class="opacity-90 mb-8">Save money with our yearly plan and get a <span class="font-bold">1-Year License Key</span> for your generous support.</p>
+                                <a href="https://license.nregabot.com/buy" target="_blank" rel="noopener noreferrer" class="mt-auto bg-white text-blue-600 font-semibold w-full py-3 rounded-lg hover:bg-blue-100 transition-colors">Get 1-Year Key</a>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </section>
+
+            <section class="py-20">
+                <div class="container mx-auto px-6">
+                    <div class="text-center mb-16">
+                        <h3 class="text-3xl font-bold text-gray-900 dark:text-white">Powerful Automation Features</h3>
+                        <p class="text-gray-600 mt-2 dark:text-gray-400">Everything you need to streamline your workflow.</p>
+                    </div>
+                    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700"><h4>MR Generator</h4><p class="text-gray-600 dark:text-gray-400 mt-2">Automatically generate and download Muster Roll PDFs for one or all work codes.</p></div>
+                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700"><h4>MSR Processor</h4><p class="text-gray-600 dark:text-gray-400 mt-2">Process and save Muster Rolls for a list of work codes, with results shown instantly.</p></div>
+                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700"><h4>FTO Generation</h4><p class="text-gray-600 dark:text-gray-400 mt-2">Automates the login and two-step verification process to generate and capture FTO numbers.</p></div>
+                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700"><h4>Wagelist Automation</h4><p class="text-gray-600 dark:text-gray-400 mt-2">Generate new wagelists and send them for e-FMS payment processing with a single click.</p></div>
+                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700"><h4>Jobcard Verification</h4><p class="text-gray-600 dark:text-gray-400 mt-2">Verify job cards and automatically upload the correct family photo based on the job card number.</p></div>
+                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700"><h4>eMB Entry</h4><p class="text-gray-600 dark:text-gray-400 mt-2">Fill the Measurement Book (MB) entry page for multiple work codes automatically.</p></div>
+                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700"><h4>Workcode Gen (Abua)</h4><p class="text-gray-600 dark:text-gray-400 mt-2">Create new work codes in bulk by reading data from a simple CSV file.</p></div>
+                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700"><h4>IF Editor (Abua)</h4><p class="text-gray-600 dark:text-gray-400 mt-2">Automate the multi-page IF editing process for each row in a CSV file.</p></div>
+                    </div>
+                </div>
+            </section>
+        </section>
+
+        <section id="how-to-use" class="py-16 lg:py-20 bg-gray-100 dark:bg-black/50">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-16">
+                    <h2 class="text-4xl font-extrabold text-gray-900 dark:text-white">How to Use the App</h2>
+                    <p class="text-lg text-gray-600 dark:text-gray-400 mt-4 max-w-3xl mx-auto">Follow these simple instructions for each automation feature.</p>
+                </div>
+
+                <div class="space-y-16">
+                    <div class="instruction-card grid md:grid-cols-2 gap-8 lg:gap-12 items-center bg-white dark:bg-gray-800 p-8 rounded-lg border dark:border-gray-700">
+                        <div class="order-2 md:order-1">
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white">1. Muster Roll (MR) Generator</h3>
+                            <ol class="list-decimal list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
+                                <li>Enter your full Panchayat name (e.g., KASRAYDIH).</li>
+                                <li>Fill in the 'From' and 'To' dates.</li>
+                                <li>Enter the exact Designation and Technical Staff names as they appear on the website.</li>
+                                <li>Paste one or more Work Codes into the text box. To run for all available works, leave this box empty.</li>
+                                <li>Click "Start Generation". PDFs will be saved to your Downloads folder.</li>
+                            </ol>
+                        </div>
+                        <div class="order-1 md:order-2">
+                            <img src="/assets/Muster_Roll_Generator.png" alt="Muster Roll Generator" class="rounded-lg shadow-md border dark:border-gray-700">
+                        </div>
+                    </div>
+                    
+                    <div class="instruction-card grid md:grid-cols-2 gap-8 lg:gap-12 items-center bg-white dark:bg-gray-800 p-8 rounded-lg border dark:border-gray-700">
+                        <div class="order-2 md:order-1">
+                           <h3 class="text-2xl font-bold text-gray-900 dark:text-white">2. MSR Processor</h3>
+                           <ol class="list-decimal list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
+                               <li>First, manually navigate to the MSR Payment page in the launched Chrome browser.</li>
+                               <li>Enter the Panchayat name exactly as it appears on the website.</li>
+                               <li>Paste the list of Work Codes to process.</li>
+                               <li>Click "Start Processing". The results will appear in the "Results" tab within the app.</li>
+                           </ol>
+                       </div>
+                       <div class="order-1 md:order-2">
+                           <img src="/assets/MSR_Processor.png" alt="MSR Processor" class="rounded-lg shadow-md border dark:border-gray-700">
+                       </div>
+                   </div>
+
+                    <div class="instruction-card grid md:grid-cols-2 gap-8 lg:gap-12 items-center bg-white dark:bg-gray-800 p-8 rounded-lg border dark:border-gray-700">
+                        <div>
+                            <img src="/assets/FTO_Generation.png" alt="FTO Generation" class="rounded-lg shadow-md border dark:border-gray-700">
+                        </div>
+                        <div>
+                           <h3 class="text-2xl font-bold text-gray-900 dark:text-white">3. FTO Generation</h3>
+                           <ol class="list-decimal list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
+                               <li>Enter your User ID in the app.</li>
+                               <li>Click "Start FTO Generation".</li>
+                               <li>The automation will navigate to the login page. Enter your password and any captcha directly in the browser window to proceed.</li>
+                               <li>The app will then automatically visit the required verification pages and process all entries.</li>
+                               <li>Generated FTO numbers will appear in the "Results" tab within the app.</li>
+                           </ol>
+                       </div>
+                    </div>
+
+                    <div class="instruction-card grid md:grid-cols-2 gap-8 lg:gap-12 items-center bg-white dark:bg-gray-800 p-8 rounded-lg border dark:border-gray-700">
+                        <div class="order-2 md:order-1">
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white">4. Wagelist Generator</h3>
+                            <ol class="list-decimal list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
+                                <li>Manually navigate to the "Send MSR to PO" page in Chrome.</li>
+                                <li>Enter the Agency name (e.g., BURKUNDI) without "Gram Panchayat -".</li>
+                                <li>Click "Start Generation" to process all available items.</li>
+                            </ol>
+                        </div>
+                        <div class="order-1 md:order-2">
+                            <img src="/assets/Generate_Wagelist.png" alt="Wagelist Generator" class="rounded-lg shadow-md border dark:border-gray-700">
+                        </div>
+                    </div>
+
+                    <div class="instruction-card grid md:grid-cols-2 gap-8 lg:gap-12 items-center bg-white dark:bg-gray-800 p-8 rounded-lg border dark:border-gray-700">
+                        <div>
+                            <img src="/assets/Send_Wagelist.png" alt="Send Wagelist" class="rounded-lg shadow-md border dark:border-gray-700">
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white">5. Send Wagelist</h3>
+                            <ol class="list-decimal list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
+                                <li>Manually navigate to the "Send Wagelist For Payment" page and select the Financial Year.</li>
+                                <li>Enter the Start and End Row numbers for the checkboxes you want to select on the page.</li>
+                                <li>Click "Start Sending". The app will process each wagelist in the dropdown one by one.</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="instruction-card grid md:grid-cols-2 gap-8 lg:gap-12 items-center bg-white dark:bg-gray-800 p-8 rounded-lg border dark:border-gray-700">
+                         <div class="order-2 md:order-1">
+                           <h3 class="text-2xl font-bold text-gray-900 dark:text-white">6. Jobcard Verification & Photo</h3>
+                           <ol class="list-decimal list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
+                               <li>Enter the Panchayat and Village name.</li>
+                               <li>Click "Select Photo Folder" and choose a folder containing photos named after the job card suffix (e.g., `417.jpg` for `.../417`).</li>
+                               <li>If a specific photo isn't found, the default `jobcard.jpeg` will be used.</li>
+                               <li>Click "Start Verification" to process all job cards for the selected village.</li>
+                           </ol>
+                       </div>
+                       <div class="order-1 md:order-2">
+                             <img src="/assets/Jobcard_Verify.png" alt="Jobcard Verification" class="rounded-lg shadow-md border dark:border-gray-700">
+                        </div>
+                    </div>
+                    
+                    <div class="instruction-card grid md:grid-cols-2 gap-8 lg:gap-12 items-center bg-white dark:bg-gray-800 p-8 rounded-lg border dark:border-gray-700">
+                        <div>
+                            <img src="/assets/eMB_entry.png" alt="MB Entry" class="rounded-lg shadow-md border dark:border-gray-700">
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white">7. eMB Entry</h3>
+                            <ol class="list-decimal list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
+                                <li>Fill in all the configuration details like Panchayat, MB No., Page No., etc.</li>
+                                <li>Paste the list of Work Codes to process.</li>
+                                <li>Click "Start Automation". The app will fill and save the MB Entry form for each work code.</li>
+                            </ol>
+                        </div>
+                    </div>
+                    
+                    <div class="instruction-card bg-white dark:bg-gray-800 p-8 rounded-lg border dark:border-gray-700">
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white text-center mb-6">8. Workcode Generator (Abua)</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 items-start">
+                            <div class="space-y-4">
+                                <h4 class="font-semibold text-lg dark:text-white">Instructions</h4>
+                                <ol class="list-decimal list-inside space-y-2 text-gray-700 dark:text-gray-300">
+                                    <li>Prepare a CSV file with 5 columns in this order: `priority`, `work_name`, `khata_no`, `plot_no`, `village_name`.</li>
+                                    <li>In the app, enter the Panchayat name.</li>
+                                    <li>Click "Select workcode_data.csv" and choose your file.</li>
+                                    <li>Click "Start Automation" to generate the work codes.</li>
+                                </ol>
+                            </div>
+                            <div class="space-y-4">
+                                <h4 class="font-semibold text-lg dark:text-white">Demo CSV Data</h4>
+                                <pre class="bg-gray-100 text-gray-800 p-4 rounded-md text-sm overflow-x-auto dark:bg-gray-900 dark:text-gray-300"><code>priority,work_name,khata_no,plot_no,village_name
+1,"ABUA AWAS for User One",101,201,VILLAGEA
+2,"ABUA AWAS for User Two",102,202,VILLAGEB</code></pre>
+                                <a href="data:text/csv;charset=utf-8,priority%2Cwork_name%2Ckhata_no%2Cplot_no%2Cvillage_name%0A1%2C%22ABUA%20AWAS%20for%20User%20One%22%2C101%2C201%2CVILLAGEA%0A2%2C%22ABUA%20AWAS%20for%20User%20Two%22%2C102%2C202%2CVILLAGEB" download="workcode_data_demo.csv" class="inline-block bg-green-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-green-700 transition-colors dark:bg-green-500 dark:hover:bg-green-600">Download Demo CSV</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="instruction-card bg-white dark:bg-gray-800 p-8 rounded-lg border dark:border-gray-700">
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white text-center mb-6">9. IF Editor (Abua)</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 items-start">
+                            <div class="space-y-4">
+                                <h4 class="font-semibold text-lg dark:text-white">Instructions</h4>
+                                <ol class="list-decimal list-inside space-y-2 text-gray-700 dark:text-gray-300">
+                                    <li>Prepare a CSV file with 3 columns in this order: `work_code`, `beneficiary_type`, `job_card`.</li>
+                                    <li>In the app, click "Select if_edit_data.csv" and choose your file.</li>
+                                    <li>Click "Start Automation". The app will automate the multi-page IF editing process.</li>
+                                </ol>
+                            </div>
+                            <div class="space-y-4">
+                                <h4 class="font-semibold text-lg dark:text-white">Demo CSV Data</h4>
+                                <pre class="bg-gray-100 text-gray-800 p-4 rounded-md text-sm overflow-x-auto dark:bg-gray-900 dark:text-gray-300"><code>work_code,beneficiary_type,job_card
+270594,SC,JH-01-001-001-001/123
+270607,ST,JH-01-001-001-001/124</code></pre>
+                                <a href="data:text/csv;charset=utf-8,work_code%2Cbeneficiary_type%2Cjob_card%0A270594%2CSC%2CJH-01-001-001-001/123%0A270607%2CST%2CJH-01-001-001-001/124" download="if_edit_data_demo.csv" class="inline-block bg-green-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-green-700 transition-colors dark:bg-green-500 dark:hover:bg-green-600">Download Demo CSV</a>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <section id="faq" class="py-16 lg:py-20">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-16">
+                    <h2 class="text-4xl font-extrabold text-gray-900 dark:text-white">Frequently Asked Questions</h2>
+                    <p class="text-lg text-gray-600 dark:text-gray-400 mt-4 max-w-3xl mx-auto">Have questions? We've got answers.</p>
+                </div>
+                <div class="max-w-3xl mx-auto space-y-4">
+                    <details class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm cursor-pointer">
+                        <summary class="font-semibold text-lg">Is my NREGA data safe?</summary>
+                        <p class="text-gray-600 dark:text-gray-400 mt-4">Absolutely. The application works by automating your local Chrome browser. It only reads what's on the screen to perform its tasks. None of your NREGA data, work codes, or personal information is ever sent to our servers.</p>
+                    </details>
+                    <details class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm cursor-pointer">
+                        <summary class="font-semibold text-lg">What happens after my 30-day free trial ends?</summary>
+                        <p class="text-gray-600 dark:text-gray-400 mt-4">After 30 days, the automation features will be disabled. To continue using the app, you can support the project by purchasing a monthly or yearly license key.</p>
+                    </details>
+                    <details class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm cursor-pointer">
+                        <summary class="font-semibold text-lg">How do I get a license key after purchasing?</summary>
+                        <p class="text-gray-600 dark:text-gray-400 mt-4">After making a payment on our secure license page, your key will be generated instantly and sent to your registered email address.</p>
+                    </details>
+                    <details class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm cursor-pointer">
+                        <summary class="font-semibold text-lg">Can I use one license key on multiple computers?</summary>
+                        <p class="text-gray-600 dark:text-gray-400 mt-4">Each license key is valid for the number of devices you selected during purchase (1, 2, or 3). The license is locked to the first few computers it is activated on. If you need to change a computer, please contact support.</p>
+                    </details>
+                    <details class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm cursor-pointer">
+                        <summary class="font-semibold text-lg">Why do I need to launch Chrome from the app?</summary>
+                        <p class="text-gray-600 dark:text-gray-400 mt-4">The app launches Chrome in a special "remote debugging" mode. This allows the application to securely connect to the browser and automate the data entry tasks. Your regular Chrome browser will not work for automation.</p>
+                    </details>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <footer class="bg-white border-t dark:bg-gray-900 dark:border-gray-800">
+        <div class="container mx-auto px-6 py-10">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
+                <div>
+                    <h3 class="font-bold text-gray-900 dark:text-white">NREGA Bot</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">&copy; 2025 Rajat Poddar. All rights reserved.</p>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-gray-900 dark:text-white">Legal</h3>
+                    <nav class="mt-4 space-y-2">
+                        <a href="about.html" class="text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 block">About Us</a>
+                        <a href="privacy.html" class="text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 block">Privacy Policy</a>
+                        <a href="terms.html" class="text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 block">Terms & Conditions</a>
+                        <a href="refund.html" class="text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 block">Refund Policy</a>
+                    </nav>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-gray-900 dark:text-white">Support</h3>
+                     <nav class="mt-4 space-y-2">
+                        <a href="contact.html" class="text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 block">Contact Us</a>
+                        <a href="#faq" class="text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 block">FAQ</a>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const menuOpenIcon = document.getElementById('menu-open-icon');
+        const menuCloseIcon = document.getElementById('menu-close-icon');
+        const mobileLinks = document.querySelectorAll('.mobile-link');
+
+        function toggleMenu() {
+            const isHidden = mobileMenu.classList.contains('hidden');
+            mobileMenu.classList.toggle('hidden');
+            menuOpenIcon.classList.toggle('hidden', !isHidden);
+            menuCloseIcon.classList.toggle('hidden', isHidden);
+            document.body.style.overflow = isHidden ? 'hidden' : '';
+        }
+
+        mobileMenuButton.addEventListener('click', toggleMenu);
+        mobileLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                // For single-page navigation links
+                if (link.getAttribute('href').startsWith('#')) {
+                    toggleMenu();
+                }
+                // For multi-page links, the browser will navigate away, closing the menu naturally.
+            });
+        });
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    targetElement.scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+    });
+    </script>
+</body>
+</html>
