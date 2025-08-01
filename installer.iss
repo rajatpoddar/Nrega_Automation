@@ -1,10 +1,10 @@
 ; NREGA Bot Inno Setup Script
-; Version 2.5.1
+; Version 2.5.2
 ; Created by NREGA Bot Team
-; Last Updated: 2023-09-25
+; Last Updated: 2025-08-01
 
 #define AppName "NREGA Bot"
-#define AppVersion "2.5.1"
+#define AppVersion "2.5.2"
 #define AppPublisher "PoddarSolutions"
 #define AppURL "https://nregabot.com"
 #define AppExeName "NREGA Bot.exe"
