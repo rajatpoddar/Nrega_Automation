@@ -10,6 +10,13 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark')
+        } else {
+          document.documentElement.classList.remove('dark')
+        }
+    </script>
     <style>
         body { font-family: 'Inter', sans-serif; }
         .prose { max-width: 80ch; }
@@ -19,17 +26,20 @@
         .prose li { margin-bottom: 0.5rem; }
         .prose a { color: #2563eb; text-decoration: none; }
         .prose a:hover { text-decoration: underline; }
+        .dark .prose h1, .dark .prose h3 { color: #fff; }
+        .dark .prose p, .dark .prose ul, .dark .prose li { color: #d1d5db; }
+        .dark .prose a { color: #60a5fa; }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 antialiased">
+<body class="bg-gray-50 text-gray-800 antialiased dark:bg-gray-900 dark:text-gray-200">
 
-    <header class="bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-50 border-b border-gray-200">
+    <header class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm shadow-sm sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800">
         <div class="container mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
-            <a href="index.html" class="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <a href="index.html" class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 <img src="/logo.png" alt="NREGA Bot Logo" class="h-8 w-8 rounded-full">
                 <span>NREGA Bot</span>
             </a>
-            <a href="index.html" class="hidden md:inline-block bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors">&larr; Back to Home</a>
+            <a href="index.html" class="hidden md:inline-block bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors dark:bg-blue-500 dark:hover:bg-blue-600">&larr; Back to Home</a>
         </div>
     </header>
 
@@ -37,7 +47,7 @@
         <div class="prose mx-auto">
             <div class="text-center mb-12">
                 <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900">Privacy Policy</h1>
-                <p class="text-lg text-gray-600 mt-4">Last updated: July 25, 2025</p>
+                <p class="text-lg text-gray-600 dark:text-gray-400 mt-4">Last updated: July 25, 2025</p>
             </div>
             
             <p>This Privacy Policy describes how NREGA Bot ("the Application") handles your information. Your privacy and data security are our top priorities.</p>
@@ -77,8 +87,8 @@
         </div>
     </main>
 
-    <footer class="bg-white border-t">
-        <div class="container mx-auto px-6 py-8 text-center text-gray-600 text-sm">
+    <footer class="bg-white border-t dark:bg-gray-800 dark:border-gray-700">
+        <div class="container mx-auto px-6 py-8 text-center text-gray-600 dark:text-gray-400 text-sm">
             <p>&copy; 2025 NREGA Bot by Rajat Poddar. All rights reserved.</p>
         </div>
     </footer>

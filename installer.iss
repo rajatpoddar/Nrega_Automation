@@ -1,16 +1,16 @@
 ; NREGA Bot Inno Setup Script
-; Version 2.5.2
+; Version 2.5.3 (Updated)
 ; Created by NREGA Bot Team
-; Last Updated: 2025-08-01
 
 #define AppName "NREGA Bot"
-#define AppVersion "2.5.2"
+#define AppVersion "2.5.3"
 #define AppPublisher "PoddarSolutions"
 #define AppURL "https://nregabot.com"
 #define AppExeName "NREGA Bot.exe"
 #define OutputName "NREGABot-v" + AppVersion + "-Setup"
 
 [Setup]
+; IMPORTANT: This ID must be the SAME for all versions.
 AppId={{E6A5B0D1-2C3D-4E5F-8A9B-1C2D3E4F5A6B}
 AppName={#AppName}
 AppVersion={#AppVersion}
@@ -29,15 +29,21 @@ PrivilegesRequired=admin
 UninstallDisplayIcon={app}\{#AppExeName}
 SetupIconFile=assets\app_icon.ico
 
+; --- NEW & IMPROVED DIRECTIVES ---
+; Automatically close the running application before installing.
+SignTool=SignTool.exe $p
+CloseApplications=yes
+; Ask the user to close the app if it can't be done automatically.
+CloseApplicationsFilter=*.exe
+
 [Languages]
-Name: "english"; MessagesFile: "compiler:Default.isl"
+Name: "english"; [cite_start]MessagesFile: "compiler:Default.isl" [cite: 3]
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}";
 
 [Files]
-; This command now packages the single executable file from your PyInstaller output.
-Source: "dist\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\{#AppExeName}"; DestDir: "{app}"; [cite_start]Flags: ignoreversion [cite: 4]
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
@@ -45,4 +51,4 @@ Name: "{group}\{cm:UninstallProgram,{#AppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#AppName}}"; [cite_start]Flags: nowait postinstall skipifsilent [cite: 5]

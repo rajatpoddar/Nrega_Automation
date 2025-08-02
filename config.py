@@ -3,7 +3,12 @@
 
 # --- Application & Brand Info ---
 APP_NAME = "NREGA Bot"
-APP_VERSION = "2.5.2" # Version bumped for rebranding and new features
+APP_SHORT_NAME = "NREGA Bot"
+APP_TAGLINE = "Your NREGA Task Management Companion"
+APP_DESCRIPTION = "A comprehensive tool for managing NREGA tasks efficiently."
+APP_AUTHOR = "Rajat Poddar"
+APP_AUTHOR_EMAIL = "Rajatpoddar@outlook.com"
+APP_VERSION = "2.5.3" # Version bumped for rebranding and new features
 LICENSE_SERVER_URL = "https://license.nregabot.com"
 MAIN_WEBSITE_URL = "https://nregabot.com"
 SUPPORT_EMAIL = "nregabot@gmail.com"
@@ -18,6 +23,7 @@ ICONS = {
     "Gen Wagelist": "📋", "Send Wagelist": "➡️", "Verify Jobcard": "✅",
     "eMB Entry": "✏️", "WC Gen (Abua)": "🏗️", "IF Editor (Abua)": "🔧",
     "Add Activity": "🪄","Verify ABPS": "💳", "Workcode Extractor": "✂️",
+    "Update Outcome": "📊", "Duplicate MR Print": "📠", 
     "About": "ℹ️", "Theme": {"light": "🌙", "dark": "☀️"}
 }
 
@@ -126,4 +132,14 @@ ABPS_VERIFY_CONFIG = {
 
 DEL_WORK_ALLOC_CONFIG = {
     "url": "https://nregade4.nic.in/Netnrega/delWrkAlloc.aspx"
+}
+
+# --- Update Outcome Configuration ---
+UPDATE_OUTCOME_CONFIG = {
+    "url": "https://nregade4.nic.in/Netnrega/Update_proposedstatus.aspx"
+}
+
+# --- Duplicate MR Print Configuration ---
+DUPLICATE_MR_CONFIG = {
+    "url": "https://nregade4.nic.in/netnrega/reprintmsr.aspx"
 }

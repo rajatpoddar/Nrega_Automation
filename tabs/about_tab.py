@@ -208,7 +208,7 @@ class AboutTab(ctk.CTkFrame):
                 device_label.pack(side="left", fill="x", expand=True, padx=10, pady=8)
 
                 deactivate_btn = ctk.CTkButton(
-                    device_entry_frame, text="Request Deactivation",
+                    device_entry_frame, text="Reset",
                     command=lambda mid=machine_id: self.request_single_device_deactivation(mid),
                     width=140, fg_color="transparent", text_color=("#3B82F6", "#60A5FA"), hover=False,
                 )

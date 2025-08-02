@@ -37,6 +37,9 @@ from tabs.workcode_extractor_tab import WorkcodeExtractorTab
 from tabs.add_activity_tab import AddActivityTab
 from tabs.abps_verify_tab import AbpsVerifyTab
 from tabs.del_work_alloc_tab import DelWorkAllocTab
+from tabs.update_outcome_tab import UpdateOutcomeTab
+from tabs.duplicate_mr_tab import DuplicateMrTab
+
 
 if config.OS_SYSTEM == "Windows":
     import ctypes
@@ -72,6 +75,66 @@ if SENTRY_DSN:
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme(resource_path("theme.json"))
 
+# --- NEW CLASS: CollapsibleFrame ---
+class CollapsibleFrame(ctk.CTkFrame):
+    """
+    A collapsible frame widget that contains a header button and a content frame.
+    """
+    def __init__(self, parent, title="", initially_expanded=False):
+        super().__init__(parent, fg_color="transparent")
+        self.grid_columnconfigure(0, weight=1)
+        self.is_expanded = initially_expanded
+        self.title = title
+
+        # Header button
+        self.header_button = ctk.CTkButton(
+            self,
+            text=f"{self.get_arrow()} {self.title}",
+            command=self.toggle,
+            anchor="w",
+            font=ctk.CTkFont(size=11, weight="bold"),
+            fg_color="transparent",
+            text_color=("gray10", "gray80"),
+            hover=False
+        )
+        self.header_button.grid(row=0, column=0, sticky="ew", padx=5)
+
+        # Content frame
+        self.content_frame = ctk.CTkFrame(self, fg_color="transparent")
+        # The content frame will be placed by the toggle method
+
+        self.update_visibility()
+
+    def get_arrow(self):
+        return "▼" if self.is_expanded else "▶"
+
+    def toggle(self, event=None):
+        self.is_expanded = not self.is_expanded
+        self.update_visibility()
+
+    def expand(self):
+        if not self.is_expanded:
+            self.is_expanded = True
+            self.update_visibility()
+
+    def collapse(self):
+        if self.is_expanded:
+            self.is_expanded = False
+            self.update_visibility()
+
+    def update_visibility(self):
+        self.header_button.configure(text=f"{self.get_arrow()} {self.title.upper()}")
+        if self.is_expanded:
+            self.content_frame.grid(row=1, column=0, sticky="ew", padx=(10,0))
+        else:
+            self.content_frame.grid_forget()
+
+    def add_widget(self, widget, **pack_options):
+        """Adds a widget to the content frame."""
+        widget.pack(in_=self.content_frame, **pack_options)
+        return widget
+
+
 class NregaBotApp(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -104,6 +167,8 @@ class NregaBotApp(ctk.CTk):
         self.nav_buttons = {}
         self.content_frames = {}
         self.tab_instances = {}
+        # --- NEW ---
+        self.button_to_category_frame = {}
         self.bind("<FocusIn>", self._on_window_focus)
         self.after(0, self.start_app)
         
@@ -142,7 +207,10 @@ class NregaBotApp(ctk.CTk):
             self._ping_server_in_background()
             self._unlock_app()
             self.after(100, self._update_about_tab_info)
-            self.show_frame("About" if is_expiring else list(self.get_tabs_definition().keys())[0])
+            
+            first_tab_name = list(list(self.get_tabs_definition().values())[0].keys())[0]
+            self.show_frame("About" if is_expiring else first_tab_name)
+
             self.check_for_updates_background()
             self.deiconify()
             self.attributes("-alpha", 1.0)
@@ -155,7 +223,8 @@ class NregaBotApp(ctk.CTk):
                 self.check_expiry_and_notify()
                 self._unlock_app()
                 self.after(100, self._update_about_tab_info)
-                self.show_frame(list(self.get_tabs_definition().keys())[0])
+                first_tab_name = list(list(self.get_tabs_definition().values())[0].keys())[0]
+                self.show_frame(first_tab_name)
                 self.check_for_updates_background()
             else:
                 self.destroy()
@@ -217,6 +286,22 @@ class NregaBotApp(ctk.CTk):
 
     def get_data_path(self, filename): return get_data_path(filename)
     def get_user_downloads_path(self): return get_user_downloads_path()
+
+    # --- ADDED: Method to open a folder cross-platform ---
+    def open_folder(self, path):
+        """Opens a folder in the default file explorer."""
+        try:
+            if os.path.exists(path):
+                if sys.platform == "win32":
+                    os.startfile(path)
+                elif sys.platform == "darwin":
+                    subprocess.call(["open", path])
+                else: # linux
+                    subprocess.call(["xdg-open", path])
+            else:
+                messagebox.showwarning("Folder Not Found", f"The directory does not exist:\n{path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not open the folder.\n\nPath: {path}\nError: {e}")
 
     def _load_icon(self, name, path, size=(20, 20)):
         try:
@@ -385,29 +470,87 @@ class NregaBotApp(ctk.CTk):
         main_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
         main_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(10,0))
         main_frame.grid_rowconfigure(0, weight=1); main_frame.grid_columnconfigure(1, weight=1)
-        self._create_nav_buttons(main_frame)
-        self.content_area = ctk.CTkFrame(main_frame, fg_color="transparent"); self.content_area.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
+        
+        nav_scroll_frame = ctk.CTkScrollableFrame(main_frame, width=220, label_text="", fg_color="transparent")
+        nav_scroll_frame.grid(row=0, column=0, sticky="nsw", padx=(0,10))
+        self._create_nav_buttons(nav_scroll_frame)
+        
+        self.content_area = ctk.CTkFrame(main_frame, fg_color="transparent"); self.content_area.grid(row=0, column=1, sticky="nsew")
         self.content_area.grid_rowconfigure(0, weight=1); self.content_area.grid_columnconfigure(0, weight=1)
         self._create_content_frames()
 
     def _create_nav_buttons(self, parent):
-        nav_frame = ctk.CTkFrame(parent, width=220); nav_frame.grid(row=0, column=0, sticky="nsw")
-        for name, data in self.get_tabs_definition().items():
-            btn = ctk.CTkButton(nav_frame, text=f" {data['icon']}  {name}", command=lambda n=name: self.show_frame(n), anchor="w", font=ctk.CTkFont(size=14), height=40, corner_radius=8, fg_color="transparent", text_color=("gray10", "gray90"), hover_color=("gray75", "gray25"))
-            btn.pack(fill="x", padx=10, pady=(5,0)); self.nav_buttons[name] = btn
+        first_category_name = list(self.get_tabs_definition().keys())[0]
+
+        for category, tabs in self.get_tabs_definition().items():
+            is_first = (category == first_category_name)
+            category_frame = CollapsibleFrame(parent, title=category, initially_expanded=is_first)
+            category_frame.pack(fill="x", pady=(5, 0), padx=5)
+
+            for name, data in tabs.items():
+                btn = ctk.CTkButton(
+                    category_frame.content_frame,
+                    text=f" {data['icon']}  {name}",
+                    command=lambda n=name: self.show_frame(n),
+                    anchor="w",
+                    font=ctk.CTkFont(size=14),
+                    height=40,
+                    corner_radius=8,
+                    fg_color="transparent",
+                    text_color=("gray10", "gray90"),
+                    hover_color=("gray75", "gray25")
+                )
+                btn.pack(fill="x", padx=5, pady=(5, 0))
+                self.nav_buttons[name] = btn
+                self.button_to_category_frame[name] = category_frame
 
     def _create_content_frames(self):
-        for name, data in self.get_tabs_definition().items():
-            frame_container = ctk.CTkFrame(self.content_area, fg_color="transparent"); frame_container.grid(row=0, column=0, sticky="nsew")
-            tab_instance = data["creation_func"](frame_container, self); tab_instance.pack(expand=True, fill="both")
-            self.content_frames[name], self.tab_instances[name] = frame_container, tab_instance
+        for category, tabs in self.get_tabs_definition().items():
+            for name, data in tabs.items():
+                frame_container = ctk.CTkFrame(self.content_area, fg_color="transparent"); frame_container.grid(row=0, column=0, sticky="nsew")
+                tab_instance = data["creation_func"](frame_container, self); tab_instance.pack(expand=True, fill="both")
+                self.content_frames[name] = frame_container
+                self.tab_instances[name] = tab_instance
 
     def get_tabs_definition(self):
-        return { "MR Gen": {"creation_func": MusterrollGenTab, "icon": config.ICONS["MR Gen"]}, "MR Payment": {"creation_func": MsrTab, "icon": config.ICONS["MR Payment"]}, "Gen Wagelist": {"creation_func": WagelistGenTab, "icon": config.ICONS["Gen Wagelist"]}, "Send Wagelist": {"creation_func": WagelistSendTab, "icon": config.ICONS["Send Wagelist"]}, "FTO Generation": {"creation_func": FtoGenerationTab, "icon": config.ICONS["FTO Generation"]}, "Verify Jobcard": {"creation_func": JobcardVerifyTab, "icon": config.ICONS["Verify Jobcard"]}, "eMB Entry⚠️": {"creation_func": MbEntryTab, "icon": config.ICONS["eMB Entry"]},"Del Work Alloc": {"creation_func": DelWorkAllocTab, "icon": "🗑️"},  "WC Gen": {"creation_func": WcGenTab, "icon": config.ICONS["WC Gen (Abua)"]}, "IF Editor": {"creation_func": IfEditTab, "icon": config.ICONS["IF Editor (Abua)"]}, "Add Activity": {"creation_func": AddActivityTab, "icon": config.ICONS["Add Activity"]}, "Verify ABPS": {"creation_func": AbpsVerifyTab, "icon": config.ICONS["Verify ABPS"]}, "Workcode Extractor": {"creation_func": WorkcodeExtractorTab, "icon": config.ICONS["Workcode Extractor"]}, "About": {"creation_func": AboutTab, "icon": config.ICONS["About"]} }
+        return {
+            "Core NREGA Tasks": {
+                "MR Gen": {"creation_func": MusterrollGenTab, "icon": config.ICONS["MR Gen"]},
+                "MR Payment": {"creation_func": MsrTab, "icon": config.ICONS["MR Payment"]},
+                "Gen Wagelist": {"creation_func": WagelistGenTab, "icon": config.ICONS["Gen Wagelist"]},
+                "Send Wagelist": {"creation_func": WagelistSendTab, "icon": config.ICONS["Send Wagelist"]},
+                "FTO Generation": {"creation_func": FtoGenerationTab, "icon": config.ICONS["FTO Generation"]},
+                "eMB Entry⚠️": {"creation_func": MbEntryTab, "icon": config.ICONS["eMB Entry"]},
+                "Del Work Alloc": {"creation_func": DelWorkAllocTab, "icon": "🗑️"},
+                "Duplicate MR Print": {"creation_func": DuplicateMrTab, "icon": config.ICONS["Duplicate MR Print"]},
+            },
+            "Records & Workcode": {
+                "WC Gen": {"creation_func": WcGenTab, "icon": config.ICONS["WC Gen (Abua)"]},
+                "IF Editor": {"creation_func": IfEditTab, "icon": config.ICONS["IF Editor (Abua)"]},
+                "Add Activity": {"creation_func": AddActivityTab, "icon": config.ICONS["Add Activity"]},
+            },
+            "Utilities & Verification": {
+                "Verify Jobcard": {"creation_func": JobcardVerifyTab, "icon": config.ICONS["Verify Jobcard"]},
+                "Verify ABPS": {"creation_func": AbpsVerifyTab, "icon": config.ICONS["Verify ABPS"]},
+                "Workcode Extractor": {"creation_func": WorkcodeExtractorTab, "icon": config.ICONS["Workcode Extractor"]},
+                "Update Outcome": {"creation_func": UpdateOutcomeTab, "icon": config.ICONS["Update Outcome"]},
+            },
+            "Application": {
+                 "About": {"creation_func": AboutTab, "icon": config.ICONS["About"]}
+            }
+        }
 
     def show_frame(self, page_name):
+        if page_name in self.button_to_category_frame:
+            target_category_frame = self.button_to_category_frame[page_name]
+            target_category_frame.expand()
+        
         self.content_frames[page_name].tkraise()
-        for name, button in self.nav_buttons.items(): button.configure(fg_color=("gray90", "gray28") if name == page_name else "transparent")
+        
+        for name, button in self.nav_buttons.items():
+            is_active = (name == page_name)
+            button.configure(fg_color=("gray90", "gray28") if is_active else "transparent")
+
     
     def _create_footer(self):
         footer_frame = ctk.CTkFrame(self, height=40, corner_radius=0)
@@ -419,13 +562,11 @@ class NregaBotApp(ctk.CTk):
         button_container = ctk.CTkFrame(footer_frame, fg_color="transparent")
         button_container.pack(side="right", padx=15)
         
-        # --- NEW: Demo CSV Download Links ---
         if_edit_csv_btn = ctk.CTkButton(button_container, text="Demo IF Edit CSV", command=lambda: self.save_demo_csv("if_edit"), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
         if_edit_csv_btn.pack(side="right", padx=(10, 0))
         
         wc_gen_csv_btn = ctk.CTkButton(button_container, text="Demo WC Gen CSV", command=lambda: self.save_demo_csv("wc_gen"), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
         wc_gen_csv_btn.pack(side="right", padx=(10, 0))
-        # --- END NEW ---
 
         whatsapp_btn = ctk.CTkButton(button_container, text="Join WhatsApp Group", image=self.icon_images.get("whatsapp"), command=lambda: webbrowser.open_new_tab("https://chat.whatsapp.com/Bup3hDCH3wn2shbUryv8wn?mode=r_c"), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
         whatsapp_btn.pack(side="right", padx=(10, 0))
@@ -700,21 +841,9 @@ class NregaBotApp(ctk.CTk):
             elif config.OS_SYSTEM == "Darwin":
                 if self.sleep_prevention_process: self.sleep_prevention_process.terminate(); self.sleep_prevention_process = None
 
-    def start_automation_thread(self, key, target_func, args=()):
-        if self.automation_threads.get(key) and self.automation_threads[key].is_alive(): messagebox.showwarning("In Progress", f"The '{key}' task is already running."); return
-        self.prevent_sleep(); self.active_automations.add(key); self.stop_events[key] = threading.Event()
-        def thread_wrapper():
-            try: target_func(*args)
-            finally: self.after(0, self.on_automation_finished, key)
-        thread = threading.Thread(target=thread_wrapper, daemon=True); self.automation_threads[key] = thread; thread.start()
-
     def on_automation_finished(self, key):
         if key in self.active_automations: self.active_automations.remove(key)
         if not self.active_automations: self.allow_sleep()
-
-    def log_message(self, log_widget, message, level="info"):
-        log_widget.configure(state="normal"); log_widget.insert(tkinter.END, f"[{time.strftime('%H:%M:%S')}] {message}\n"); log_widget.configure(state="disabled"); log_widget.see(tkinter.END)
-    def clear_log(self, log_widget): log_widget.configure(state="normal"); log_widget.delete("1.0", tkinter.END); log_widget.configure(state="disabled")
 
     def check_for_updates_background(self):
         def _check():
@@ -770,17 +899,26 @@ class NregaBotApp(ctk.CTk):
                 
                 self.after(0, lambda: about_tab.update_button.configure(text="Download Complete. Installing..."))
                 
-                if sys.platform == "darwin": # macOS
-                    subprocess.call(["open", download_path])
-                    self.after(0, messagebox.showinfo, "Installation Instructions", f"The installer '{filename}' has been downloaded to your Downloads folder and opened.\n\nPlease drag the NREGA Bot icon into your Applications folder to install.\n\nThe application will now close.")
-                elif sys.platform == "win32": # Windows
+                # --- MODIFIED SECTION ---
+                if sys.platform == "win32": # Windows
+                    messagebox.showinfo(
+                        "Ready to Update",
+                        "The update has been downloaded. The application will now close to run the installer.",
+                        parent=self # Ensure messagebox is on top
+                    )
                     os.startfile(download_path)
-                
-                self.after(3000, self.on_closing, True)
+                    # Forcefully close the app after a short delay
+                    self.after(500, self.on_closing, True) 
+
+                elif sys.platform == "darwin": # macOS
+                    subprocess.call(["open", download_path])
+                    self.after(0, messagebox.showinfo, "Installation Instructions", f"The installer '{filename}' has been downloaded and opened.\nPlease drag the NREGA Bot icon into your Applications folder.\n\nThe application will now close.")
+                    self.after(3000, self.on_closing, True)
+                # --- END OF MODIFIED SECTION ---
 
             except Exception as e:
                 self.after(0, messagebox.showerror, "Update Failed", f"Could not download or run the update.\n\nError: {e}")
-            finally:
+                # Re-enable the button on failure
                 if about_tab.winfo_exists():
                     self.after(0, lambda: about_tab.update_button.configure(state="normal", text=f"Download & Install v{version}"))
                     self.after(0, about_tab.update_progress.pack_forget)
@@ -790,7 +928,6 @@ class NregaBotApp(ctk.CTk):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-    # --- NEW: Install webdriver-manager for Firefox on first run ---
     try:
         logging.info("Checking for GeckoDriver...")
         GeckoDriverManager().install()
@@ -799,7 +936,6 @@ if __name__ == '__main__':
         logging.error(f"Could not download/update GeckoDriver: {e}")
         messagebox.showerror("Driver Error", "Could not download the required Firefox driver (GeckoDriver). Please check your internet connection and try again.")
         sys.exit(1)
-    # --- END NEW ---
     try: app = NregaBotApp(); app.mainloop()
     except Exception as e:
         if SENTRY_DSN: sentry_sdk.capture_exception(e)

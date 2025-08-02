@@ -12,7 +12,6 @@ class WorkcodeExtractorTab(ctk.CTkFrame):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-        # Main frame to hold input and output side-by-side
         main_container = ctk.CTkFrame(self, fg_color="transparent")
         main_container.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
         main_container.grid_columnconfigure((0, 1), weight=1)
@@ -22,11 +21,10 @@ class WorkcodeExtractorTab(ctk.CTkFrame):
         input_frame = ctk.CTkFrame(main_container)
         input_frame.grid(row=1, column=0, sticky="nsew", padx=(0, 5))
         input_frame.grid_columnconfigure(0, weight=1)
-        input_frame.grid_rowconfigure(2, weight=1) # Make space for the new note
+        input_frame.grid_rowconfigure(2, weight=1)
 
         ctk.CTkLabel(input_frame, text="Paste Text Below", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, padx=15, pady=(10,0), sticky="w")
 
-        # Instructional note and link
         note_frame = ctk.CTkFrame(input_frame, fg_color="transparent")
         note_frame.grid(row=1, column=0, sticky="w", padx=15, pady=(2, 8))
         
@@ -62,14 +60,22 @@ class WorkcodeExtractorTab(ctk.CTkFrame):
         # --- Action Buttons (Top) ---
         action_frame = ctk.CTkFrame(main_container)
         action_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 10))
-        action_frame.grid_columnconfigure(1, weight=1) # Allow checkbox to center
+        action_frame.grid_columnconfigure(1, weight=1)
         
         self.extract_button = ctk.CTkButton(action_frame, text="▶ Extract Codes", command=self._extract_codes)
         self.extract_button.grid(row=0, column=0, padx=15, pady=10)
         
-        # --- ADDED: Checkbox to remove duplicates ---
-        self.remove_duplicates_checkbox = ctk.CTkCheckBox(action_frame, text="Remove Duplicates (for eMB entry)")
-        self.remove_duplicates_checkbox.grid(row=0, column=1, padx=10, pady=10, sticky="w")
+        # --- MODIFIED: Added a frame for checkboxes for better alignment ---
+        checkbox_frame = ctk.CTkFrame(action_frame, fg_color="transparent")
+        checkbox_frame.grid(row=0, column=1, padx=10, pady=10)
+        
+        self.remove_duplicates_checkbox = ctk.CTkCheckBox(checkbox_frame, text="Remove Duplicates")
+        self.remove_duplicates_checkbox.pack(side="left", padx=(0, 15))
+        self.remove_duplicates_checkbox.select() # Checked by default
+
+        # --- ADDED: Checkbox to extract full workcode ---
+        self.extract_full_code_checkbox = ctk.CTkCheckBox(checkbox_frame, text="Extract Full Workcode")
+        self.extract_full_code_checkbox.pack(side="left")
         
         self.clear_button = ctk.CTkButton(action_frame, text="Clear All", command=self._clear_all, fg_color="transparent", border_width=2, text_color=("gray10", "#DCE4EE"))
         self.clear_button.grid(row=0, column=2, padx=15, pady=10)
@@ -80,23 +86,28 @@ class WorkcodeExtractorTab(ctk.CTkFrame):
         if not input_content.strip():
             return
 
+        # Pattern to find the full work code like '3404004015/IF/1234567890/123456'
         work_code_pattern = re.compile(r'\b(34\d{8}(?:/\w+)+/\d+)\b')
         found_codes = work_code_pattern.findall(input_content)
         
+        # --- MODIFIED: Process codes based on checkbox state ---
         extracted_results = []
+        extract_full_code = self.extract_full_code_checkbox.get()
+
         for code in found_codes:
-            last_part = code.split('/')[-1]
-            if len(last_part) > 7:
-                extracted_results.append(last_part[-6:])
+            if extract_full_code:
+                extracted_results.append(code)
             else:
-                extracted_results.append(last_part)
-        
-        # --- MODIFIED: Handle duplicates based on checkbox state ---
+                # Original logic to get the last part
+                last_part = code.split('/')[-1]
+                if len(last_part) > 7:
+                    extracted_results.append(last_part[-6:])
+                else:
+                    extracted_results.append(last_part)
+
         if self.remove_duplicates_checkbox.get():
-            # If checkbox is checked, remove duplicates while preserving order
             final_results = list(dict.fromkeys(extracted_results))
         else:
-            # Otherwise, keep all results including duplicates
             final_results = extracted_results
         
         # Display the results

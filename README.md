@@ -1,46 +1,53 @@
+<div align="center">
+  <img src="https://nregabot.com/logo.png" alt="NREGA Bot Logo" width="96"/>
+</div>
+
+# <div align="center">NREGA Bot</div>
+
 <p align="center">
-  <img src="https://img.icons8.com/color/96/robot-2.png" alt="NREGA Bot Logo" width="80"/>
+  <b>Version 2.5.3 | The ultimate tool to automate your repetitive NREGA portal tasks.</b><br />
+  <a href="https://nregabot.com/#downloads"><strong>Download Now »</strong></a><br /><br />
+  <a href="https://nregabot.com/how-to-use.html">View Instructions</a> ·
+  <a href="https://nregabot.com/contact.html">Report Bug</a> ·
+  <a href="https://nregabot.com/#faq">Request Feature</a>
 </p>
-
-<h1 align="center">NREGA Bot</h1>
-
-<p align="center"><b>Version 2.5.2 | Automate repetitive NREGA portal tasks with ease!</b></p>
 
 ---
 
 ## 📌 Overview
 
-**NREGA Bot** is a powerful desktop tool built with Python that automates various repetitive data entry and processing tasks on the NREGA portal. It interacts with a web browser (Google Chrome) to simplify your daily workflow.
+**NREGA Bot** is a powerful and intuitive desktop application designed to eliminate the manual, repetitive work involved with the NREGA portal. By automating your most tedious data entry, processing, and verification tasks, NREGA Bot saves you countless hours and reduces manual errors.
 
-This tool is designed for users who handle large volumes of data and want to reduce manual effort and save significant time.
+The application works by securely controlling a web browser on your computer, allowing you to focus on what matters most.
 
 ---
 
-## 🚀 Features
+## 🚀 Key Features
 
-🧭 **Tab-based interface** for each automation task:
+An intuitive, tab-based interface for every automation task:
 
-- 🗂️ **MR Gen** – Automatically generates and downloads Muster Roll PDFs.  
-- 💳 **MR Payment** – Fills & saves Muster Rolls for a list of work codes with detailed results.  
-- 📤 **FTO Generation** – Generate FTO for both Aadhar based & Top-up Automatically with detailed FTO No. on results.  
-- 📋 **Gen Wagelist** – Creates wagelists automatically by processing all available items.  
-- ➡️ **Send Wagelist** – Marks generated wagelists for e-FMS payment processing.  
-- ✅ **Verify Jobcard** – Verifies all job cards for a village and intelligently uploads the correct family photo from a folder.  
-- ✏️ **eMB Entry** – Automates Measurement Book (eMB) entry for multiple work codes.  
-- 🏗️ **WC Gen (Abua)** – Creates new Abua Awas work codes in bulk from a CSV file.  
-- 🔧 **IF Editor (Abua)** – Automates the multi-page Irrigation Facility (IF) editing process from a CSV.  
-- 🪄 **Add Activity** – Adds 'Earth work' activity to work codes in bulk.  
-- 💳 **Verify ABPS** – Checks Aadhaar Based Payment System (ABPS) status for job cards.  
-- ✂️ **Workcode Extractor** – Extracts work codes from pasted text.  
-- 🎨 **Dark/Light Theme Toggle** – For a comfortable UI experience.  
+- ✨ **Duplicate MR Print** – Find, save as PDF, and print all Muster Rolls for one or more work codes in a single batch operation.
+- ✨ **Update Estimated Outcome** – Quickly update the 'Estimated Outcome' for a list of work codes without manual entry.
+- 🗂️ **Muster Roll (MR) Generator** – Automatically generate and download Muster Roll PDFs for specified work codes.
+- ⚙️ **MSR Processor** – Process and save Muster Rolls from the MSR Payment page for a list of work codes.
+- 📤 **FTO Generation** – Automates the login and two-step verification process to generate and capture FTO numbers.
+- 📋 **Wagelist Automation** – Generate new wagelists and send them for e-FMS payment processing with a single click.
+- ✅ **Jobcard Verification & Photo Upload** – Verify job cards for an entire village and automatically upload the correct family photo for each card.
+- ✏️ **eMB Entry** – Automate filling the Measurement Book (MB) entry page for multiple work codes.
+- 🏗️ **Workcode Generator (Dynamic)** – Create new work codes in bulk by loading categories from the website and reading data from a simple CSV file.
+- 🔧 **IF Editor (Dynamic)** – Automate the multi-page IF editing process with a flexible UI and a simple CSV for inputs.
+- 💳 **Verify ABPS** – Automate checking worker Aadhaar numbers with NPCI, with an option to process all villages in a panchayat.
+- ✂️ **Workcode Extractor** – A handy utility to parse and extract clean lists of work codes from any block of text.
+- 🎨 **Dark/Light Theme** – A modern interface that respects your system's theme for comfortable viewing.
 
 ---
 
 ## 🛠 Prerequisites
 
-You only need to have **Google Chrome** installed on your system.
+You only need to have a supported web browser installed on your system:
 
-- 🌐 [Google Chrome](https://www.google.com/chrome/)
+- 🌐 **Google Chrome (Recommended)**
+- 🦊 **Mozilla Firefox**
 
 ---
 
@@ -48,57 +55,68 @@ You only need to have **Google Chrome** installed on your system.
 
 ### 1️⃣ Download the Application
 
-Download the latest version from the [GitHub Releases](https://github.com/rajatpoddar/Nrega_Automation/releases) or the project website.
+Download the latest version from the official website or GitHub Releases:
 
-- **For Windows**: `NREGABot-v2.5.2-Setup.exe`  
-- **For macOS**: `NREGABot-v2.5.2-macOS.dmg`  
+- Website: [nregabot.com/#downloads](https://nregabot.com/#downloads)
+- **For Windows**: `NREGABot-v2.5.3-Setup.exe`
+- **For macOS**: `NREGABot-v2.5.3-macOS.dmg`
 
-Place the downloaded file in a convenient folder.
+### 2️⃣ First-Time Launch & Trial
 
----
-
-### 2️⃣ First-Time Launch
-
-- Start a **30-day free trial** — no license key required.  
-- Just launch the application to get started.
+A 30-day free trial starts automatically when you first launch the application.  
+No license key or registration is required to start the trial.
 
 ---
 
-### ▶️ Running the Application
+## 📘 How to Use
 
-1. **Close all Chrome windows** before starting.  
-2. **Launch NREGA Bot** by double-clicking the application file.  
-3. Click **"Launch Chrome"** from the top-right of the dashboard.  
-4. **Log in** to the NREGA portal in the newly opened special Chrome window.  
-5. You're ready to start automating!
-
----
-
-## 📘 Usage Guide
-
-- 🧭 Open the dashboard and launch Chrome using the button provided.
-- 🔐 Log in manually to the NREGA portal inside that controlled Chrome window.
-- 🔀 Select your desired automation tab.
-- 📋 Enter the required details (e.g., Panchayat name, work codes).
-- ✅ Click **Start Automation**.
-- 🔍 Monitor progress in the **Logs & Status** area.
-- 🛑 Use the **Stop** button to halt any process safely.
-
----
-
-## ⚠️ Disclaimer
-
-- ⚡ This tool interacts with a **live government website**.
-- 🔄 If the portal's structure or elements change, the automation may break.
-- 🛠️ Use responsibly. The author provides **no warranties**. Always **double-check** automated data.
+1. Launch NREGA Bot from your applications folder or desktop.
+2. From the app's dashboard, click the **"Launch Browser"** button. This will open a special, controlled browser window.
+3. In that new browser window, log in to the NREGA portal as you normally would.
+4. Navigate to the tab in the NREGA Bot app for the task you want to automate.
+5. Fill in the required details (e.g., Panchayat name, work codes).
+6. Click **"Start Automation"** and watch the magic happen!
+7. You can monitor progress in the Logs & Status area and stop the process at any time with the **Stop** button.
 
 ---
 
 ## 📸 Screenshots
 
-<img src="assets/FTO_Generation.png" width="600"/>
-<img src="assets/about.png" width="600"/>
-<img src="assets/Muster_Roll_Generator.png" width="600"/>
+<img src="https://nregabot.com/assets/Muster_Roll_Generator.png" width="700"/><br/>
+<em>Modern, intuitive dashboard with powerful features.</em>
+
+<br/><br/>
+
+<img src="https://nregabot.com/assets/Duplicate_MR_Print.png" width="700"/><br/>
+<em>The new Duplicate MR Print feature in action.</em>
+
+---
+
+## 📜 License & Pricing
+
+- **Trial**: This software comes with a 30-day fully-functional free trial.
+- **License**: After the trial period, a license key is required to continue using the automation features.
+
+Affordable Monthly and Yearly license plans are available. Please visit our website to purchase a key.
+
+👉 **[Get Your License Key](https://nregabot.com/#pricing)**
+
+---
+
+## 📞 Support
+
+For questions, bug reports, or feature requests, please contact us:
+
+- **Email**: [nregabot@gmail.com](mailto:nregabot@gmail.com)
+- **WhatsApp Community**: [Join our Group](https://nregabot.com/contact.html)
+
+---
+
+## ⚠️ Disclaimer
+
+This tool automates interactions with a live government website. The author is not responsible for any changes to the NREGA portal that may cause the application to malfunction.
+
+> This software is provided "AS IS" without warranty of any kind. Always double-check automated data for accuracy.
 
 ---
 
@@ -106,9 +124,3 @@ Place the downloaded file in a convenient folder.
 
 **Rajat Poddar**  
 🔗 [GitHub Profile](https://github.com/rajatpoddar)
-
----
-
-## 🪄 License
-
-This project is **proprietary**. All rights reserved.

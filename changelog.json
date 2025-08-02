@@ -1,4 +1,14 @@
 {
+  "2.5.3": [
+    "✨ New Automation: Update Estimated Outcome - Added a new tab to automate updating the 'Estimated Outcome' for a list of work codes.",
+    "✨ New Automation: Duplicate MR Print - Implemented a powerful new feature to find, save, and print duplicate Muster Rolls for multiple work codes in a single batch operation.",
+    "✨ UI Overhaul: Collapsible Navigation Menu - Reorganized the left-side menu into expandable categories for a cleaner, more scalable interface.",
+    "✨ UI/UX: Dynamic 'Open Folder' Prompt - The app now asks to open the output folder after file-generating automations are complete.",
+    "🛠️ Major Improvement (IF Editor): Redesigned the UI to be more intuitive and moved Page 3 settings (Activity Code, etc.) from the CSV to the main interface for greater flexibility.",
+    "🐞 Critical Bug Fix (Duplicate MR Print): Completely rewrote the automation logic to correctly handle websites that require a full page reload between processing items in a loop, resolving persistent timeout errors.",
+    "🐞 Critical Bug Fix (IF Editor): Fixed a recurring timing issue on Page 3 by implementing the correct sequence of pauses and browser actions, ensuring data is saved reliably.",
+    "🛠️ Improvement (File Management): The 'Duplicate MR Print' feature now saves PDFs into a structured, date-stamped, and Panchayat-named folder hierarchy."
+  ],
   "2.5.2": [
     "✨ New Feature: Added 'Download Demo CSV' links to the app's footer for 'WC Gen' and 'IF Edit' tabs, making it easier for users to start with the correct file format.",
     "🛠️ Major Overhaul (WC Gen): Replaced static defaults with a fully dynamic UI. Categories are now loaded live from the NREGA website for maximum flexibility.",

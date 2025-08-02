@@ -10,40 +10,47 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark')
+        } else {
+          document.documentElement.classList.remove('dark')
+        }
+    </script>
     <style>
         body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 antialiased">
+<body class="bg-gray-50 text-gray-800 antialiased dark:bg-gray-900 dark:text-gray-200">
 
-    <header class="bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-50 border-b border-gray-200">
+    <header class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm shadow-sm sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800">
         <div class="container mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
-            <a href="index.html" class="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <a href="index.html" class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 <img src="/logo.png" alt="NREGA Bot Logo" class="h-8 w-8 rounded-full">
                 <span>NREGA Bot</span>
             </a>
-            <a href="index.html" class="hidden md:inline-block bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors">&larr; Back to Home</a>
+            <a href="index.html" class="hidden md:inline-block bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors dark:bg-blue-500 dark:hover:bg-blue-600">&larr; Back to Home</a>
         </div>
     </header>
 
     <main class="container mx-auto px-6 py-16 lg:py-20">
         <div class="max-w-3xl mx-auto text-center">
-            <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900">Contact Us</h1>
-            <p class="mt-4 text-lg text-gray-600">We're here to help. Reach out to us with your questions, feedback, or support requests.</p>
+            <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white">Contact Us</h1>
+            <p class="mt-4 text-lg text-gray-600 dark:text-gray-400">We're here to help. Reach out to us with your questions, feedback, or support requests.</p>
         </div>
 
         <div class="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            <div class="bg-white p-8 rounded-lg shadow-md border">
-                <h2 class="text-2xl font-bold text-gray-900">Email Support</h2>
-                <p class="mt-2 text-gray-600">For all inquiries, including technical support, license questions, and feedback, please send us an email. This is the best way to get a detailed response.</p>
-                <div class="mt-4 bg-gray-100 p-4 rounded-md text-center">
-                    <p class="text-sm text-gray-500">Official Support Email</p>
-                    <a href="mailto:nregabot@gmail.com" class="text-lg font-mono font-semibold text-blue-600 hover:underline">nregabot@gmail.com</a>
+            <div class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md border dark:border-gray-700">
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Email Support</h2>
+                <p class="mt-2 text-gray-600 dark:text-gray-400">For all inquiries, including technical support, license questions, and feedback, please send us an email. This is the best way to get a detailed response.</p>
+                <div class="mt-4 bg-gray-100 dark:bg-gray-700/50 p-4 rounded-md text-center">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Official Support Email</p>
+                    <a href="mailto:nregabot@gmail.com" class="text-lg font-mono font-semibold text-blue-600 dark:text-blue-400 hover:underline">nregabot@gmail.com</a>
                 </div>
             </div>
-            <div class="bg-white p-8 rounded-lg shadow-md border">
-                <h2 class="text-2xl font-bold text-gray-900">Community Support</h2>
-                <p class="mt-2 text-gray-600">Join our WhatsApp group to connect with other users, share tips, and get community-based help. Please note that official support is handled via email.</p>
+            <div class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md border dark:border-gray-700">
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Community Support</h2>
+                <p class="mt-2 text-gray-600 dark:text-gray-400">Join our WhatsApp group to connect with other users, share tips, and get community-based help. Please note that official support is handled via email.</p>
                 <div class="mt-4 text-center">
                      <a href="https://chat.whatsapp.com/Bup3hDCH3wn2shbUryv8wn" target="_blank" rel="noopener noreferrer" class="inline-block bg-green-500 text-white font-semibold px-6 py-3 rounded-lg hover:bg-green-600 transition-colors">Join WhatsApp Group</a>
                 </div>
@@ -51,8 +58,8 @@
         </div>
     </main>
 
-    <footer class="bg-white border-t">
-        <div class="container mx-auto px-6 py-8 text-center text-gray-600 text-sm">
+    <footer class="bg-white border-t dark:bg-gray-800 dark:border-gray-700">
+        <div class="container mx-auto px-6 py-8 text-center text-gray-600 dark:text-gray-400 text-sm">
             <p>&copy; 2025 NREGA Bot by Rajat Poddar. All rights reserved.</p>
         </div>
     </footer>
