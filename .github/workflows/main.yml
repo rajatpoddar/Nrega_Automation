@@ -68,7 +68,7 @@ jobs:
         $version = "${{ needs.prepare.outputs.version }}"
         iscc inno_setup.iss /DMyAppVersion=$version
       shell: pwsh
-      working-directory: .
+
 
 
     - name: Upload installer artifact
