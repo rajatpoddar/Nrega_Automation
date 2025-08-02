@@ -56,11 +56,21 @@ jobs:
         --collect-data fpdf ^
         main_app.py
 
-    - name: Upload artifact
+    - name: Install Inno Setup
+      run: |
+        choco install innosetup -y
+
+    - name: Create installer using Inno Setup
+      run: |
+        $version = "${{ needs.prepare.outputs.version }}"
+        iscc installer/inno_setup.iss /DMyAppVersion=$version
+      shell: pwsh
+
+    - name: Upload installer artifact
       uses: actions/upload-artifact@v4
       with:
-        name: NREGABot-windows
-        path: dist/NREGABot-v${{ needs.prepare.outputs.version }}.exe
+        name: NREGABot-windows-installer
+        path: dist/NREGABot-v${{ needs.prepare.outputs.version }}-Setup.exe
 
   build-macos:
     needs: prepare
@@ -136,7 +146,7 @@ jobs:
         tag_name: v${{ needs.prepare.outputs.version }}
         body: ${{ needs.prepare.outputs.changelog }}
         files: |
-          ./artifacts/NREGABot-windows/*.exe
+          ./artifacts/NREGABot-windows-installer/*.exe
           ./artifacts/NREGABot-macos/*.dmg
           ./artifacts/NREGABot-linux/*
       env:
