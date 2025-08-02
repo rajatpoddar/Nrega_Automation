@@ -37,6 +37,10 @@ jobs:
       with:
         python-version: '3.10'
 
+    - name: Set up .env from secrets
+      run: |
+        echo "API_KEY=${{ secrets.API_KEY }}" > Nrega_Automation/.env
+
     - name: Install dependencies
       run: |
         pip install -r requirements.txt
@@ -44,17 +48,20 @@ jobs:
 
     - name: Build EXE
       run: |
-        pyinstaller --noconfirm --windowed --name "NREGABot-v${{ needs.prepare.outputs.version }}" ^
-        --icon=assets/app_icon.ico ^
-        --add-data="logo.png;." ^
-        --add-data="payment_qr.png;." ^
-        --add-data="theme.json;." ^
-        --add-data="changelog.json;." ^
-        --add-data="assets;assets" ^
-        --add-data=".env;." ^
-        --add-data="jobcard.jpeg;." ^
-        --collect-data fpdf ^
-        main_app.py
+        pyinstaller ^
+          --noconfirm ^
+          --windowed ^
+          --name "NREGABot-v${{ needs.prepare.outputs.version }}" ^
+          --icon=assets/app_icon.ico ^
+          --add-data="logo.png;." ^
+          --add-data="payment_qr.png;." ^
+          --add-data="theme.json;." ^
+          --add-data="changelog.json;." ^
+          --add-data="assets;assets" ^
+          --add-data=".env;." ^
+          --add-data="jobcard.jpeg;." ^
+          --collect-data fpdf ^
+          main_app.py
 
     - name: Install Inno Setup
       run: |
@@ -77,6 +84,10 @@ jobs:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v4
+
+    - name: Set up .env from secrets
+      run: |
+        echo "API_KEY=${{ secrets.API_KEY }}" > Nrega_Automation/.env
 
     - name: Install tools
       run: |
@@ -104,6 +115,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Set up .env from secrets
+      run: |
+        echo "API_KEY=${{ secrets.API_KEY }}" > Nrega_Automation/.env
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
@@ -121,16 +136,19 @@ jobs:
     - name: Build Linux App
       run: |
         source venv/bin/activate
-        pyinstaller --noconfirm --windowed --name "NREGABot-v${{ needs.prepare.outputs.version }}" \
-        --add-data="logo.png:." \
-        --add-data="payment_qr.png:." \
-        --add-data="theme.json:." \
-        --add-data="changelog.json:." \
-        --add-data="assets:assets" \
-        --add-data=".env:." \
-        --add-data="jobcard.jpeg:." \
-        --collect-data fpdf \
-        main_app.py
+        pyinstaller \
+          --noconfirm \
+          --windowed \
+          --name "NREGABot-v${{ needs.prepare.outputs.version }}" \
+          --add-data="logo.png:." \
+          --add-data="payment_qr.png:." \
+          --add-data="theme.json:." \
+          --add-data="changelog.json:." \
+          --add-data="assets:assets" \
+          --add-data=".env:." \
+          --add-data="jobcard.jpeg:." \
+          --collect-data fpdf \
+          main_app.py
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
