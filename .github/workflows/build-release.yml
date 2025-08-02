@@ -92,6 +92,11 @@ jobs:
         with:
           path: artifacts/
 
+      # --- ADD THIS NEW STEP FOR DEBUGGING ---
+      - name: List downloaded files
+        run: ls -R artifacts
+      # ----------------------------------------
+
       - name: Get Version from config.py
         id: get_version
         run: |
