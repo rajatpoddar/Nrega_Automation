@@ -66,8 +66,10 @@ jobs:
     - name: Create installer using Inno Setup
       run: |
         $version = "${{ needs.prepare.outputs.version }}"
-        iscc installer/inno_setup.iss /DMyAppVersion=$version
+        iscc inno_setup.iss /DMyAppVersion=$version
       shell: pwsh
+      working-directory: .
+
 
     - name: Upload installer artifact
       uses: actions/upload-artifact@v4
