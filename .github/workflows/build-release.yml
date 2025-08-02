@@ -136,5 +136,8 @@ jobs:
 
             ---
             Download the appropriate installer for your operating system below.
+          # CORRECTED FILE PATH:
+          # Removed the incorrect "/installer" part of the path.
+          # The glob now correctly finds the setup file.
           files: |
-            artifacts/nrega-bot-Windows/installer/*.exe
+            artifacts/nrega-bot-Windows/*-Setup.exe
