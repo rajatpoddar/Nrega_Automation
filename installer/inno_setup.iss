@@ -8,12 +8,12 @@ AppVersion={#MyAppVersion}
 DefaultDirName={autopf}\\NREGABot
 DefaultGroupName=NREGABot
 OutputBaseFilename=NREGABot-v{#MyAppVersion}-Setup
-OutputDir=dist
+OutputDir=../dist
 Compression=lzma
 SolidCompression=yes
 
 [Files]
-Source: "dist\\NREGABot\\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\\dist\\NREGABot\\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\\NREGABot"; Filename: "{app}\\NREGABot.exe"
