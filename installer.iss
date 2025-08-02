@@ -29,12 +29,12 @@ PrivilegesRequired=admin
 UninstallDisplayIcon={app}\{#AppExeName}
 SetupIconFile=assets\app_icon.ico
 
-; --- NEW & IMPROVED DIRECTIVES ---
-; Automatically close the running application before installing.
-SignTool=SignTool.exe $p
+; --- CORRECTED DIRECTIVES ---
+; The SignTool line has been removed to allow building on GitHub Actions.
+; This directive will automatically close the running application before installing.
 CloseApplications=yes
-; Ask the user to close the app if it can't be done automatically.
-CloseApplicationsFilter=*.exe
+; This specifies which application to look for and close.
+CloseApplicationsFilter=NREGA Bot.exe
 
 [Languages]
 Name: "english"; [cite_start]MessagesFile: "compiler:Default.isl" [cite: 3]
