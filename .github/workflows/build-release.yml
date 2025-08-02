@@ -92,10 +92,9 @@ jobs:
         with:
           path: artifacts/
 
-      # --- ADD THIS NEW STEP FOR DEBUGGING ---
+      # This step shows you the exact file paths available.
       - name: List downloaded files
         run: ls -R artifacts
-      # ----------------------------------------
 
       - name: Get Version from config.py
         id: get_version
@@ -141,8 +140,6 @@ jobs:
 
             ---
             Download the appropriate installer for your operating system below.
-          # CORRECTED FILE PATH:
-          # Removed the incorrect "/installer" part of the path.
-          # The glob now correctly finds the setup file.
+          # This glob should now work because it matches the structure confirmed by the "ls" command.
           files: |
             artifacts/nrega-bot-Windows/*-Setup.exe
