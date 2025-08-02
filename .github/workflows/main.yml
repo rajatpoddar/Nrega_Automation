@@ -46,19 +46,23 @@ jobs:
         pip install pyinstaller
 
     - name: Build EXE
-      shell: cmd
-      run: >
-        pyinstaller --noconfirm --windowed
-        --icon=assets/app_icon.ico
-        --add-data="logo.png;."
-        --add-data="payment_qr.png;."
-        --add-data="theme.json;."
-        --add-data="changelog.json;."
-        --add-data="assets;assets"
-        --add-data=".env;."
-        --add-data="jobcard.jpeg;."
-        --collect-data fpdf
-        main_app.py
+      shell: pwsh
+      run: |
+        pyinstaller `
+          --noconfirm `
+          --windowed `
+          --name "NREGABot" `
+          --distpath dist/NREGABot `
+          --icon=assets/app_icon.ico `
+          --add-data="logo.png;." `
+          --add-data="payment_qr.png;." `
+          --add-data="theme.json;." `
+          --add-data="changelog.json;." `
+          --add-data="assets;assets" `
+          --add-data=".env;." `
+          --add-data="jobcard.jpeg;." `
+          --collect-data fpdf `
+          main_app.py
 
     - name: Install Inno Setup
       run: choco install innosetup -y
@@ -68,8 +72,6 @@ jobs:
         $version = "${{ needs.prepare.outputs.version }}"
         iscc inno_setup.iss /DMyAppVersion=$version
       shell: pwsh
-
-
 
     - name: Upload installer artifact
       uses: actions/upload-artifact@v4
