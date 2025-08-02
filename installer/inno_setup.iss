@@ -1,4 +1,6 @@
-#define MyAppVersion GetStringFromCommandLine("MyAppVersion")
+#ifndef MyAppVersion
+#define MyAppVersion "dev"
+#endif
 
 [Setup]
 AppName=NREGABot
