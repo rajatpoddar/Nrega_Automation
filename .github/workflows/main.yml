@@ -211,40 +211,43 @@ jobs:
         with:
           name: linux-deb
           path: NREGABot-v${{ needs.prepare.outputs.version }}-linux.deb
-
+          
   release:
+    # This condition ensures the release job ONLY runs when you push a tag (e.g., v2.5.4)
+    # It prevents the error by skipping the job on manual runs against the 'main' branch.
+    if: startsWith(github.ref, 'refs/tags/')
     needs: [build-macos, build-windows, build-linux, prepare]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Extract version from tag
-        id: get_version
-        run: |
-          RAW_TAG=${GITHUB_REF##*/}
-          VERSION=${RAW_TAG#v}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
+      
       - name: Read changelog.json and format description
         run: |
-          VERSION="${{ steps.get_version.outputs.version }}"
-          echo "## NREGA Bot v$VERSION" > release.md
+          # Use the version from the 'prepare' job to ensure consistency
+          VERSION="${{ needs.prepare.outputs.version }}"
+  
+          # Create the release notes header
+          echo "## What's New in v$VERSION" > release.md
           echo "" >> release.md
-          echo "### What's New in v$VERSION" >> release.md
-          echo "" >> release.md
-          jq -r --arg v "$VERSION" '.[$v][]' changelog.json >> release.md
+          
+          # This command reads the correct version's entries from changelog.json 
+          # and formats them into a Markdown bulleted list.
+          jq -r --arg v "$VERSION" '.[$v][] | "* " + .' changelog.json >> release.md
+          
+          echo "--- Generated release.md ---"
           cat release.md
-
+          echo "--------------------------"
+  
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: release-assets
-
+          
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: NREGA Bot v${{ steps.get_version.outputs.version }}
-          tag_name: v${{ steps.get_version.outputs.version }}
+          name: NREGA Bot v${{ needs.prepare.outputs.version }}
+          tag_name: v${{ needs.prepare.outputs.version }}
           body_path: release.md
           files: |
             release-assets/**/*NREGABot*-macOS.dmg
