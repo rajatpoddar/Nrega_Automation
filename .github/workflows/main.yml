@@ -101,8 +101,11 @@ jobs:
           pip install -r requirements.txt pyinstaller fpdf
 
       - name: Clean builds
+        shell: pwsh
         run: |
-          Remove-Item -Recurse -Force dist, build
+          if (Test-Path dist) { Remove-Item -Recurse -Force dist }
+          if (Test-Path build) { Remove-Item -Recurse -Force build }
+
 
       - name: Generate .env from secret
         shell: pwsh
