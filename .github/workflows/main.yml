@@ -6,6 +6,9 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   prepare:
     runs-on: ubuntu-latest
@@ -13,11 +16,30 @@ jobs:
       version: ${{ steps.extract_version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - id: extract_version
         run: |
-          version=$(jq -r '.latest_version' version.json)
-          echo "version=$version" >> $GITHUB_OUTPUT
+          RAW_TAG=${GITHUB_REF##*/}
+          VERSION=${RAW_TAG#v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update version.json
+        run: |
+          jq --arg v "$VERSION" '.latest_version = $v |
+            .download_url_windows = "https://nregabot.com/updates/NREGABot-v\($v)-Setup.exe" |
+            .download_url_macos = "https://nregabot.com/updates/NREGABot-v\($v)-macOS.dmg"' \
+            version.json > version.tmp.json
+          mv version.tmp.json version.json
+
+      - name: Commit updated version.json
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add version.json
+          git commit -m "chore: update version.json to $VERSION" || echo "No changes to commit"
+          git push
 
   build-macos:
     needs: prepare
@@ -35,23 +57,26 @@ jobs:
           pip install -r requirements.txt pyinstaller fpdf
           brew install create-dmg
 
-      - name: Make script executable
+      - name: Clean previous builds
+        run: rm -rf dist build
+
+      - name: Make build script executable
         run: chmod +x ./build_macos.sh
 
-      - name: Patch version in build script
+      - name: Patch version in script
         run: |
           sed -i '' "s/^APP_VERSION=.*/APP_VERSION=\"${{ needs.prepare.outputs.version }}\"/" build_macos.sh
 
-      - name: Run build
+      - name: Run macOS build
         run: ./build_macos.sh
 
-      - name: Rename DMG if exists
+      - name: Rename DMG
         run: |
-          DMG_FILE=$(find dist -name '*.dmg' | head -n 1)
+          DMG_FILE=$(find dist -iname '*.dmg' | head -n 1)
           if [ -f "$DMG_FILE" ]; then
             mv "$DMG_FILE" "dist/NREGABot-v${{ needs.prepare.outputs.version }}-macOS.dmg"
           else
-            echo "DMG not found!" && exit 1
+            echo "❌ DMG not found!" && ls -la dist/ && exit 1
           fi
 
       - name: Upload DMG
@@ -71,9 +96,18 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Python deps
+      - name: Install dependencies
         run: |
           pip install -r requirements.txt pyinstaller fpdf
+
+      - name: Clean builds
+        run: |
+          Remove-Item -Recurse -Force dist, build
+
+      - name: Generate .env from secret
+        shell: pwsh
+        run: |
+          "@`"SENTRY_DSN=${{ secrets.SENTRY_DSN }}`"" | Out-File -Encoding ASCII -FilePath .env
 
       - name: Build portable EXE
         run: |
@@ -107,7 +141,7 @@ jobs:
           mkdir dist_installer
           mv Output/NREGABot-Setup.exe dist_installer/NREGABot-v${{ needs.prepare.outputs.version }}-Setup.exe
 
-      - name: Upload Windows files
+      - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows
@@ -126,14 +160,20 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install system deps + fpm
+      - name: Install system dependencies + fpm
         run: |
           sudo apt-get update
           sudo apt-get install -y ruby ruby-dev build-essential python3-pyqt5 pyqt5-dev-tools
           sudo gem install --no-document fpm
 
-      - name: Install Python deps
+      - name: Install Python dependencies
         run: pip install -r requirements.txt pyinstaller fpdf
+
+      - name: Clean previous builds
+        run: rm -rf dist build package
+
+      - name: Generate .env from secret
+        run: echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" > .env
 
       - name: Build Linux app
         run: |
@@ -148,7 +188,7 @@ jobs:
             --collect-data fpdf \
             main_app.py
 
-      - name: Package .deb
+      - name: Create .deb package
         run: |
           mkdir -p package/usr/local/bin
           cp dist/NREGABot/NREGABot package/usr/local/bin/
@@ -171,7 +211,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download all artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: release-assets
