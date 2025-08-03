@@ -60,10 +60,10 @@ jobs:
       - name: Clean previous builds
         run: rm -rf dist build
 
-      - name: Make build script executable
+      - name: Make script executable
         run: chmod +x ./build_macos.sh
 
-      - name: Patch version in script
+      - name: Patch version in build script
         run: |
           sed -i '' "s/^APP_VERSION=.*/APP_VERSION=\"${{ needs.prepare.outputs.version }}\"/" build_macos.sh
 
@@ -79,7 +79,7 @@ jobs:
             echo "❌ DMG not found!" && ls -la dist/ && exit 1
           fi
 
-      - name: Upload DMG
+      - name: Upload macOS DMG
         uses: actions/upload-artifact@v4
         with:
           name: macos-dmg
@@ -105,7 +105,6 @@ jobs:
         run: |
           if (Test-Path dist) { Remove-Item -Recurse -Force dist }
           if (Test-Path build) { Remove-Item -Recurse -Force build }
-
 
       - name: Generate .env from secret
         shell: pwsh
@@ -141,13 +140,12 @@ jobs:
         run: |
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer_script.iss
 
-
       - name: Rename installer EXE
         run: |
           mkdir dist_installer
           mv Output/NREGABot-Setup.exe dist_installer/NREGABot-v${{ needs.prepare.outputs.version }}-Setup.exe
 
-      - name: Upload Windows artifacts
+      - name: Upload Windows files
         uses: actions/upload-artifact@v4
         with:
           name: windows
@@ -211,13 +209,13 @@ jobs:
           name: linux-deb
           path: NREGABot-v${{ needs.prepare.outputs.version }}-linux.deb
 
-    release:
+  release:
     needs: [build-macos, build-windows, build-linux]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download all artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: release-assets
@@ -226,26 +224,23 @@ jobs:
         id: get_version
         run: echo "version=${GITHUB_REF##*/}" >> $GITHUB_OUTPUT
 
-      - name: Parse changelog.json to markdown
+      - name: Parse changelog to markdown
         id: changelog
         run: |
-          VERSION=${GITHUB_REF##*/}  # e.g., v2.5.3
-          VERSION_CLEAN=${VERSION#v} # e.g., 2.5.3
+          VERSION=${GITHUB_REF##*/}  # e.g. v2.5.3
+          VERSION_CLEAN=${VERSION#v}
           TITLE="NREGA Bot ${VERSION}"
           echo "title=$TITLE" >> $GITHUB_OUTPUT
 
-          DESCRIPTION=$(jq -r --arg v "$VERSION_CLEAN" '
-            .[$v] // empty | to_entries[] |
+          echo "## What's New in $VERSION" > body.md
+          jq -r --arg v "$VERSION_CLEAN" '
+            .[$v] // {} |
+            to_entries[] |
             (if .key | test("✨") then "### ✨ " + .value
              elif .key | test("🐞") then "### 🐞 " + .value
              elif .key | test("🛠️") then "### 🛠️ " + .value
              else "- " + .value end)
-          ' changelog.json)
-
-          echo "$DESCRIPTION" > body.md
-          echo "description<<EOF" >> $GITHUB_OUTPUT
-          echo "$DESCRIPTION" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          ' changelog.json >> body.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
