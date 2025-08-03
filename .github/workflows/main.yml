@@ -218,15 +218,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Read changelog.json and format description
+      - name: Read changelog.json and generate release notes
         id: changelog
         run: |
-          VERSION=${{ needs.prepare.outputs.version }}
-          echo "## NREGA Bot v$VERSION" > release.md
+          VERSION="${{ needs.prepare.outputs.version }}"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+          echo "NREGA Bot v$VERSION" > release.md
           echo "" >> release.md
-          echo "### What's New in v$VERSION" >> release.md
+          echo "What's New in v$VERSION" >> release.md
           echo "" >> release.md
-          jq -r --arg v "$VERSION" '.[$v][]' changelog.json | sed 's/^/- /' >> release.md
+
+          jq -r --arg v "$VERSION" '.[$v][]' changelog.json >> release.md
           cat release.md
 
       - name: Download artifacts
@@ -237,8 +240,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: NREGA Bot v${{ needs.prepare.outputs.version }}
-          tag_name: v${{ needs.prepare.outputs.version }}
+          name: NREGA Bot v${{ env.VERSION }}
+          tag_name: v${{ env.VERSION }}
           body_path: release.md
           files: |
             release-assets/**/*NREGABot*-macOS.dmg
