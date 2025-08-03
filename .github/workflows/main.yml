@@ -213,17 +213,20 @@ jobs:
           path: NREGABot-v${{ needs.prepare.outputs.version }}-linux.deb
 
   release:
-    needs: [prepare, build-macos, build-windows, build-linux]
+    needs: [build-macos, build-windows, build-linux]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Read changelog.json and generate release notes
-        id: changelog
+      - name: Extract version from tag
+        id: extract_version
         run: |
-          VERSION="${{ needs.prepare.outputs.version }}"
+          RAW_TAG=${GITHUB_REF##*/}
+          VERSION=${RAW_TAG#v}
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
+      - name: Read changelog.json and generate release notes
+        run: |
           echo "NREGA Bot v$VERSION" > release.md
           echo "" >> release.md
           echo "What's New in v$VERSION" >> release.md
@@ -248,3 +251,4 @@ jobs:
             release-assets/**/*NREGABot*-Portable.exe
             release-assets/**/*NREGABot*-Setup.exe
             release-assets/**/*NREGABot*-linux.deb
+
