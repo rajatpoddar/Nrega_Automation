@@ -67,6 +67,9 @@ jobs:
         run: |
           sed -i '' "s/^APP_VERSION=.*/APP_VERSION=\"${{ needs.prepare.outputs.version }}\"/" build_macos.sh
 
+      - name: Generate .env from secret
+        run: echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" > .env
+
       - name: Run macOS build
         run: ./build_macos.sh
 
@@ -106,7 +109,6 @@ jobs:
           if (Test-Path dist) { Remove-Item -Recurse -Force dist }
           if (Test-Path build) { Remove-Item -Recurse -Force build }
 
-
       - name: Generate .env from secret
         shell: pwsh
         run: |
@@ -140,7 +142,6 @@ jobs:
         shell: pwsh
         run: |
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer_script.iss
-
 
       - name: Rename installer EXE
         run: |
@@ -210,9 +211,9 @@ jobs:
         with:
           name: linux-deb
           path: NREGABot-v${{ needs.prepare.outputs.version }}-linux.deb
-          
+
   release:
-    needs: [build-macos, build-windows, build-linux, prepare]
+    needs: [prepare, build-macos, build-windows, build-linux]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -221,7 +222,6 @@ jobs:
         id: changelog
         run: |
           VERSION=${{ needs.prepare.outputs.version }}
-          echo "VERSION=$VERSION"
           echo "## NREGA Bot v$VERSION" > release.md
           echo "" >> release.md
           echo "### What's New in v$VERSION" >> release.md
@@ -245,5 +245,3 @@ jobs:
             release-assets/**/*NREGABot*-Portable.exe
             release-assets/**/*NREGABot*-Setup.exe
             release-assets/**/*NREGABot*-linux.deb
-
-          
