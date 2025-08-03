@@ -25,22 +25,6 @@ jobs:
           VERSION=${RAW_TAG#v}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Update version.json
-        run: |
-          jq --arg v "$VERSION" '.latest_version = $v |
-            .download_url_windows = "https://nregabot.com/updates/NREGABot-v\($v)-Setup.exe" |
-            .download_url_macos = "https://nregabot.com/updates/NREGABot-v\($v)-macOS.dmg"' \
-            version.json > version.tmp.json
-          mv version.tmp.json version.json
-
-      - name: Commit updated version.json
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add version.json
-          git commit -m "chore: update version.json to $VERSION" || echo "No changes to commit"
-          git push
-
   build-macos:
     needs: prepare
     runs-on: macos-latest
