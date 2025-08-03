@@ -1,8 +1,4 @@
 {
-  "2.5.4": [
-    "✨ New Feature: Some amazing new capability.",
-    "🐞 Bug Fix: Fixed a very annoying bug."
-  ],
   "2.5.3": [
     "✨ New Automation: Update Estimated Outcome - Added a new tab to automate updating the 'Estimated Outcome' for a list of work codes.",
     "✨ New Automation: Duplicate MR Print - Implemented a powerful new feature to find, save, and print duplicate Muster Rolls for multiple work codes in a single batch operation.",
