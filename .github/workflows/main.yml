@@ -1,0 +1,187 @@
+name: Build All Installers
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract_version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: extract_version
+        run: |
+          version=$(jq -r '.latest_version' version.json)
+          echo "Extracted version: $version"
+          echo "version=$version" >> $GITHUB_OUTPUT
+
+  build-macos:
+    needs: prepare
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt pyinstaller fpdf
+          brew install create-dmg
+
+      - name: Make script executable
+        run: chmod +x ./build_macos.sh
+
+      - name: Replace version dynamically
+        run: |
+          sed -i '' "s/^APP_VERSION=.*/APP_VERSION=\"${{ needs.prepare.outputs.version }}\"/" build_macos.sh
+
+      - name: Build macOS DMG
+        run: ./build_macos.sh
+
+      - name: Rename output
+        run: |
+          mv dist/*.dmg dist/NREGABot-v${{ needs.prepare.outputs.version }}-macOS.dmg
+
+      - name: Upload macOS DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: dist/NREGABot-v${{ needs.prepare.outputs.version }}-macOS.dmg
+
+  build-windows:
+    needs: prepare
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt pyinstaller fpdf
+
+      - name: Build portable EXE
+        run: |
+          pyinstaller --noconfirm --windowed --name "NREGABot" ^
+          --icon=assets/app_icon.ico ^
+          --add-data="logo.png;." ^
+          --add-data="payment_qr.png;." ^
+          --add-data="theme.json;." ^
+          --add-data="changelog.json;." ^
+          --add-data="assets;assets" ^
+          --add-data=".env;." ^
+          --add-data="jobcard.jpeg;." ^
+          --collect-data fpdf ^
+          main_app.py
+
+      - name: Rename portable EXE
+        run: |
+          mkdir dist_out
+          mv dist/NREGABot/NREGABot.exe dist_out/NREGABot-v${{ needs.prepare.outputs.version }}-Portable.exe
+
+      - name: Download & Install Inno Setup
+        run: |
+          curl -L -o is.exe https://jrsoftware.org/download.php/is.exe
+          Start-Process .\is.exe -ArgumentList "/VERYSILENT" -Wait
+
+      - name: Create Windows Installer
+        run: '"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer_script.iss'
+
+      - name: Rename installer EXE
+        run: |
+          mkdir dist_installer
+          mv Output/NREGABot-Setup.exe dist_installer/NREGABot-v${{ needs.prepare.outputs.version }}-Setup.exe
+
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            dist_out/*.exe
+            dist_installer/*.exe
+
+  build-linux:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-pyqt5 pyqt5-dev-tools fpm
+
+      - name: Install Python deps
+        run: |
+          pip install -r requirements.txt pyinstaller fpdf
+
+      - name: Build Linux binary
+        run: |
+          pyinstaller --noconfirm --windowed --name "NREGABot" \
+          --add-data="logo.png:." \
+          --add-data="payment_qr.png:." \
+          --add-data="theme.json:." \
+          --add-data="changelog.json:." \
+          --add-data="assets:assets" \
+          --add-data=".env:." \
+          --add-data="jobcard.jpeg:." \
+          --collect-data fpdf \
+          main_app.py
+
+      - name: Create .deb package
+        run: |
+          mkdir -p package/usr/local/bin
+          cp dist/NREGABot/NREGABot package/usr/local/bin/
+          fpm -s dir -t deb -n nregabot -v ${{ needs.prepare.outputs.version }} \
+              --prefix=/usr/local/bin \
+              -C package .
+
+      - name: Rename .deb
+        run: mv *.deb NREGABot-v${{ needs.prepare.outputs.version }}-linux.deb
+
+      - name: Upload .deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb
+          path: NREGABot-v${{ needs.prepare.outputs.version }}-linux.deb
+
+  release:
+    needs: [build-macos, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+
+      - name: List downloaded files
+        run: ls -R release-assets
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ needs.prepare.outputs.version }}
+          tag_name: v${{ needs.prepare.outputs.version }}
+          files: |
+            release-assets/**/*NREGABot*.dmg
+            release-assets/**/*NREGABot*-Portable.exe
+            release-assets/**/*NREGABot*-Setup.exe
+            release-assets/**/*NREGABot*-linux.deb
