@@ -39,7 +39,7 @@ jobs:
       - name: Make script executable
         run: chmod +x ./build_macos.sh
 
-      - name: Replace version dynamically
+      - name: Replace version in mac build script
         run: |
           sed -i '' "s/^APP_VERSION=.*/APP_VERSION=\"${{ needs.prepare.outputs.version }}\"/" build_macos.sh
 
@@ -48,7 +48,8 @@ jobs:
 
       - name: Rename output
         run: |
-          mv dist/*.dmg dist/NREGABot-v${{ needs.prepare.outputs.version }}-macOS.dmg
+          DMG_FILE=$(find dist -name '*.dmg' | head -n 1)
+          mv "$DMG_FILE" "dist/NREGABot-v${{ needs.prepare.outputs.version }}-macOS.dmg"
 
       - name: Upload macOS DMG
         uses: actions/upload-artifact@v4
@@ -73,29 +74,29 @@ jobs:
 
       - name: Build portable EXE
         run: |
-          pyinstaller --noconfirm --windowed --name "NREGABot" ^
-          --icon=assets/app_icon.ico ^
-          --add-data="logo.png;." ^
-          --add-data="payment_qr.png;." ^
-          --add-data="theme.json;." ^
-          --add-data="changelog.json;." ^
-          --add-data="assets;assets" ^
-          --add-data=".env;." ^
-          --add-data="jobcard.jpeg;." ^
-          --collect-data fpdf ^
-          main_app.py
+          pyinstaller --noconfirm --windowed --name "NREGABot" `
+            --icon=assets/app_icon.ico `
+            --add-data="logo.png;." `
+            --add-data="payment_qr.png;." `
+            --add-data="theme.json;." `
+            --add-data="changelog.json;." `
+            --add-data="assets;assets" `
+            --add-data=".env;." `
+            --add-data="jobcard.jpeg;." `
+            --collect-data fpdf `
+            main_app.py
 
       - name: Rename portable EXE
         run: |
           mkdir dist_out
           mv dist/NREGABot/NREGABot.exe dist_out/NREGABot-v${{ needs.prepare.outputs.version }}-Portable.exe
 
-      - name: Download & Install Inno Setup
+      - name: Install Inno Setup
         run: |
           curl -L -o is.exe https://jrsoftware.org/download.php/is.exe
           Start-Process .\is.exe -ArgumentList "/VERYSILENT" -Wait
 
-      - name: Create Windows Installer
+      - name: Build Windows Installer
         run: '"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer_script.iss'
 
       - name: Rename installer EXE
@@ -122,27 +123,27 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install system deps
+      - name: Install system deps and fpm
         run: |
           sudo apt-get update
-          sudo apt-get install -y python3-pyqt5 pyqt5-dev-tools fpm
+          sudo apt-get install -y ruby ruby-dev build-essential python3-pyqt5 pyqt5-dev-tools
+          sudo gem install --no-document fpm
 
       - name: Install Python deps
-        run: |
-          pip install -r requirements.txt pyinstaller fpdf
+        run: pip install -r requirements.txt pyinstaller fpdf
 
       - name: Build Linux binary
         run: |
           pyinstaller --noconfirm --windowed --name "NREGABot" \
-          --add-data="logo.png:." \
-          --add-data="payment_qr.png:." \
-          --add-data="theme.json:." \
-          --add-data="changelog.json:." \
-          --add-data="assets:assets" \
-          --add-data=".env:." \
-          --add-data="jobcard.jpeg:." \
-          --collect-data fpdf \
-          main_app.py
+            --add-data="logo.png:." \
+            --add-data="payment_qr.png:." \
+            --add-data="theme.json:." \
+            --add-data="changelog.json:." \
+            --add-data="assets:assets" \
+            --add-data=".env:." \
+            --add-data="jobcard.jpeg:." \
+            --collect-data fpdf \
+            main_app.py
 
       - name: Create .deb package
         run: |
@@ -181,7 +182,7 @@ jobs:
           name: Release ${{ needs.prepare.outputs.version }}
           tag_name: v${{ needs.prepare.outputs.version }}
           files: |
-            release-assets/**/*NREGABot*.dmg
+            release-assets/**/*NREGABot*-macOS.dmg
             release-assets/**/*NREGABot*-Portable.exe
             release-assets/**/*NREGABot*-Setup.exe
             release-assets/**/*NREGABot*-linux.deb
