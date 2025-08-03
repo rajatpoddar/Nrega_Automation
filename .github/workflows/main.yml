@@ -137,7 +137,10 @@ jobs:
           Start-Process .\is.exe -ArgumentList "/VERYSILENT" -Wait
 
       - name: Build installer
-        run: '"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer_script.iss'
+        shell: pwsh
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer_script.iss
+
 
       - name: Rename installer EXE
         run: |
