@@ -17,7 +17,6 @@ jobs:
       - id: extract_version
         run: |
           version=$(jq -r '.latest_version' version.json)
-          echo "Extracted version: $version"
           echo "version=$version" >> $GITHUB_OUTPUT
 
   build-macos:
@@ -39,19 +38,23 @@ jobs:
       - name: Make script executable
         run: chmod +x ./build_macos.sh
 
-      - name: Replace version in mac build script
+      - name: Patch version in build script
         run: |
           sed -i '' "s/^APP_VERSION=.*/APP_VERSION=\"${{ needs.prepare.outputs.version }}\"/" build_macos.sh
 
-      - name: Build macOS DMG
+      - name: Run build
         run: ./build_macos.sh
 
-      - name: Rename output
+      - name: Rename DMG if exists
         run: |
           DMG_FILE=$(find dist -name '*.dmg' | head -n 1)
-          mv "$DMG_FILE" "dist/NREGABot-v${{ needs.prepare.outputs.version }}-macOS.dmg"
+          if [ -f "$DMG_FILE" ]; then
+            mv "$DMG_FILE" "dist/NREGABot-v${{ needs.prepare.outputs.version }}-macOS.dmg"
+          else
+            echo "DMG not found!" && exit 1
+          fi
 
-      - name: Upload macOS DMG
+      - name: Upload DMG
         uses: actions/upload-artifact@v4
         with:
           name: macos-dmg
@@ -68,13 +71,13 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Python dependencies
+      - name: Install Python deps
         run: |
           pip install -r requirements.txt pyinstaller fpdf
 
       - name: Build portable EXE
         run: |
-          pyinstaller --noconfirm --windowed --name "NREGABot" `
+          pyinstaller --clean --noconfirm --windowed --name "NREGABot" `
             --icon=assets/app_icon.ico `
             --add-data="logo.png;." `
             --add-data="payment_qr.png;." `
@@ -96,7 +99,7 @@ jobs:
           curl -L -o is.exe https://jrsoftware.org/download.php/is.exe
           Start-Process .\is.exe -ArgumentList "/VERYSILENT" -Wait
 
-      - name: Build Windows Installer
+      - name: Build installer
         run: '"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer_script.iss'
 
       - name: Rename installer EXE
@@ -104,7 +107,7 @@ jobs:
           mkdir dist_installer
           mv Output/NREGABot-Setup.exe dist_installer/NREGABot-v${{ needs.prepare.outputs.version }}-Setup.exe
 
-      - name: Upload Windows Artifacts
+      - name: Upload Windows files
         uses: actions/upload-artifact@v4
         with:
           name: windows
@@ -123,7 +126,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install system deps and fpm
+      - name: Install system deps + fpm
         run: |
           sudo apt-get update
           sudo apt-get install -y ruby ruby-dev build-essential python3-pyqt5 pyqt5-dev-tools
@@ -132,9 +135,9 @@ jobs:
       - name: Install Python deps
         run: pip install -r requirements.txt pyinstaller fpdf
 
-      - name: Build Linux binary
+      - name: Build Linux app
         run: |
-          pyinstaller --noconfirm --windowed --name "NREGABot" \
+          pyinstaller --clean --noconfirm --windowed --name "NREGABot" \
             --add-data="logo.png:." \
             --add-data="payment_qr.png:." \
             --add-data="theme.json:." \
@@ -145,7 +148,7 @@ jobs:
             --collect-data fpdf \
             main_app.py
 
-      - name: Create .deb package
+      - name: Package .deb
         run: |
           mkdir -p package/usr/local/bin
           cp dist/NREGABot/NREGABot package/usr/local/bin/
@@ -172,9 +175,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: release-assets
-
-      - name: List downloaded files
-        run: ls -R release-assets
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
