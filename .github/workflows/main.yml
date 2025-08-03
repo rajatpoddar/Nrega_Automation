@@ -211,22 +211,48 @@ jobs:
           name: linux-deb
           path: NREGABot-v${{ needs.prepare.outputs.version }}-linux.deb
 
-  release:
+    release:
     needs: [build-macos, build-windows, build-linux]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download artifacts
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: release-assets
 
+      - name: Extract version from tag
+        id: get_version
+        run: echo "version=${GITHUB_REF##*/}" >> $GITHUB_OUTPUT
+
+      - name: Parse changelog.json to markdown
+        id: changelog
+        run: |
+          VERSION=${GITHUB_REF##*/}  # e.g., v2.5.3
+          VERSION_CLEAN=${VERSION#v} # e.g., 2.5.3
+          TITLE="NREGA Bot ${VERSION}"
+          echo "title=$TITLE" >> $GITHUB_OUTPUT
+
+          DESCRIPTION=$(jq -r --arg v "$VERSION_CLEAN" '
+            .[$v] // empty | to_entries[] |
+            (if .key | test("✨") then "### ✨ " + .value
+             elif .key | test("🐞") then "### 🐞 " + .value
+             elif .key | test("🛠️") then "### 🛠️ " + .value
+             else "- " + .value end)
+          ' changelog.json)
+
+          echo "$DESCRIPTION" > body.md
+          echo "description<<EOF" >> $GITHUB_OUTPUT
+          echo "$DESCRIPTION" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Release ${{ needs.prepare.outputs.version }}
-          tag_name: v${{ needs.prepare.outputs.version }}
+          name: ${{ steps.changelog.outputs.title }}
+          tag_name: ${{ github.ref }}
+          body_path: body.md
           files: |
             release-assets/**/*NREGABot*-macOS.dmg
             release-assets/**/*NREGABot*-Portable.exe
