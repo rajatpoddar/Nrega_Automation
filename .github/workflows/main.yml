@@ -1,119 +1,122 @@
 name: Build All Installers
 
+# This workflow is now designed to be run manually from the Actions tab.
+# The version to be built is taken from your 'config.py' file.
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+  # Job 1: Prepare the version number from config.py
   prepare:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.extract_version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - id: extract_version
+      - name: Get Version from config.py
+        id: extract_version
         run: |
-          RAW_TAG=${GITHUB_REF##*/}
-          VERSION=${RAW_TAG#v}
+          # This gets the version from config.py, making it the single source of truth for all jobs
+          # It assumes config.py contains a line like: APP_VERSION = "2.5.3"
+          VERSION=$(grep "APP_VERSION =" config.py | awk -F'"' '{print $2}')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Update version.json
-        run: |
-          jq --arg v "$VERSION" '.latest_version = $v |
-            .download_url_windows = "https://nregabot.com/updates/NREGABot-v\($v)-Setup.exe" |
-            .download_url_macos = "https://nregabot.com/updates/NREGABot-v\($v)-macOS.dmg"' \
-            version.json > version.tmp.json
-          mv version.tmp.json version.json
-
-      - name: Commit updated version.json
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add version.json
-          git commit -m "chore: update version.json to $VERSION" || echo "No changes to commit"
-          git push
-
-  build-macos:
+  # Job 2: Build for macOS
+  # Job to build for Intel (x86_64) Macs
+  build-macos-intel:
     needs: prepare
-    runs-on: macos-latest
+    runs-on: macos-12 # This is an Intel-based runner
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - name: Install dependencies
         run: |
           pip install -r requirements.txt pyinstaller fpdf
           brew install create-dmg
-
-      - name: Clean previous builds
-        run: rm -rf dist build
-
       - name: Make build script executable
         run: chmod +x ./build_macos.sh
-
-      - name: Patch version in script
-        run: |
-          sed -i '' "s/^APP_VERSION=.*/APP_VERSION=\"${{ needs.prepare.outputs.version }}\"/" build_macos.sh
-
       - name: Generate .env from secret
         run: echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" > .env
-
       - name: Run macOS build
         run: ./build_macos.sh
-
-      - name: Rename DMG
+      - name: Rename DMG for Intel
         run: |
           DMG_FILE=$(find dist -iname '*.dmg' | head -n 1)
           if [ -f "$DMG_FILE" ]; then
-            mv "$DMG_FILE" "dist/NREGABot-v${{ needs.prepare.outputs.version }}-macOS.dmg"
+            # We add '-Intel' to the filename
+            mv "$DMG_FILE" "dist/NREGABot-v${{ needs.prepare.outputs.version }}-macOS-Intel.dmg"
           else
             echo "❌ DMG not found!" && ls -la dist/ && exit 1
           fi
-
-      - name: Upload DMG
+      - name: Upload Intel DMG
         uses: actions/upload-artifact@v4
         with:
-          name: macos-dmg
-          path: dist/NREGABot-v${{ needs.prepare.outputs.version }}-macOS.dmg
+          name: macos-intel-dmg
+          path: dist/NREGABot-v${{ needs.prepare.outputs.version }}-macOS-Intel.dmg
 
+  # Job to build for Apple Silicon (ARM64) Macs
+  build-macos-silicon:
+    needs: prepare
+    runs-on: macos-latest # This is an Apple Silicon (ARM64) runner
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt pyinstaller fpdf
+          brew install create-dmg
+      - name: Make build script executable
+        run: chmod +x ./build_macos.sh
+      - name: Generate .env from secret
+        run: echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" > .env
+      - name: Run macOS build
+        run: ./build_macos.sh
+      - name: Rename DMG for Apple Silicon
+        run: |
+          DMG_FILE=$(find dist -iname '*.dmg' | head -n 1)
+          if [ -f "$DMG_FILE" ]; then
+            # We add '-AppleSilicon' to the filename
+            mv "$DMG_FILE" "dist/NREGABot-v${{ needs.prepare.outputs.version }}-macOS-AppleSilicon.dmg"
+          else
+            echo "❌ DMG not found!" && ls -la dist/ && exit 1
+          fi
+      - name: Upload Apple Silicon DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-silicon-dmg
+          path: dist/NREGABot-v${{ needs.prepare.outputs.version }}-macOS-AppleSilicon.dmg
+
+  # Job 3: Build for Windows
   build-windows:
     needs: prepare
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - name: Install dependencies
         run: |
           pip install -r requirements.txt pyinstaller fpdf
-
       - name: Clean builds
         shell: pwsh
         run: |
           if (Test-Path dist) { Remove-Item -Recurse -Force dist }
           if (Test-Path build) { Remove-Item -Recurse -Force build }
-
       - name: Generate .env from secret
         shell: pwsh
         run: |
           "@`"SENTRY_DSN=${{ secrets.SENTRY_DSN }}`"" | Out-File -Encoding ASCII -FilePath .env
-
       - name: Build portable EXE
         run: |
           pyinstaller --clean --noconfirm --windowed --name "NREGABot" `
@@ -127,27 +130,22 @@ jobs:
             --add-data="jobcard.jpeg;." `
             --collect-data fpdf `
             main_app.py
-
       - name: Rename portable EXE
         run: |
           mkdir dist_out
           mv dist/NREGABot/NREGABot.exe dist_out/NREGABot-v${{ needs.prepare.outputs.version }}-Portable.exe
-
       - name: Install Inno Setup
         run: |
           curl -L -o is.exe https://jrsoftware.org/download.php/is.exe
           Start-Process .\is.exe -ArgumentList "/VERYSILENT" -Wait
-
       - name: Build installer
         shell: pwsh
         run: |
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer_script.iss
-
       - name: Rename installer EXE
         run: |
           mkdir dist_installer
           mv Output/NREGABot-Setup.exe dist_installer/NREGABot-v${{ needs.prepare.outputs.version }}-Setup.exe
-
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -156,32 +154,27 @@ jobs:
             dist_out/*.exe
             dist_installer/*.exe
 
+  # Job 4: Build for Linux
   build-linux:
     needs: prepare
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - name: Install system dependencies + fpm
         run: |
           sudo apt-get update
           sudo apt-get install -y ruby ruby-dev build-essential python3-pyqt5 pyqt5-dev-tools
           sudo gem install --no-document fpm
-
       - name: Install Python dependencies
         run: pip install -r requirements.txt pyinstaller fpdf
-
       - name: Clean previous builds
         run: rm -rf dist build package
-
       - name: Generate .env from secret
         run: echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" > .env
-
       - name: Build Linux app
         run: |
           pyinstaller --clean --noconfirm --windowed --name "NREGABot" \
@@ -194,7 +187,6 @@ jobs:
             --add-data="jobcard.jpeg:." \
             --collect-data fpdf \
             main_app.py
-
       - name: Create .deb package
         run: |
           mkdir -p package/usr/local/bin
@@ -202,55 +194,69 @@ jobs:
           fpm -s dir -t deb -n nregabot -v ${{ needs.prepare.outputs.version }} \
               --prefix=/usr/local/bin \
               -C package .
-
       - name: Rename .deb
         run: mv *.deb NREGABot-v${{ needs.prepare.outputs.version }}-linux.deb
-
       - name: Upload .deb
         uses: actions/upload-artifact@v4
         with:
           name: linux-deb
           path: NREGABot-v${{ needs.prepare.outputs.version }}-linux.deb
-          
+
+  # Job 5: Create Release using your old, trusted logic
   release:
-    # This condition ensures the release job ONLY runs when you push a tag (e.g., v2.5.4)
-    # It prevents the error by skipping the job on manual runs against the 'main' branch.
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: [build-macos, build-windows, build-linux, prepare]
+    name: Create GitHub Release
+    needs: [build-macos-intel, build-macos-silicon, build-windows, build-linux, prepare]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Read changelog.json and format description
-        run: |
-          # Use the version from the 'prepare' job to ensure consistency
-          VERSION="${{ needs.prepare.outputs.version }}"
-  
-          # Create the release notes header
-          echo "## What's New in v$VERSION" > release.md
-          echo "" >> release.md
-          
-          # This command reads the correct version's entries from changelog.json 
-          # and formats them into a Markdown bulleted list.
-          jq -r --arg v "$VERSION" '.[$v][] | "* " + .' changelog.json >> release.md
-          
-          echo "--- Generated release.md ---"
-          cat release.md
-          echo "--------------------------"
-  
-      - name: Download artifacts
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
-          path: release-assets
+          path: release-assets/
+      - name: Format Changelog for Release
+        id: format_changelog
+        run: |
+          python -c "
+          import json, os
+          version = os.environ.get('APP_VERSION')
+          changelog_body = ''
+          try:
+              with open('changelog.json', 'r', encoding='utf-8') as f:
+                  changelog_data = json.load(f)
+              if version in changelog_data:
+                  changes = changelog_data[version]
+                  changelog_body += f'## What\'s New in v{version}\\n\\n'
+                  changelog_body += '\\n'.join([f'* {item}' for item in changes])
+              else:
+                  changelog_body = f'No changelog entry for this version.'
+          except Exception as e:
+              changelog_body = f'Could not generate changelog: {e}'
           
-      - name: Create GitHub Release
+          delimiter = 'ghadelimiter_' + str(os.urandom(16).hex())
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as hf:
+              print(f'changelog_text<<{delimiter}', file=hf)
+              print(changelog_body, file=hf)
+              print(delimiter, file=hf)
+          "
+        env:
+          APP_VERSION: ${{ needs.prepare.outputs.version }}
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          name: NREGA Bot v${{ needs.prepare.outputs.version }}
           tag_name: v${{ needs.prepare.outputs.version }}
-          body_path: release.md
+          name: NREGA Bot v${{ needs.prepare.outputs.version }}
+          body: |
+            ${{ steps.format_changelog.outputs.changelog_text }}
+
+            ---
+            ### Downloads
+            Download the appropriate installer for your system. 
+            - For **macOS**, choose **AppleSilicon** for M1/M2/M3 Macs, or **Intel** for older Macs.
+
+          # This 'files' section is updated to find both macOS installers
           files: |
-            release-assets/**/*NREGABot*-macOS.dmg
+            release-assets/**/*NREGABot*-macOS-*.dmg
             release-assets/**/*NREGABot*-Portable.exe
             release-assets/**/*NREGABot*-Setup.exe
             release-assets/**/*NREGABot*-linux.deb
