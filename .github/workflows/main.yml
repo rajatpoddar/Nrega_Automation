@@ -25,10 +25,9 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
   # Job 2: Build for macOS
-  # Job to build for Intel (x86_64) Macs
-  build-macos-intel:
+  build-macos:
     needs: prepare
-    runs-on: macos-12 # This is an Intel-based runner
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -39,61 +38,30 @@ jobs:
         run: |
           pip install -r requirements.txt pyinstaller fpdf
           brew install create-dmg
+      - name: Clean previous builds
+        run: rm -rf dist build
       - name: Make build script executable
         run: chmod +x ./build_macos.sh
+      - name: Patch version in script
+        run: |
+          sed -i '' "s/^APP_VERSION=.*/APP_VERSION=\"${{ needs.prepare.outputs.version }}\"/" build_macos.sh
       - name: Generate .env from secret
         run: echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" > .env
       - name: Run macOS build
         run: ./build_macos.sh
-      - name: Rename DMG for Intel
+      - name: Rename DMG
         run: |
           DMG_FILE=$(find dist -iname '*.dmg' | head -n 1)
           if [ -f "$DMG_FILE" ]; then
-            # We add '-Intel' to the filename
-            mv "$DMG_FILE" "dist/NREGABot-v${{ needs.prepare.outputs.version }}-macOS-Intel.dmg"
+            mv "$DMG_FILE" "dist/NREGABot-v${{ needs.prepare.outputs.version }}-macOS.dmg"
           else
             echo "❌ DMG not found!" && ls -la dist/ && exit 1
           fi
-      - name: Upload Intel DMG
+      - name: Upload DMG
         uses: actions/upload-artifact@v4
         with:
-          name: macos-intel-dmg
-          path: dist/NREGABot-v${{ needs.prepare.outputs.version }}-macOS-Intel.dmg
-
-  # Job to build for Apple Silicon (ARM64) Macs
-  build-macos-silicon:
-    needs: prepare
-    runs-on: macos-latest # This is an Apple Silicon (ARM64) runner
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt pyinstaller fpdf
-          brew install create-dmg
-      - name: Make build script executable
-        run: chmod +x ./build_macos.sh
-      - name: Generate .env from secret
-        run: echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" > .env
-      - name: Run macOS build
-        run: ./build_macos.sh
-      - name: Rename DMG for Apple Silicon
-        run: |
-          DMG_FILE=$(find dist -iname '*.dmg' | head -n 1)
-          if [ -f "$DMG_FILE" ]; then
-            # We add '-AppleSilicon' to the filename
-            mv "$DMG_FILE" "dist/NREGABot-v${{ needs.prepare.outputs.version }}-macOS-AppleSilicon.dmg"
-          else
-            echo "❌ DMG not found!" && ls -la dist/ && exit 1
-          fi
-      - name: Upload Apple Silicon DMG
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-silicon-dmg
-          path: dist/NREGABot-v${{ needs.prepare.outputs.version }}-macOS-AppleSilicon.dmg
+          name: macos-dmg
+          path: dist/NREGABot-v${{ needs.prepare.outputs.version }}-macOS.dmg
 
   # Job 3: Build for Windows
   build-windows:
@@ -205,7 +173,7 @@ jobs:
   # Job 5: Create Release using your old, trusted logic
   release:
     name: Create GitHub Release
-    needs: [build-macos-intel, build-macos-silicon, build-windows, build-linux, prepare]
+    needs: [build-macos, build-windows, build-linux, prepare]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -250,13 +218,9 @@ jobs:
             ${{ steps.format_changelog.outputs.changelog_text }}
 
             ---
-            ### Downloads
-            Download the appropriate installer for your system. 
-            - For **macOS**, choose **AppleSilicon** for M1/M2/M3 Macs, or **Intel** for older Macs.
-
-          # This 'files' section is updated to find both macOS installers
+            Download the appropriate installer for your operating system below.
           files: |
-            release-assets/**/*NREGABot*-macOS-*.dmg
+            release-assets/**/*NREGABot*-macOS.dmg
             release-assets/**/*NREGABot*-Portable.exe
             release-assets/**/*NREGABot*-Setup.exe
             release-assets/**/*NREGABot*-linux.deb
