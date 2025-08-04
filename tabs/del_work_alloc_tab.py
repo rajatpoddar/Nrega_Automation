@@ -22,15 +22,23 @@ class DelWorkAllocTab(BaseAutomationTab):
         super().__init__(parent, app_instance, automation_key="del_work_alloc")
         
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
+        # --- MODIFIED: Configure rows for new layout ---
+        self.grid_rowconfigure(0, weight=0) # Settings row
+        self.grid_rowconfigure(1, weight=0) # Action buttons row
+        self.grid_rowconfigure(2, weight=1) # Results/Logs row (will expand)
         
         self._create_widgets()
 
     def _create_widgets(self):
         """Creates the UI elements for the tab."""
+        # --- NEW: Main container for all settings, made scrollable ---
+        settings_container = ctk.CTkScrollableFrame(self, label_text="Settings")
+        settings_container.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+        settings_container.grid_columnconfigure(0, weight=1)
+
         # Frame for input controls
-        controls_frame = ctk.CTkFrame(self)
-        controls_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10,0))
+        controls_frame = ctk.CTkFrame(settings_container)
+        controls_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
         controls_frame.grid_columnconfigure(1, weight=1)
 
         # Panchayat Name Input
@@ -38,28 +46,28 @@ class DelWorkAllocTab(BaseAutomationTab):
         self.panchayat_entry = AutocompleteEntry(controls_frame, suggestions_list=self.app.history_manager.get_suggestions("panchayat_name"))
         self.panchayat_entry.grid(row=0, column=1, sticky='ew', padx=15, pady=10)
 
-        # Action buttons (Start, Stop, Reset)
-        action_frame_container = ctk.CTkFrame(self)
-        action_frame_container.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
-        action_frame = self._create_action_buttons(parent_frame=action_frame_container)
-        action_frame.pack(expand=True, fill='x')
+        # --- Jobcards Input Frame (MOVED from notebook) ---
+        jobcards_frame = ctk.CTkFrame(settings_container)
+        jobcards_frame.grid(row=1, column=0, sticky="ew", padx=5, pady=5)
+        jobcards_frame.grid_columnconfigure(0, weight=1)
+        jobcards_frame.grid_rowconfigure(1, weight=1)
+        
+        ctk.CTkLabel(jobcards_frame, text="Jobcard / Registration IDs (one per line)", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, sticky='w', padx=15, pady=(10,0))
+        ctk.CTkLabel(jobcards_frame, text="If left empty, the bot will process all Registration IDs for the selected Panchayat.", wraplength=600, justify="left").grid(row=1, column=0, sticky='w', padx=15, pady=5)
+        
+        self.jobcards_text = ctk.CTkTextbox(jobcards_frame, height=150)
+        self.jobcards_text.grid(row=2, column=0, sticky='nsew', padx=15, pady=(5,15))
 
-        # Tab view for Jobcards/RegIDs and Results
+        # --- Action buttons (MOVED) ---
+        action_frame = self._create_action_buttons(parent_frame=self)
+        action_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=(0,10))
+
+        # --- Tab view for Results and Logs (MOVED) ---
         data_notebook = ctk.CTkTabview(self)
         data_notebook.grid(row=2, column=0, sticky="nsew", padx=10, pady=(0,10))
         
-        jobcards_tab = data_notebook.add("Jobcard / Registration IDs")
         results_tab = data_notebook.add("Results")
         self._create_log_and_status_area(parent_notebook=data_notebook)
-
-        # Jobcards Tab Content
-        jobcards_tab.grid_columnconfigure(0, weight=1)
-        jobcards_tab.grid_rowconfigure(1, weight=1)
-        
-        ctk.CTkLabel(jobcards_tab, text="Enter Jobcard Numbers or Registration IDs below (one per line).\nIf left empty, the bot will process all Registration IDs for the selected Panchayat.", wraplength=600, justify="left").grid(row=0, column=0, sticky='w', padx=5, pady=5)
-        
-        self.jobcards_text = ctk.CTkTextbox(jobcards_tab, height=150)
-        self.jobcards_text.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
 
         # Results Tab Content
         results_tab.grid_columnconfigure(0, weight=1)

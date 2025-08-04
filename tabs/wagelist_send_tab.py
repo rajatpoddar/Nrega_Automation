@@ -1,4 +1,4 @@
-# tabs/wagelist_send_tab.py (Enhanced with full automation)
+# tabs/wagelist_send_tab.py
 import tkinter
 from tkinter import ttk, messagebox
 import customtkinter as ctk
@@ -16,28 +16,34 @@ class WagelistSendTab(BaseAutomationTab):
         super().__init__(parent, app_instance, automation_key="send")
         
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1) # Changed row configure to expand results
+        # --- MODIFIED: Configure rows for new layout ---
+        self.grid_rowconfigure(0, weight=0) # Settings row
+        self.grid_rowconfigure(1, weight=0) # Action buttons row
+        self.grid_rowconfigure(2, weight=1) # Results/Logs row (will expand)
         
         self._create_widgets()
 
     def _create_widgets(self):
-        # --- Main Controls Frame ---
-        controls_frame = ctk.CTkFrame(self)
-        controls_frame.grid(row=0, column=0, sticky='ew', padx=10, pady=(10,0))
+        # --- NEW: Main container for all settings, made scrollable ---
+        settings_container = ctk.CTkScrollableFrame(self, label_text="Settings")
+        settings_container.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+        settings_container.grid_columnconfigure(0, weight=1)
+
+        # --- Controls Frame (inside scrollable frame) ---
+        controls_frame = ctk.CTkFrame(settings_container)
+        controls_frame.grid(row=0, column=0, sticky='ew', padx=5, pady=5)
         controls_frame.grid_columnconfigure(1, weight=1)
 
-        # --- NEW: Financial Year Selection ---
+        # --- Financial Year Selection ---
         ctk.CTkLabel(controls_frame, text="Financial Year:").grid(row=0, column=0, padx=(15, 5), pady=10, sticky="w")
         
-        # Create a list of financial years
         current_year = datetime.now().year
         year_options = [f"{year}-{year+1}" for year in range(current_year + 1, current_year - 10, -1)]
         
         self.fin_year_combobox = ctk.CTkComboBox(controls_frame, values=year_options)
-        # Set default to the current financial year
         default_year = f"{current_year}-{current_year+1}" if datetime.now().month >= 4 else f"{current_year-1}-{current_year}"
         self.fin_year_combobox.set(default_year)
-        self.fin_year_combobox.grid(row=0, column=1, padx=(0, 15), pady=10, sticky="ew")
+        self.fin_year_combobox.grid(row=0, column=1, columnspan=3, padx=(0, 15), pady=10, sticky="ew")
 
         # --- Row Selection ---
         ctk.CTkLabel(controls_frame, text="Start Row:").grid(row=1, column=0, padx=(15, 5), pady=(0, 15), sticky="w")
@@ -50,21 +56,18 @@ class WagelistSendTab(BaseAutomationTab):
         self.row_end_entry.insert(0, config.WAGELIST_SEND_CONFIG["defaults"]["end_row"])
         self.row_end_entry.grid(row=1, column=3, padx=0, pady=(0, 15), sticky="w")
 
-        # --- Action Buttons ---
-        action_frame_container = ctk.CTkFrame(self)
-        action_frame_container.grid(row=2, column=0, sticky='ew', padx=10, pady=10)
-        action_frame = self._create_action_buttons(parent_frame=action_frame_container)
-        action_frame.pack(fill='x', expand=True)
+        # --- Action Buttons (MOVED) ---
+        action_frame = self._create_action_buttons(parent_frame=self)
+        action_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 10))
         
-        # --- Results and Logs ---
+        # --- Results and Logs (MOVED) ---
         data_notebook = ctk.CTkTabview(self)
-        data_notebook.grid(row=1, column=0, sticky="nsew", padx=10, pady=(10,0))
+        data_notebook.grid(row=2, column=0, sticky="nsew", padx=10, pady=(0,10))
         results_frame = data_notebook.add("Results")
         self._create_log_and_status_area(parent_notebook=data_notebook)
 
-        results_frame.grid_columnconfigure(0, weight=1); results_frame.grid_rowconfigure(1, weight=1) # MODIFIED rowconfigure
+        results_frame.grid_columnconfigure(0, weight=1); results_frame.grid_rowconfigure(1, weight=1)
 
-        # --- NEW: Action frame for export button ---
         results_action_frame = ctk.CTkFrame(results_frame, fg_color="transparent")
         results_action_frame.grid(row=0, column=0, sticky='ew', pady=(5, 10), padx=5)
 
@@ -74,14 +77,13 @@ class WagelistSendTab(BaseAutomationTab):
             command=lambda: self.export_treeview_to_csv(self.results_tree, "wagelist_send_results.csv")
         )
         self.export_csv_button.pack(side="left")
-        # --- END NEW ---
 
         cols = ("Wagelist No.", "Status", "Timestamp")
         self.results_tree = ttk.Treeview(results_frame, columns=cols, show='headings')
         for col in cols: self.results_tree.heading(col, text=col)
-        self.results_tree.grid(row=1, column=0, sticky='nsew') # MODIFIED row
+        self.results_tree.grid(row=1, column=0, sticky='nsew')
         scrollbar = ctk.CTkScrollbar(results_frame, command=self.results_tree.yview)
-        self.results_tree.configure(yscroll=scrollbar.set); scrollbar.grid(row=1, column=1, sticky='ns') # MODIFIED row
+        self.results_tree.configure(yscroll=scrollbar.set); scrollbar.grid(row=1, column=1, sticky='ns')
         self.style_treeview(self.results_tree)
 
     def set_ui_state(self, running: bool):
@@ -129,7 +131,6 @@ class WagelistSendTab(BaseAutomationTab):
             if not driver: return
             wait = WebDriverWait(driver, 15)
 
-            # --- NEW: Fully automated navigation and setup ---
             self.app.log_message(self.log_display, f"Navigating to Send Wagelist page...")
             driver.get(config.WAGELIST_SEND_CONFIG["url"])
             
@@ -138,10 +139,8 @@ class WagelistSendTab(BaseAutomationTab):
             fin_year_dropdown.select_by_value(fin_year)
             
             self.app.log_message(self.log_display, "Waiting for wagelists to load...")
-            # Wait for the page to reload by checking for the wagelist dropdown to be populated
             wait.until(EC.element_to_be_clickable((By.XPATH, "//select[@id='ctl00_ContentPlaceHolder1_ddl_sel']/option[position()>1]")))
-            time.sleep(1) # Extra sleep for stability
-            # --- END NEW ---
+            time.sleep(1)
 
             all_wagelists = [o.get_attribute("value") for o in Select(driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_ddl_sel")).options if o.get_attribute("value") != "select"]
             if not all_wagelists:
@@ -176,28 +175,23 @@ class WagelistSendTab(BaseAutomationTab):
             if self.app.stop_events[self.automation_key].is_set():
                 return False
             try:
-                # Select the wagelist
                 Select(wait.until(EC.element_to_be_clickable((By.ID, "ctl00_ContentPlaceHolder1_ddl_sel")))).select_by_value(wagelist)
                 
-                # Wait for the grid to update
                 start_row_radio_id = f"ctl00_ContentPlaceHolder1_GridView1_ctl{str(start_row).zfill(2)}_rdbPayment_2"
                 wait.until(EC.presence_of_element_located((By.ID, start_row_radio_id)))
                 
-                # Click the radio buttons
                 for i in range(start_row, end_row + 1):
                     if self.app.stop_events[self.automation_key].is_set():
                         return False
                     try:
                         driver.find_element(By.ID, f"ctl00_ContentPlaceHolder1_GridView1_ctl{str(i).zfill(2)}_rdbPayment_2").click()
-                        time.sleep(0.1) # A small delay can help with stability
+                        time.sleep(0.1)
                     except NoSuchElementException:
-                        # This can happen if the wagelist has fewer rows than the end_row value
                         break
                 
                 if self.app.stop_events[self.automation_key].is_set():
                     return False
                 
-                # Submit and accept the alert
                 driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_btnsubmit").click()
                 WebDriverWait(driver, 5).until(EC.alert_is_present()).accept()
                 
@@ -206,7 +200,6 @@ class WagelistSendTab(BaseAutomationTab):
             except Exception as e:
                 self.app.log_message(self.log_display, f"[WARN] Attempt {attempt+1} failed for {wagelist}: {type(e).__name__}", "warning")
                 time.sleep(2)
-                # On failure, refresh the page to get back to a clean state before retrying
                 driver.refresh()
                 wait.until(EC.element_to_be_clickable((By.ID, "ctl00_ContentPlaceHolder1_ddl_sel")))
         return False

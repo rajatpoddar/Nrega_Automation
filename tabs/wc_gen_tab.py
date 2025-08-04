@@ -1,4 +1,4 @@
-# tabs/wc_gen_tab.py (Corrected crash on error and missing function)
+# tabs/wc_gen_tab.py
 import tkinter
 from tkinter import ttk, messagebox, filedialog
 import customtkinter as ctk
@@ -25,18 +25,23 @@ class WcGenTab(BaseAutomationTab):
         self.saved_config = {}
         
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
+        # --- MODIFIED: Configure rows for new layout ---
+        self.grid_rowconfigure(0, weight=0) # Settings row
+        self.grid_rowconfigure(1, weight=0) # Action buttons row
+        self.grid_rowconfigure(2, weight=1) # Results/Logs row (will expand)
         
         self._create_widgets()
         self._load_profiles_from_file()
 
     def _create_widgets(self):
-        main_container = ctk.CTkFrame(self)
-        main_container.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
-        main_container.grid_columnconfigure(0, weight=1)
+        # --- NEW: Main container for all settings, made scrollable ---
+        settings_container = ctk.CTkScrollableFrame(self, label_text="Settings")
+        settings_container.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+        settings_container.grid_columnconfigure(0, weight=1)
 
-        profile_frame = ctk.CTkFrame(main_container)
-        profile_frame.grid(row=0, column=0, sticky='ew', padx=10, pady=10)
+        # --- Profile Management Frame ---
+        profile_frame = ctk.CTkFrame(settings_container)
+        profile_frame.grid(row=0, column=0, sticky='ew', padx=5, pady=5)
         profile_frame.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(profile_frame, text="Configuration Profile:", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, padx=15, pady=10, sticky="w")
@@ -53,8 +58,9 @@ class WcGenTab(BaseAutomationTab):
         self.delete_profile_button = ctk.CTkButton(profile_actions, text="Delete", fg_color="transparent", border_width=1, text_color=("gray10", "#DCE4EE"), command=self._delete_profile)
         self.delete_profile_button.pack(side="left")
 
-        loader_frame = ctk.CTkFrame(main_container)
-        loader_frame.grid(row=1, column=0, sticky='ew', padx=10, pady=10)
+        # --- Panchayat Loader Frame ---
+        loader_frame = ctk.CTkFrame(settings_container)
+        loader_frame.grid(row=1, column=0, sticky='ew', padx=5, pady=5)
         loader_frame.grid_columnconfigure(1, weight=1)
         ctk.CTkLabel(loader_frame, text="Panchayat Name:", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, padx=15, pady=(10,0), sticky="w")
         self.panchayat_entry = ctk.CTkEntry(loader_frame)
@@ -62,29 +68,35 @@ class WcGenTab(BaseAutomationTab):
         self.load_button = ctk.CTkButton(loader_frame, text="Load Categories from Website", command=self._start_category_loading_thread)
         self.load_button.grid(row=1, column=0, columnspan=2, padx=15, pady=10, sticky="ew")
 
-        scrollable_frame = ctk.CTkScrollableFrame(main_container, label_text="Work Generation Details")
-        scrollable_frame.grid(row=2, column=0, sticky='ew', padx=10, pady=10)
-        scrollable_frame.grid_columnconfigure(1, weight=1)
-        
-        self._create_field(scrollable_frame, "master_category", "Master Category", 0, is_dropdown=True)
-        self._create_field(scrollable_frame, "work_category", "Work Category", 1, is_dropdown=True)
-        self._create_field(scrollable_frame, "beneficiary_type", "Beneficiary Type", 2, is_dropdown=True)
-        self._create_field(scrollable_frame, "activity_type", "Activity Type", 3, is_dropdown=True)
-        self._create_field(scrollable_frame, "work_type", "Work Type", 4, is_dropdown=True)
-        self._create_field(scrollable_frame, "pro_status", "Proposal Status", 5, is_dropdown=True)
-        self._create_field(scrollable_frame, "executing_agency", "Executing Agency", 7, is_dropdown=True)
-        ctk.CTkLabel(scrollable_frame, text="--- Dates & Costs ---", font=ctk.CTkFont(weight="bold")).grid(row=8, column=0, columnspan=2, pady=(10,0))
-        ctk.CTkLabel(scrollable_frame, text="Proposal Date (DD/MM/YYYY)").grid(row=9, column=0, sticky="w", padx=15, pady=5)
-        self.ui_fields['proposal_date'] = DateEntry(scrollable_frame, state="disabled")
-        self.ui_fields['proposal_date'].grid(row=9, column=1, sticky="ew", padx=15, pady=5)
-        ctk.CTkLabel(scrollable_frame, text="Work Start Date (DD/MM/YYYY)").grid(row=10, column=0, sticky="w", padx=15, pady=5)
-        self.ui_fields['start_date'] = DateEntry(scrollable_frame, state="disabled")
-        self.ui_fields['start_date'].grid(row=10, column=1, sticky="ew", padx=15, pady=5)
-        self._create_field(scrollable_frame, "est_labour_cost", "Est. Labour Cost (Lakhs)", 11)
-        self._create_field(scrollable_frame, "est_material_cost", "Est. Material Cost (Lakhs)", 12)
+        # --- Action Buttons (MOVED) ---
+        action_frame = self._create_action_buttons(parent_frame=self)
+        action_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 10))
 
-        csv_frame = ctk.CTkFrame(main_container)
-        csv_frame.grid(row=3, column=0, sticky='ew', padx=10, pady=10)
+        # --- Dynamic Dropdowns Frame ---
+        dropdown_frame = ctk.CTkFrame(settings_container, fg_color="transparent")
+        dropdown_frame.grid(row=2, column=0, sticky='ew', padx=5, pady=5)
+        dropdown_frame.grid_columnconfigure(1, weight=1)
+        
+        self._create_field(dropdown_frame, "master_category", "Master Category", 0, is_dropdown=True)
+        self._create_field(dropdown_frame, "work_category", "Work Category", 1, is_dropdown=True)
+        self._create_field(dropdown_frame, "beneficiary_type", "Beneficiary Type", 2, is_dropdown=True)
+        self._create_field(dropdown_frame, "activity_type", "Activity Type", 3, is_dropdown=True)
+        self._create_field(dropdown_frame, "work_type", "Work Type", 4, is_dropdown=True)
+        self._create_field(dropdown_frame, "pro_status", "Proposal Status", 5, is_dropdown=True)
+        self._create_field(dropdown_frame, "executing_agency", "Executing Agency", 7, is_dropdown=True)
+        ctk.CTkLabel(dropdown_frame, text="--- Dates & Costs ---", font=ctk.CTkFont(weight="bold")).grid(row=8, column=0, columnspan=2, pady=(10,0))
+        ctk.CTkLabel(dropdown_frame, text="Proposal Date (DD/MM/YYYY)").grid(row=9, column=0, sticky="w", padx=15, pady=5)
+        self.ui_fields['proposal_date'] = DateEntry(dropdown_frame, state="disabled")
+        self.ui_fields['proposal_date'].grid(row=9, column=1, sticky="ew", padx=15, pady=5)
+        ctk.CTkLabel(dropdown_frame, text="Work Start Date (DD/MM/YYYY)").grid(row=10, column=0, sticky="w", padx=15, pady=5)
+        self.ui_fields['start_date'] = DateEntry(dropdown_frame, state="disabled")
+        self.ui_fields['start_date'].grid(row=10, column=1, sticky="ew", padx=15, pady=5)
+        self._create_field(dropdown_frame, "est_labour_cost", "Est. Labour Cost (Lakhs)", 11)
+        self._create_field(dropdown_frame, "est_material_cost", "Est. Material Cost (Lakhs)", 12)
+
+        # --- CSV Selection Frame ---
+        csv_frame = ctk.CTkFrame(settings_container)
+        csv_frame.grid(row=4, column=0, sticky='ew', padx=5, pady=5)
         csv_frame.grid_columnconfigure(1, weight=1)
         ctk.CTkLabel(csv_frame, text="Data File:", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, sticky="w", pady=10, padx=15)
         self.select_button = ctk.CTkButton(csv_frame, text="Select workcode_data.csv", command=self.select_csv_file)
@@ -93,11 +105,9 @@ class WcGenTab(BaseAutomationTab):
         self.file_label.grid(row=0, column=2, sticky="w", padx=10)
         ctk.CTkLabel(csv_frame, text="ℹ️ NOTE: Your CSV must have 9 columns for dynamic data (total_plants, etc.).", text_color="gray50").grid(row=1, column=1, columnspan=2, sticky="w", padx=15, pady=(0, 10))
 
-        action_frame = self._create_action_buttons(parent_frame=main_container)
-        action_frame.grid(row=4, column=0, sticky="ew", pady=15, padx=10)
-        
+        # --- Results and Logs Notebook (MOVED) ---
         notebook = ctk.CTkTabview(self)
-        notebook.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0,10))
+        notebook.grid(row=2, column=0, sticky="nsew", padx=10, pady=(0,10))
         
         results_frame = notebook.add("Results")
         self._create_log_and_status_area(notebook)
@@ -179,7 +189,6 @@ class WcGenTab(BaseAutomationTab):
         self.saved_config = self.profiles.get(profile_name, {})
         if not self.saved_config: return
         
-        # Load Panchayat and static fields
         self.panchayat_entry.delete(0, tkinter.END)
         self.panchayat_entry.insert(0, self.saved_config.get("panchayat_name", ""))
         
@@ -193,8 +202,6 @@ class WcGenTab(BaseAutomationTab):
                     field.delete(0, tkinter.END)
                     field.insert(0, value)
         
-        # --- MODIFIED: Removed the automatic call to load categories ---
-        # The user now has full manual control to click the "Load Categories" button.
         self.app.log_message(self.log_display, f"Profile '{profile_name}' loaded. Click 'Load Categories' to continue.")
 
     def _delete_profile(self):
