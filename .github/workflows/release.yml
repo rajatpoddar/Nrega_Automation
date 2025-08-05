@@ -1,0 +1,191 @@
+# .github/workflows/release.yml
+# This workflow automates the build and release process for the NREGA Bot application.
+#
+# --- How it works ---
+# 1. Trigger: The workflow runs automatically when you push a new tag that starts with 'v' (e.g., v2.5.5).
+# 2. Read Info: It first reads the version number and changelog from your version.json file.
+# 3. Build in Parallel: It then builds the application for Windows, macOS, and Linux simultaneously.
+# 4. Create Release: Once all builds are successful, it creates a new GitHub Release,
+#    populates it with the changelog, and attaches all the built application files.
+#
+name: Create Application Release
+
+# This workflow is triggered on pushes to tags that match the pattern 'v*.*.*'
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  # This job reads the version and changelog to use in other jobs
+  get-release-info:
+    name: Get Release Information
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      changelog: ${{ steps.get_changelog.outputs.changelog }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: get_version
+        # The tag is 'v2.5.5', but the JSON key is '2.5.5'. This step removes the 'v'.
+        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Get changelog for the new version
+        id: get_changelog
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          # Use jq to parse the changelog.json and format it as markdown bullet points
+          CHANGELOG_BODY=$(jq -r --arg VERSION "$VERSION" '.changelog[$VERSION] | .[] | "- \(.)"' version.json)
+          # This is a special way to pass multiline strings between steps in GitHub Actions
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG_BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+  # --- Build Job for Windows ---
+  build-windows:
+    name: Build for Windows
+    needs: get-release-info
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Inno Setup
+        uses: Minionguyjpro/Inno-Setup-Action@v1.0.1
+
+      - name: Run Windows build script
+        # This script automatically reads the version from config.py
+        run: .\build_windows.bat
+
+      - name: Create Portable ZIP archive
+        run: |
+          $version = "${{ needs.get-release-info.outputs.version }}"
+          Compress-Archive -Path dist/'NREGA Bot.exe' -DestinationPath dist/NREGABot-v$version-Windows-Portable.zip
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-builds
+          path: |
+            installer/NREGABot-v${{ needs.get-release-info.outputs.version }}-Setup.exe
+            dist/NREGABot-v${{ needs.get-release-info.outputs.version }}-Windows-Portable.zip
+
+  # --- Build Job for macOS ---
+  build-macos:
+    name: Build for macOS (Universal)
+    needs: get-release-info
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install create-dmg
+        run: brew install create-dmg
+
+      - name: Make build script executable
+        run: chmod +x build_macos.sh
+
+      - name: Run macOS build script
+        # This script has the version hardcoded, so we update it dynamically before running
+        run: ./build_macos.sh
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build
+          path: dist/NREGABot-v${{ needs.get-release-info.outputs.version }}-macOS.dmg
+
+  # --- Build Job for Linux ---
+  build-linux:
+    name: Build for Linux (Portable)
+    needs: get-release-info
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Linux dependencies for PyInstaller
+        run: sudo apt-get update && sudo apt-get install -y libfuse2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller --noconfirm --windowed --onefile --name "NREGA Bot" \
+          --icon="assets/app_icon.icns" \
+          --add-data="logo.png:." \
+          --add-data="theme.json:." \
+          --add-data="changelog.json:." \
+          --add-data="assets:assets" \
+          --add-data=".env:." \
+          --add-data="jobcard.jpeg:." \
+          --add-data="tabs:tabs" \
+          --collect-data fpdf \
+          main_app.py
+
+      - name: Create portable archive
+        run: |
+          cd dist
+          tar -czvf NREGABot-v${{ needs.get-release-info.outputs.version }}-Linux.tar.gz "NREGA Bot"
+          cd ..
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: dist/NREGABot-v${{ needs.get-release-info.outputs.version }}-Linux.tar.gz
+
+  # --- Publish Job ---
+  # This job runs after all builds are complete.
+  # It downloads the built files and creates the GitHub Release.
+  publish-release:
+    name: Publish GitHub Release
+    needs: [get-release-info, build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # This permission is required to create a release
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          # The release title will be e.g., "NREGA Bot v2.5.5"
+          name: NREGA Bot ${{ github.ref_name }}
+          # The release body will be populated with the changelog
+          body: ${{ needs.get-release-info.outputs.changelog }}
+          # The tag for the release will be the one you pushed
+          tag_name: ${{ github.ref_name }}
+          # Attach all the built files from the artifacts directory
+          files: |
+            artifacts/windows-builds/*
+            artifacts/macos-build/*
+            artifacts/linux-build/*
