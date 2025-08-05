@@ -46,7 +46,6 @@ jobs:
           done
           echo "Failed to install jq after 3 attempts."
           exit 1
-
       - name: Determine tag name
         id: get_tag
         run: |
@@ -55,7 +54,6 @@ jobs:
           else
             echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
           fi
-
       - name: Get clean version number from tag
         id: get_clean_version
         run: echo "version=$(echo ${{ steps.get_tag.outputs.tag }} | sed 's/^v//')" >> $GITHUB_OUTPUT
@@ -68,7 +66,6 @@ jobs:
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGELOG_BODY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-
   # --- Build Job for Windows ---
   build-windows:
     name: Build for Windows
@@ -90,31 +87,22 @@ jobs:
         run: echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" > .env
         shell: bash
 
-      - name: Build executable with PyInstaller
+      # Add PyInstaller build step before Inno Setup
+      - name: Build with PyInstaller
         run: |
-          pyinstaller --noconfirm --windowed --onefile --name "NREGA Bot" `
-          --icon="assets/app_icon.ico" `
-          --add-data="logo.png;." `
-          --add-data="theme.json;." `
-          --add-data="changelog.json;." `
-          --add-data="assets;assets" `
-          --add-data=".env;." `
-          --add-data="jobcard.jpeg;." `
-          --add-data="tabs;tabs" `
-          --collect-data fpdf `
-          main_app.py
-
+          pyinstaller --noconfirm --windowed --onefile --name "NREGA Bot"           --icon="assets/app_icon.ico"           --add-data="logo.png;."           --add-data="theme.json;."           --add-data="changelog.json;."           --add-data="assets;assets"           --add-data=".env;."           --add-data="jobcard.jpeg;."           --add-data="tabs;tabs"           --collect-data fpdf           main_app.py
       - name: Install Inno Setup
-        uses: crazy-max/ghaction-inno-setup@v3
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
+        with:
+          path: installer.iss
 
-      - name: Compile installer with Inno Setup
-        run: iscc.exe /DAppVersion=${{ needs.get-release-info.outputs.version }} installer.iss
+      - name: Run Windows build script
+        run: .\build_windows.bat
 
       - name: Create Portable ZIP archive
         run: |
           $version = "${{ needs.get-release-info.outputs.version }}"
           Compress-Archive -Path dist/'NREGA Bot.exe' -DestinationPath dist/NREGABot-v$version-Windows-Portable.zip
-
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -122,7 +110,6 @@ jobs:
           path: |
             installer/NREGABot-v${{ needs.get-release-info.outputs.version }}-Setup.exe
             dist/NREGABot-v${{ needs.get-release-info.outputs.version }}-Windows-Portable.zip
-
   # --- Build Job for macOS ---
   build-macos:
     name: Build for macOS (Universal)
@@ -194,13 +181,11 @@ jobs:
           --add-data="tabs:tabs" \
           --collect-data fpdf \
           main_app.py
-
       - name: Create portable archive
         run: |
           cd dist
           tar -czvf NREGABot-v${{ needs.get-release-info.outputs.version }}-Linux.tar.gz "NREGA Bot"
           cd ..
-
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
         with:
@@ -227,6 +212,6 @@ jobs:
           body: ${{ needs.get-release-info.outputs.changelog }}
           tag_name: ${{ needs.get-release-info.outputs.tag }}
           files: |
-            artifacts/windows-builds/*
+            artifacts/windows-builds/**/*
             artifacts/macos-build/*
             artifacts/linux-build/*
