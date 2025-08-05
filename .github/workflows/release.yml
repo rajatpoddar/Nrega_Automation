@@ -91,7 +91,9 @@ jobs:
         shell: bash
 
       - name: Install Inno Setup
-        uses: crazy-max/ghaction-inno-setup@v3
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
+        with:
+          path: installer.iss
 
       - name: Run Windows build script
         run: .\build_windows.bat
