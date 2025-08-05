@@ -28,6 +28,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # --- FIX: Install jq ---
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
       - name: Get version from tag
         id: get_version
         # The tag is 'v2.5.5', but the JSON key is '2.5.5'. This step removes the 'v'.
@@ -37,7 +41,7 @@ jobs:
         id: get_changelog
         run: |
           VERSION="${{ steps.get_version.outputs.version }}"
-          # Use jq to parse the changelog.json and format it as markdown bullet points
+          # Use jq to parse the version.json and format it as markdown bullet points
           CHANGELOG_BODY=$(jq -r --arg VERSION "$VERSION" '.changelog[$VERSION] | .[] | "- \(.)"' version.json)
           # This is a special way to pass multiline strings between steps in GitHub Actions
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
