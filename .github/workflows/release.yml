@@ -86,8 +86,12 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Create .env file
+        run: echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" > .env
+        shell: bash
+
       - name: Install Inno Setup
-        uses: Minionguyjpro/Inno-Setup-Action@v1.0.1
+        uses: crazy-max/ghaction-inno-setup@v3
 
       - name: Run Windows build script
         run: .\build_windows.bat
@@ -121,6 +125,9 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
+
+      - name: Create .env file
+        run: echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" > .env
 
       - name: Install create-dmg
         run: brew install create-dmg
@@ -156,6 +163,9 @@ jobs:
 
       - name: Install Python dependencies
         run: pip install -r requirements.txt
+      
+      - name: Create .env file
+        run: echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" > .env
 
       - name: Build with PyInstaller
         run: |
