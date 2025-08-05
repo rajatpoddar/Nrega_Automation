@@ -37,8 +37,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: Install jq with retries
+        run: |
+          for i in 1 2 3; do
+            sudo apt-get update && sudo apt-get install -y jq && exit 0
+            echo "apt-get failed on attempt $i, retrying in 15 seconds..."
+            sleep 15
+          done
+          echo "Failed to install jq after 3 attempts."
+          exit 1
 
       - name: Determine tag name
         id: get_tag
