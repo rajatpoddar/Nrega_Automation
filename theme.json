@@ -89,7 +89,9 @@
     "fg_color": ["#EAEAEA", "#565B5E"],
     "progress_color": ["#B2B2B2", "#686868"],
     "button_color": ["#3B8ED0", "#1F6AA5"],
-    "button_hover_color": ["#36719F", "#144870"]
+    "button_hover_color": ["#36719F", "#144870"],
+    "button_corner_radius": 1000,
+    "button_length": 0
   },
   "CTkTabview": {
     "corner_radius": 10,

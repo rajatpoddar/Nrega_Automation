@@ -1,4 +1,13 @@
 {
+  "2.5.4": [
+    "✨ New Feature (Duplicate MR Print): Added UI controls to select PDF orientation (Landscape/Portrait) and adjust content scale (50-100%).",
+    "✨ New Feature (Muster Roll Gen): Added UI controls for PDF orientation and scale to match the Duplicate MR Print tab.",
+    "🐞 Critical Bug Fix (IF Edit Tab): Completely overhauled the Page 3 automation logic to resolve persistent 'stale element' errors by implementing a more robust sequence of waits and actions that mimic human interaction.",
+    "🐞 Critical Bug Fix (macOS): Resolved a common app crash on macOS caused by showing message boxes from a background thread.",
+    "🐞 Bug Fix (PDF Generation): Fixed a bug where the 'Landscape' orientation setting was being ignored by the browser's print-to-PDF function.",
+    "🐞 Bug Fix (UI): Fixed a bug preventing the scrollbar from working on results tables (Treeview) on macOS by setting a more compatible UI theme.",
+    "🛠️ Improvement (All Tabs): Added strategic delays and more intelligent waits to several automation sequences to improve reliability and prevent timing-related errors."
+  ],
   "2.5.3": [
     "✨ New Automation: Update Estimated Outcome - Added a new tab to automate updating the 'Estimated Outcome' for a list of work codes.",
     "✨ New Automation: Duplicate MR Print - Implemented a powerful new feature to find, save, and print duplicate Muster Rolls for multiple work codes in a single batch operation.",

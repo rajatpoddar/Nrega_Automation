@@ -103,7 +103,12 @@ class BaseAutomationTab(ctk.CTkFrame):
         text_color = self.app._apply_appearance_mode(ctk.ThemeManager.theme["CTkLabel"]["text_color"])
         header_bg = self.app._apply_appearance_mode(ctk.ThemeManager.theme["CTkButton"]["fg_color"])
         selected_color = self.app._apply_appearance_mode(ctk.ThemeManager.theme["CTkButton"]["hover_color"])
-        style.theme_use("default")
+        
+        # --- SCROLLBAR FIX ---
+        # Use the 'clam' theme, which is more reliable for custom styling on macOS.
+        style.theme_use("clam")
+        # --- END FIX ---
+
         style.configure("Treeview", background=bg_color, foreground=text_color, fieldbackground=bg_color, borderwidth=0)
         style.map('Treeview', background=[('selected', selected_color)])
         style.configure("Treeview.Heading", background=header_bg, foreground=text_color, relief="flat")

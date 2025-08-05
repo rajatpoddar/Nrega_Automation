@@ -5,7 +5,7 @@
 # <div align="center">NREGA Bot</div>
 
 <p align="center">
-  <b>Version 2.5.3 | The ultimate tool to automate your repetitive NREGA portal tasks.</b><br />
+  <b>Version 2.5.4 | The ultimate tool to automate your repetitive NREGA portal tasks.</b><br />
   <a href="https://nregabot.com/#downloads"><strong>Download Now »</strong></a><br /><br />
   <a href="https://nregabot.com/how-to-use.html">View Instructions</a> ·
   <a href="https://nregabot.com/contact.html">Report Bug</a> ·

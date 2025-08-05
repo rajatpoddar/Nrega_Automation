@@ -57,12 +57,23 @@ class MusterrollGenTab(BaseAutomationTab):
         self.output_action_combobox.set("Save as PDF")
         self.output_action_combobox.grid(row=4, column=1, sticky='ew', padx=(15,5), pady=5)
         
-        ctk.CTkLabel(controls_frame, text="PDF Orientation:").grid(row=4, column=2, sticky='w', padx=10, pady=5)
-        self.orientation_combobox = ctk.CTkComboBox(controls_frame, values=["Landscape", "Portrait"])
-        self.orientation_combobox.set("Landscape")
-        self.orientation_combobox.grid(row=4, column=3, sticky='ew', padx=(5,15), pady=5)
+        # --- PDF Options ---
+        ctk.CTkLabel(controls_frame, text="Orientation:").grid(row=4, column=2, sticky='w', padx=10, pady=5)
+        self.orientation_var = ctk.StringVar(value="Landscape")
+        self.orientation_segmented_button = ctk.CTkSegmentedButton(controls_frame, variable=self.orientation_var, values=["Landscape", "Portrait"])
+        self.orientation_segmented_button.grid(row=4, column=3, sticky='ew', padx=(5,15), pady=5)
+
+        ctk.CTkLabel(controls_frame, text="PDF Scale:").grid(row=5, column=0, sticky='w', padx=15, pady=5)
+        scale_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
+        scale_frame.grid(row=5, column=1, columnspan=3, sticky="ew", padx=15, pady=5)
+        scale_frame.grid_columnconfigure(0, weight=1)
+        self.scale_slider = ctk.CTkSlider(scale_frame, from_=50, to=100, number_of_steps=50, command=self._update_scale_label)
+        self.scale_slider.set(75)
+        self.scale_slider.grid(row=0, column=0, sticky="ew")
+        self.scale_label = ctk.CTkLabel(scale_frame, text="75%", width=40)
+        self.scale_label.grid(row=0, column=1, padx=(10, 0))
         
-        ctk.CTkLabel(controls_frame, text="ℹ️ Generated Muster Rolls are saved in 'Downloads/NREGA_MR_Output'.", text_color="gray50").grid(row=5, column=1, columnspan=3, sticky='w', padx=15, pady=(10,15))
+        ctk.CTkLabel(controls_frame, text="ℹ️ Generated Muster Rolls are saved in 'Downloads/NREGA_MR_Output'.", text_color="gray50").grid(row=6, column=1, columnspan=3, sticky='w', padx=15, pady=(10,15))
         
         action_frame_container = ctk.CTkFrame(self)
         action_frame_container.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
@@ -84,22 +95,13 @@ class MusterrollGenTab(BaseAutomationTab):
         self.work_codes_text = ctk.CTkTextbox(work_codes_tab, height=100)
         self.work_codes_text.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
         
-        # Results tab
-        results_tab.grid_columnconfigure(0, weight=1); results_tab.grid_rowconfigure(2, weight=1) # MODIFIED rowconfigure to 2
-        
-        # --- NEW: Action frame for buttons ---
+        results_tab.grid_columnconfigure(0, weight=1); results_tab.grid_rowconfigure(2, weight=1)
         results_action_frame = ctk.CTkFrame(results_tab, fg_color="transparent")
         results_action_frame.grid(row=0, column=0, sticky="ew", pady=(5,10), padx=5)
-
-        self.export_csv_button = ctk.CTkButton(
-            results_action_frame, 
-            text="Export to CSV", 
-            command=lambda: self.export_treeview_to_csv(self.results_tree, "muster_roll_gen_results.csv")
-        )
+        self.export_csv_button = ctk.CTkButton(results_action_frame, text="Export to CSV", command=lambda: self.export_treeview_to_csv(self.results_tree, "muster_roll_gen_results.csv"))
         self.export_csv_button.pack(side="left")
-        # --- END NEW ---
         summary_frame = ctk.CTkFrame(results_tab, fg_color="transparent")
-        summary_frame.grid(row=1, column=0, sticky="ew", pady=(0, 10)) # MODIFIED row to 1
+        summary_frame.grid(row=1, column=0, sticky="ew", pady=(0, 10))
         summary_frame.grid_columnconfigure((0, 1), weight=1)
         self.success_label = ctk.CTkLabel(summary_frame, text="Success: 0", text_color="#2E8B57", font=ctk.CTkFont(weight="bold")); self.success_label.grid(row=0, column=0, sticky='w')
         self.skipped_label = ctk.CTkLabel(summary_frame, text="Skipped/Failed: 0", text_color="#DAA520", font=ctk.CTkFont(weight="bold")); self.skipped_label.grid(row=0, column=1, sticky='w')
@@ -107,9 +109,12 @@ class MusterrollGenTab(BaseAutomationTab):
         cols = ("Timestamp", "Work Code/Key", "Status", "Details"); self.results_tree = ttk.Treeview(results_tab, columns=cols, show='headings')
         for col in cols: self.results_tree.heading(col, text=col)
         self.results_tree.column("Timestamp", width=80, anchor='center'); self.results_tree.column("Work Code/Key", width=250); self.results_tree.column("Status", width=100, anchor='center'); self.results_tree.column("Details", width=400)
-        self.results_tree.grid(row=2, column=0, sticky='nsew') # MODIFIED row to 2
-        scrollbar = ctk.CTkScrollbar(results_tab, command=self.results_tree.yview); self.results_tree.configure(yscroll=scrollbar.set); scrollbar.grid(row=2, column=1, sticky='ns') # MODIFIED row to 2
+        self.results_tree.grid(row=2, column=0, sticky='nsew')
+        scrollbar = ctk.CTkScrollbar(results_tab, command=self.results_tree.yview); self.results_tree.configure(yscroll=scrollbar.set); scrollbar.grid(row=2, column=1, sticky='ns')
         self.style_treeview(self.results_tree)
+
+    def _update_scale_label(self, value):
+        self.scale_label.configure(text=f"{int(value)}%")
 
     def set_ui_state(self, running: bool):
         self.set_common_ui_state(running)
@@ -119,15 +124,14 @@ class MusterrollGenTab(BaseAutomationTab):
         self.end_date_entry.configure(state=state)
         self.staff_entry.configure(state=state)
         self.designation_combobox.configure(state=state)
-        self.orientation_combobox.configure(state=state)
+        self.orientation_segmented_button.configure(state=state)
+        self.scale_slider.configure(state=state)
         self.output_action_combobox.configure(state=state)
         self.work_codes_text.configure(state=state)
         
     def start_automation(self):
-        for item in self.results_tree.get_children():
-            self.results_tree.delete(item)
-        self.success_count = 0
-        self.skipped_count = 0
+        for item in self.results_tree.get_children(): self.results_tree.delete(item)
+        self.success_count, self.skipped_count = 0, 0
         self.success_label.configure(text="Success: 0")
         self.skipped_label.configure(text="Skipped/Failed: 0")
         
@@ -137,7 +141,8 @@ class MusterrollGenTab(BaseAutomationTab):
             'end_date': self.end_date_entry.get().strip(), 
             'designation': self.designation_combobox.get().strip(), 
             'staff': self.staff_entry.get().strip(), 
-            'orientation': self.orientation_combobox.get(),
+            'orientation': self.orientation_var.get(),
+            'scale': self.scale_slider.get(),
             'output_action': self.output_action_combobox.get(), 
             'work_codes_raw': self.work_codes_text.get("1.0", tkinter.END).strip()
         }
@@ -153,64 +158,48 @@ class MusterrollGenTab(BaseAutomationTab):
     def reset_ui(self):
         if messagebox.askokcancel("Reset Form?", "Clear all inputs and logs?"):
             self.panchayat_entry.delete(0, tkinter.END)
-            self.start_date_entry.clear()
-            self.end_date_entry.clear()
+            self.start_date_entry.clear(); self.end_date_entry.clear()
             self.staff_entry.delete(0, tkinter.END)
             self.designation_combobox.set('')
-            self.orientation_combobox.set('Landscape')
+            self.orientation_var.set('Landscape')
+            self.scale_slider.set(75); self.scale_label.configure(text="75%")
             self.output_action_combobox.set('Save as PDF')
             self.work_codes_text.delete('1.0', tkinter.END)
-            for item in self.results_tree.get_children():
-                self.results_tree.delete(item)
+            for item in self.results_tree.get_children(): self.results_tree.delete(item)
             self.app.clear_log(self.log_display)
             self.update_status("Ready", 0.0)
-            self.success_label.configure(text="Success: 0")
-            self.skipped_label.configure(text="Skipped/Failed: 0")
+            self.success_label.configure(text="Success: 0"); self.skipped_label.configure(text="Skipped/Failed: 0")
             self.app.log_message(self.log_display, "Form has been reset.")
             
     def save_inputs(self, inputs):
         try:
             with open(self.config_file, 'w') as f:
                 json.dump({k: v for k, v in inputs.items() if 'work' not in k}, f, indent=4)
-        except Exception as e:
-            print(f"Error saving inputs: {e}")
+        except Exception as e: print(f"Error saving inputs: {e}")
         
     def load_inputs(self):
         try:
             if os.path.exists(self.config_file):
-                with open(self.config_file, 'r') as f:
-                    data = json.load(f)
+                with open(self.config_file, 'r') as f: data = json.load(f)
                 self.panchayat_entry.insert(0, data.get('panchayat', ''))
                 self.start_date_entry.set_date(data.get('start_date', ''))
                 self.end_date_entry.set_date(data.get('end_date', ''))
                 self.designation_combobox.set(data.get('designation', ''))
                 self.staff_entry.insert(0, data.get('staff', ''))
-                self.orientation_combobox.set(data.get('orientation', 'Landscape'))
+                self.orientation_var.set(data.get('orientation', 'Landscape'))
+                self.scale_slider.set(data.get('scale', 75)); self._update_scale_label(self.scale_slider.get())
                 self.output_action_combobox.set(data.get('output_action', 'Save as PDF'))
-        except Exception as e:
-            print(f"Error loading inputs: {e}")
+        except Exception as e: print(f"Error loading inputs: {e}")
 
     def _print_file(self, file_path):
-        """Sends the specified file to the default printer."""
         try:
             if not os.path.exists(file_path):
                 self.app.log_message(self.log_display, f"Print Error: File not found at {file_path}", "error")
                 return
-
-            if sys.platform == "win32":
-                os.startfile(file_path, "print")
-                self.app.log_message(self.log_display, f"Sent {os.path.basename(file_path)} to the default printer.")
-            elif sys.platform == "darwin":
-                subprocess.run(["lpr", file_path], check=True)
-                self.app.log_message(self.log_display, f"Sent {os.path.basename(file_path)} to the default printer queue.")
-            else:
-                subprocess.run(["lpr", file_path], check=True)
-                self.app.log_message(self.log_display, f"Sent {os.path.basename(file_path)} to the default printer queue.")
+            if sys.platform == "win32": os.startfile(file_path, "print")
+            else: subprocess.run(["lpr", file_path], check=True)
+            self.app.log_message(self.log_display, f"Sent {os.path.basename(file_path)} to printer.")
             time.sleep(2)
-        except FileNotFoundError:
-            error_msg = "Printing failed: 'lpr' command not found. Please ensure your system's printing services (CUPS) are installed."
-            self.app.log_message(self.log_display, error_msg, "error")
-            self.app.after(0, lambda: messagebox.showwarning("Print Error", error_msg))
         except Exception as e:
             error_msg = f"An unexpected error occurred while printing: {e}"
             self.app.log_message(self.log_display, error_msg, "error")
@@ -222,25 +211,19 @@ class MusterrollGenTab(BaseAutomationTab):
         self.app.log_message(self.log_display, f"Starting MR generation for: {inputs['panchayat']}")
         
         output_dir = None
-        
         try:
             driver = self.app.get_driver()
-            if not driver:
-                self.app.after(0, self.set_ui_state, False)
-                return
+            if not driver: self.app.after(0, self.set_ui_state, False); return
             wait = WebDriverWait(driver, 20)
             
-            downloads_dir = self.app.get_user_downloads_path()
-            output_dir = os.path.join(downloads_dir, config.MUSTER_ROLL_CONFIG['output_folder_name'], datetime.now().strftime('%Y-%m-%d'), inputs['panchayat'])
+            output_dir = os.path.join(self.app.get_user_downloads_path(), config.MUSTER_ROLL_CONFIG['output_folder_name'], datetime.now().strftime('%Y-%m-%d'), inputs['panchayat'])
             os.makedirs(output_dir, exist_ok=True)
             self.app.log_message(self.log_display, f"Output will be in: {output_dir}", "info")
             
             if not self._validate_panchayat(driver, wait, inputs['panchayat']):
-                self.app.after(0, self.set_ui_state, False)
-                return
+                self.app.after(0, self.set_ui_state, False); return
             
             self.app.update_history("panchayat_name", inputs['panchayat'])
-            self.app.update_history("designation", inputs['designation'])
             self.app.update_history("staff_name", inputs['staff'])
 
             items_to_process = self._get_items_to_process(driver, wait, inputs)
@@ -248,38 +231,27 @@ class MusterrollGenTab(BaseAutomationTab):
             total_items = len(items_to_process)
 
             for index, item in enumerate(items_to_process):
-                if self.app.stop_events[self.automation_key].is_set(): 
-                    self.app.log_message(self.log_display, "Stop signal received.", "warning")
-                    break
-                
+                if self.app.stop_events[self.automation_key].is_set(): self.app.log_message(self.log_display, "Stop signal received.", "warning"); break
                 self.app.log_message(self.log_display, f"\n--- Processing item ({index+1}/{total_items}): {item} ---", "info")
                 self.app.after(0, self.update_status, f"Processing {item}", (index+1)/total_items)
                 self._process_single_item(driver, wait, inputs, item, output_dir, session_skip_list)
         
         except Exception as e:
             self.app.log_message(self.log_display, f"A critical error occurred: {e}", "error")
-            if "in str" not in str(e):
-                messagebox.showerror("Critical Error", f"An unexpected error stopped the automation:\n\n{e}")
+            if "in str" not in str(e): messagebox.showerror("Critical Error", f"An unexpected error stopped the automation:\n\n{e}")
         
         finally:
             self.app.after(0, self.set_ui_state, False)
             self.app.after(0, self.update_status, "Automation Finished.", 1.0)
-            
-            summary = f"Automation complete.\n\nSuccess: {self.success_count}\nSkipped/Failed: {self.skipped_count}"
-            
-            if self.success_count > 0 and output_dir and os.path.exists(output_dir):
-                if messagebox.askyesno("Task Finished", f"{summary}\n\nDo you want to open the output folder?"):
-                    try:
-                        if sys.platform == "win32":
-                            os.startfile(output_dir)
-                        elif sys.platform == "darwin":
-                            subprocess.call(["open", output_dir])
-                        else:
-                            subprocess.call(["xdg-open", output_dir])
-                    except Exception as e:
-                        messagebox.showerror("Error", f"Could not open the folder automatically.\n\nPath: {output_dir}\nError: {e}")
-            else:
-                messagebox.showinfo("Task Finished", summary)
+            self.app.after(100, self._show_completion_dialog, output_dir)
+
+    def _show_completion_dialog(self, output_dir):
+        summary = f"Automation complete.\n\nSuccess: {self.success_count}\nSkipped/Failed: {self.skipped_count}"
+        if self.success_count > 0 and output_dir and os.path.exists(output_dir):
+            if messagebox.askyesno("Task Finished", f"{summary}\n\nDo you want to open the output folder?"):
+                self.app.open_folder(output_dir)
+        else:
+            messagebox.showinfo("Task Finished", summary)
 
     def _validate_panchayat(self, driver, wait, panchayat_name):
         try:
@@ -311,68 +283,50 @@ class MusterrollGenTab(BaseAutomationTab):
     def _process_single_item(self, driver, wait, inputs, item, output_dir, session_skip_list):
         try:
             driver.get(config.MUSTER_ROLL_CONFIG["base_url"])
+            time.sleep(1) # Delay for page load
             Select(wait.until(EC.presence_of_element_located((By.ID, "exe_agency")))).select_by_visible_text(config.AGENCY_PREFIX + inputs['panchayat'])
             full_work_code_text = self._select_work_code(driver, wait, item, inputs['auto_mode'])
+            
             if full_work_code_text in session_skip_list:
                 self._log_result(item, "Skipped", "Already processed this session")
                 return
+
+            # TIMING FIX: Add delay before entering dates
+            time.sleep(1)
             driver.find_element(By.ID, "txtDateFrom").send_keys(inputs['start_date'])
             driver.find_element(By.ID, "txtDateTo").send_keys(inputs['end_date'])
+            
             Select(wait.until(EC.element_to_be_clickable((By.ID, "ddldesg")))).select_by_visible_text(inputs['designation'])
             wait.until(EC.element_to_be_clickable((By.XPATH, "//select[@id='ddlstaff']/option[position()>1]")))
             staff_dropdown = Select(driver.find_element(By.ID, "ddlstaff"))
+            
             if inputs['staff'] not in [opt.text for opt in staff_dropdown.options]:
                 raise ValueError(f"Staff name '{inputs['staff']}' not found for the selected designation. Stopping.")
+            
             staff_dropdown.select_by_visible_text(inputs['staff'])
             body_element = driver.find_element(By.TAG_NAME, 'body')
             driver.find_element(By.ID, "btnProceed").click()
+            
             self.app.log_message(self.log_display, "Waiting for page to reload...")
             wait.until(EC.staleness_of(body_element))
             time.sleep(2) 
+            
             if self._check_for_page_errors(driver):
                 self._log_result(item, "Skipped", "Page error (Geotag/Limit/No Worker)")
                 session_skip_list.add(full_work_code_text)
                 return
             
             self.app.log_message(self.log_display, "Muster Roll is valid. Generating output...")
-            pdf_filename = f"{full_work_code_text.split('/')[-1][-6:]}.pdf"
-            save_path = os.path.join(output_dir, pdf_filename)
             
-            # --- NEW: Browser-specific PDF generation ---
-            pdf_data = None
-            if self.app.active_browser == 'chrome':
-                print_options = config.MUSTER_ROLL_CONFIG['pdf_options'] if inputs['orientation'] == 'Landscape' else config.MUSTER_ROLL_CONFIG['pdf_options_portrait']
-                result = driver.execute_cdp_cmd("Page.printToPDF", print_options)
-                pdf_data = base64.b64decode(result['data'])
-            elif self.app.active_browser == 'firefox':
-                ff_options = config.MUSTER_ROLL_CONFIG['pdf_options'] if inputs['orientation'] == 'Landscape' else config.MUSTER_ROLL_CONFIG['pdf_options_portrait']
-                pdf_data_base64 = driver.print_page(
-                    orientation='landscape' if ff_options.get('landscape', True) else 'portrait',
-                    scale=ff_options.get('scale', 1.0),
-                    background=ff_options.get('printBackground', False),
-                    page_width=ff_options.get('paperWidth', 11.69),
-                    page_height=ff_options.get('paperHeight', 8.27),
-                    margin_top=ff_options.get('marginTop', 0.4),
-                    margin_bottom=ff_options.get('marginBottom', 0.4),
-                    margin_left=ff_options.get('marginLeft', 0.4),
-                    margin_right=ff_options.get('marginRight', 0.4),
-                    shrink_to_fit=False # Use scale instead
-                )
-                pdf_data = base64.b64decode(pdf_data_base64)
-            else:
-                raise WebDriverException("Unsupported browser for PDF generation.")
-            # --- END NEW ---
+            pdf_path = self._save_mr_as_pdf(driver, full_work_code_text, output_dir, inputs['orientation'], inputs['scale'])
+            
+            log_detail = f"Saved as {os.path.basename(pdf_path)}" if pdf_path else "PDF Save Failed"
+            
+            if inputs['output_action'] == "Print" and pdf_path:
+                self._print_file(pdf_path)
+                log_detail = f"Printed and Saved as {os.path.basename(pdf_path)}"
 
-            with open(save_path, 'wb') as f:
-                f.write(pdf_data)
-            
-            log_detail = f"Saved as {pdf_filename}"
-            
-            if inputs['output_action'] == "Print":
-                self._print_file(save_path)
-                log_detail = f"Printed and Saved as {pdf_filename}"
-
-            self._log_result(item, "Success", log_detail)
+            self._log_result(item, "Success" if pdf_path else "Failed", log_detail)
             session_skip_list.add(full_work_code_text)
             time.sleep(1)
 
@@ -385,6 +339,45 @@ class MusterrollGenTab(BaseAutomationTab):
             self.app.log_message(self.log_display, f"CRITICAL ERROR: {error_message}", "error")
             self._log_result(item, "Failed", error_message)
             raise e
+
+    def _save_mr_as_pdf(self, driver, full_work_code, output_dir, orientation, scale):
+        try:
+            safe_work_code = full_work_code.replace('/', '_').split('(')[-1].replace(')', '')
+            pdf_filename = f"{safe_work_code}.pdf"
+            save_path = os.path.join(output_dir, pdf_filename)
+
+            is_landscape = (orientation == "Landscape")
+            if is_landscape:
+                self.app.log_message(self.log_display, "   - Injecting CSS to force landscape orientation...")
+                driver.execute_script(
+                    "var css = '@page { size: landscape; }';"
+                    "var head = document.head || document.getElementsByTagName('head')[0];"
+                    "var style = document.createElement('style');"
+                    "style.type = 'text/css'; style.media = 'print';"
+                    "if (style.styleSheet){ style.styleSheet.cssText = css; }"
+                    "else { style.appendChild(document.createTextNode(css)); }"
+                    "head.appendChild(style);"
+                )
+            
+            pdf_scale = scale / 100.0
+            print_options = {
+                "landscape": is_landscape,
+                "displayHeaderFooter": False,
+                "printBackground": False,
+                "scale": pdf_scale,
+                "marginTop": 0.4, "marginBottom": 0.4,
+                "marginLeft": 0.4, "marginRight": 0.4
+            }
+            
+            result = driver.execute_cdp_cmd("Page.printToPDF", print_options)
+            pdf_data = base64.b64decode(result['data'])
+            
+            with open(save_path, 'wb') as f:
+                f.write(pdf_data)
+            return save_path
+        except Exception as e:
+            self.app.log_message(self.log_display, f"Error saving PDF: {e}", "error")
+            return None
 
     def _select_work_code(self, driver, wait, item, is_auto_mode):
         if is_auto_mode:

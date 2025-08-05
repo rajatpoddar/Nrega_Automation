@@ -56,9 +56,27 @@ class DuplicateMrTab(BaseAutomationTab):
         self.output_action_menu = ctk.CTkOptionMenu(input_frame, variable=self.output_action_var, values=["Save as PDF Only", "Print and Save PDF"])
         self.output_action_menu.grid(row=1, column=1, padx=15, pady=10, sticky="w")
 
+        # --- PDF Options ---
+        ctk.CTkLabel(input_frame, text="Orientation:").grid(row=2, column=0, padx=15, pady=10, sticky="w")
+        self.orientation_var = ctk.StringVar(value="Landscape")
+        self.orientation_segmented_button = ctk.CTkSegmentedButton(input_frame, variable=self.orientation_var, values=["Landscape", "Portrait"])
+        self.orientation_segmented_button.grid(row=2, column=1, padx=15, pady=10, sticky="w")
+
+        ctk.CTkLabel(input_frame, text="PDF Scale:").grid(row=3, column=0, padx=15, pady=10, sticky="w")
+        scale_frame = ctk.CTkFrame(input_frame, fg_color="transparent")
+        scale_frame.grid(row=3, column=1, padx=15, pady=10, sticky="ew")
+        scale_frame.grid_columnconfigure(0, weight=1)
+
+        self.scale_slider = ctk.CTkSlider(scale_frame, from_=50, to=100, number_of_steps=50, command=self._update_scale_label)
+        self.scale_slider.set(75) # Default to 75%
+        self.scale_slider.grid(row=0, column=0, sticky="ew")
+
+        self.scale_label = ctk.CTkLabel(scale_frame, text="75%", width=40)
+        self.scale_label.grid(row=0, column=1, padx=(10, 0))
+        
         # Action Buttons
         action_frame = self._create_action_buttons(input_frame)
-        action_frame.grid(row=2, column=0, columnspan=2, sticky="ew", padx=15, pady=(10, 15))
+        action_frame.grid(row=4, column=0, columnspan=2, sticky="ew", padx=15, pady=(10, 15))
 
         # --- Data Notebook (Work Codes, Results, Logs) ---
         notebook = ctk.CTkTabview(main_container)
@@ -93,6 +111,9 @@ class DuplicateMrTab(BaseAutomationTab):
         scrollbar = ctk.CTkScrollbar(results_tab, command=self.results_tree.yview)
         self.results_tree.configure(yscroll=scrollbar.set)
         scrollbar.grid(row=1, column=1, sticky='ns')
+        
+    def _update_scale_label(self, value):
+        self.scale_label.configure(text=f"{int(value)}%")
 
     def _load_history(self):
         panchayat_history = self.app.history_manager.get_suggestions("panchayat_name")
@@ -106,19 +127,18 @@ class DuplicateMrTab(BaseAutomationTab):
         panchayat = self.panchayat_entry.get().strip()
         work_codes_raw = self.work_codes_textbox.get("1.0", "end").strip()
         action = self.output_action_var.get()
+        orientation = self.orientation_var.get()
+        scale = self.scale_slider.get()
 
-        if not panchayat:
-            messagebox.showwarning("Input Required", "Please provide a Panchayat Name.")
-            return
-        if not work_codes_raw:
-            messagebox.showwarning("Input Required", "Please provide at least one Work Code.")
+        if not panchayat or not work_codes_raw:
+            messagebox.showwarning("Input Required", "Panchayat Name and Work Codes are required.")
             return
             
         work_codes = [line.strip() for line in work_codes_raw.splitlines() if line.strip()]
         self.app.history_manager.save_entry("panchayat_name", panchayat)
-        self.app.start_automation_thread(self.automation_key, self.run_automation_logic, args=(panchayat, work_codes, action))
+        self.app.start_automation_thread(self.automation_key, self.run_automation_logic, args=(panchayat, work_codes, action, orientation, scale))
 
-    def run_automation_logic(self, panchayat, work_codes, action):
+    def run_automation_logic(self, panchayat, work_codes, action, orientation, scale):
         self.app.after(0, self.set_ui_state, True)
         self.app.clear_log(self.log_display)
         for item in self.results_tree.get_children(): self.results_tree.delete(item)
@@ -141,7 +161,7 @@ class DuplicateMrTab(BaseAutomationTab):
                 
                 self.update_status(f"Processing WC {i+1}/{total_codes}: {work_code}", (i + 1) / total_codes)
                 self.app.log_message(self.log_display, f"--- Processing Work Code: {work_code} ---")
-                self._process_single_work_code(driver, work_code, action, panchayat)
+                self._process_single_work_code(driver, work_code, action, panchayat, orientation, scale)
 
         except Exception as e:
             error_msg = str(e).splitlines()[0]
@@ -150,37 +170,36 @@ class DuplicateMrTab(BaseAutomationTab):
         finally:
             self.app.after(0, self.set_ui_state, False)
             self.update_status("Automation Finished", 1.0)
-            
-            # --- MODIFIED: Ask to open folder ---
-            final_message = "Duplicate MR process has finished."
-            output_dir = os.path.join(self.app.get_user_downloads_path(), "Duplicate MR", datetime.now().strftime('%Y-%m-%d'), self.current_panchayat)
-            
-            if os.path.exists(output_dir) and any(os.scandir(output_dir)):
-                if messagebox.askyesno("Complete", f"{final_message}\n\nDo you want to open the output folder?"):
-                    self.app.open_folder(output_dir)
-            else:
-                messagebox.showinfo("Complete", final_message)
-            
             self.app.log_message(self.log_display, "\n--- Automation Finished ---")
+            # CRASH FIX: Call the completion dialog safely on the main thread.
+            self.app.after(100, self._show_completion_dialog)
 
-    def _process_single_work_code(self, driver, work_code, action, panchayat):
+    def _show_completion_dialog(self):
+        """Safely shows the completion message box on the main UI thread."""
+        final_message = "Duplicate MR process has finished."
+        output_dir = os.path.join(self.app.get_user_downloads_path(), "Duplicate MR", datetime.now().strftime('%Y-%m-%d'), self.current_panchayat)
+        
+        if os.path.exists(output_dir) and any(os.scandir(output_dir)):
+            if messagebox.askyesno("Complete", f"{final_message}\n\nDo you want to open the output folder?"):
+                self.app.open_folder(output_dir)
+        else:
+            messagebox.showinfo("Complete", final_message)
+
+    def _process_single_work_code(self, driver, work_code, action, panchayat, orientation, scale):
         wait = WebDriverWait(driver, 20)
         url = config.DUPLICATE_MR_CONFIG["url"]
         try:
-            # Step 1: Get the list of MSRs once to know what to loop through.
             msr_options = self._get_msr_list(driver, wait, work_code, panchayat, url)
-            
             if not msr_options: return
 
-            # Step 2: Loop through the static list of MSR numbers we retrieved.
             for i, msr_no in enumerate(msr_options):
                 if self.app.stop_events[self.automation_key].is_set(): break
                 
                 self.app.log_message(self.log_display, f"--- Processing MSR {i+1}/{len(msr_options)}: {msr_no} ---")
                 
-                # Re-establish state for every MSR to ensure stability
                 self.app.log_message(self.log_display, "Navigating to page to select MSR...")
                 driver.get(url)
+                # TIMING FIX: Add a delay to ensure the page is fully loaded before interacting.
                 time.sleep(2)
                 
                 panchayat_dd_element = wait.until(EC.element_to_be_clickable((By.ID, "ddlPanchayat")))
@@ -197,15 +216,18 @@ class DuplicateMrTab(BaseAutomationTab):
                 Select(driver.find_element(By.ID, "ddlworkcode")).select_by_index(1)
                 wait.until(EC.staleness_of(wc_input))
                 
-                # Now select the current MSR from the loop
                 current_msr_dd = Select(wait.until(EC.element_to_be_clickable((By.ID, "ddlmsrno"))))
                 current_msr_dd.select_by_value(msr_no)
                 
                 driver.find_element(By.ID, "btnproceed").click()
                 
+                # TIMING FIX: Add a delay to allow the print preview page to fully render.
+                self.app.log_message(self.log_display, "Waiting 2 seconds for print page to stabilize...")
+                time.sleep(2)
+                
                 wait.until(EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, "Print")))
                 
-                pdf_path = self._save_mr_as_pdf(driver, work_code, msr_no)
+                pdf_path = self._save_mr_as_pdf(driver, work_code, msr_no, orientation, scale)
                 if pdf_path: self._log_result(work_code, msr_no, "Saved as PDF")
                 else: self._log_result(work_code, msr_no, "PDF Save Failed")
 
@@ -223,7 +245,6 @@ class DuplicateMrTab(BaseAutomationTab):
             self._log_result(work_code, "N/A", f"Error: {error_msg}")
 
     def _get_msr_list(self, driver, wait, work_code, panchayat, url):
-        """Helper function to navigate, select, search, and return a list of MSR numbers."""
         self.app.log_message(self.log_display, f"Getting MSR list for Work Code: {work_code}")
         driver.get(url)
         time.sleep(2)
@@ -233,10 +254,8 @@ class DuplicateMrTab(BaseAutomationTab):
         wait.until(EC.staleness_of(panchayat_dd_element))
 
         wc_input = wait.until(EC.element_to_be_clickable((By.ID, "txtWork")))
-        wc_input.clear()
-        wc_input.send_keys(work_code)
+        wc_input.clear(); wc_input.send_keys(work_code)
         driver.find_element(By.ID, "imgButtonSearch").click()
-        self.app.log_message(self.log_display, "Waiting 2 seconds for search results to load...")
         time.sleep(2)
         
         wait.until(lambda d: len(Select(d.find_element(By.ID, "ddlworkcode")).options) > 1)
@@ -255,7 +274,7 @@ class DuplicateMrTab(BaseAutomationTab):
         self.app.log_message(self.log_display, f"Found {len(msr_options)} MSRs: {', '.join(msr_options)}")
         return msr_options
 
-    def _save_mr_as_pdf(self, driver, work_code, msr_no):
+    def _save_mr_as_pdf(self, driver, work_code, msr_no, orientation, scale):
         try:
             today_str = datetime.now().strftime('%Y-%m-%d')
             output_dir = os.path.join(self.app.get_user_downloads_path(), "Duplicate MR", today_str, self.current_panchayat)
@@ -265,10 +284,31 @@ class DuplicateMrTab(BaseAutomationTab):
             filename = f"MR_{safe_work_code}_{msr_no}.pdf"
             filepath = os.path.join(output_dir, filename)
 
+            # --- LANDSCAPE FIX: Inject CSS to force landscape mode ---
+            is_landscape = (orientation == "Landscape")
+            if is_landscape:
+                self.app.log_message(self.log_display, "Injecting CSS to force landscape orientation...")
+                driver.execute_script(
+                    "var css = '@page { size: landscape; }';"
+                    "var head = document.head || document.getElementsByTagName('head')[0];"
+                    "var style = document.createElement('style');"
+                    "style.type = 'text/css';"
+                    "style.media = 'print';"
+                    "if (style.styleSheet){ style.styleSheet.cssText = css; }"
+                    "else { style.appendChild(document.createTextNode(css)); }"
+                    "head.appendChild(style);"
+                )
+
+            pdf_scale = scale / 100.0
             print_options = {
-                'landscape': True, 'displayHeaderFooter': False, 'printBackground': False,
-                'preferCSSPageSize': True, 'paperWidth': 11.69, 'paperHeight': 8.27
+                "landscape": is_landscape,
+                "displayHeaderFooter": False,
+                "printBackground": False,
+                "scale": pdf_scale,
+                "marginTop": 0.4, "marginBottom": 0.4,
+                "marginLeft": 0.4, "marginRight": 0.4
             }
+            
             result = driver.execute_cdp_cmd('Page.printToPDF', print_options)
             pdf_data = base64.b64decode(result['data'])
             
@@ -285,6 +325,8 @@ class DuplicateMrTab(BaseAutomationTab):
         self.panchayat_entry.configure(state=state)
         self.work_codes_textbox.configure(state=state)
         self.output_action_menu.configure(state=state)
+        self.orientation_segmented_button.configure(state=state)
+        self.scale_slider.configure(state=state)
 
     def reset_ui(self):
         if messagebox.askokcancel("Reset Form?", "Are you sure?"):
@@ -294,3 +336,6 @@ class DuplicateMrTab(BaseAutomationTab):
             self.update_status("Ready", 0)
             for item in self.results_tree.get_children():
                 self.results_tree.delete(item)
+            self.orientation_var.set("Landscape")
+            self.scale_slider.set(75)
+            self.scale_label.configure(text="75%")

@@ -157,7 +157,6 @@ class IfEditTab(BaseAutomationTab):
         parent.grid_columnconfigure(1, weight=1)
         ctk.CTkLabel(parent, text="Note: These values will be applied to all work codes in the CSV.", text_color="gray50").grid(row=0, column=0, columnspan=2, padx=15, pady=(10,5))
         
-        # --- MODIFIED: Changed 'activity_code' from combo to an entry with a placeholder ---
         self._create_field(parent, "activity_code", "Activity Code:", 1, col=0, widget_type='entry', placeholder_text="e.g., ACT105")
         self._create_field(parent, "unit_price", "Unit Price:", 2, col=0)
         self._create_field(parent, "quantity", "Quantity:", 3, col=0)
@@ -210,13 +209,7 @@ class IfEditTab(BaseAutomationTab):
         if not profile_name:
             return
 
-        config_data = {}
-        for key, field in self.ui_fields.items():
-            if isinstance(field, ctk.CTkSwitch):
-                config_data[key] = field.get()
-            else:
-                config_data[key] = field.get()
-
+        config_data = {key: field.get() for key, field in self.ui_fields.items()}
         self.profiles[profile_name] = config_data
 
         try:
@@ -246,16 +239,12 @@ class IfEditTab(BaseAutomationTab):
             if key in self.ui_fields:
                 field = self.ui_fields[key]
                 if isinstance(field, ctk.CTkEntry):
-                    field.delete(0, tkinter.END)
-                    field.insert(0, value)
+                    field.delete(0, tkinter.END); field.insert(0, value)
                 elif isinstance(field, ctk.CTkComboBox):
                     field.set(value)
                 elif isinstance(field, ctk.CTkSwitch):
-                    if value == 1:
-                        field.select()
-                    else:
-                        field.deselect()
-
+                    if value == 1: field.select()
+                    else: field.deselect()
         self._toggle_page_settings()
         self.app.log_message(self.log_display, f"Profile '{profile_name}' loaded.")
 
@@ -268,16 +257,13 @@ class IfEditTab(BaseAutomationTab):
             return
         del self.profiles[profile_name]
         try:
-            with open(self.profile_file, 'w') as f:
-                json.dump(self.profiles, f, indent=4)
+            with open(self.profile_file, 'w') as f: json.dump(self.profiles, f, indent=4)
             profile_names = list(self.profiles.keys())
             self.profile_combobox.configure(values=profile_names)
             if profile_names:
-                self.profile_combobox.set(profile_names[0])
-                self._load_profile(profile_names[0])
+                self.profile_combobox.set(profile_names[0]); self._load_profile(profile_names[0])
             else:
-                self.profile_combobox.set("")
-                self._populate_defaults()
+                self.profile_combobox.set(""); self._populate_defaults()
             messagebox.showinfo("Success", f"Profile '{profile_name}' deleted.")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to delete profile: {e}")
@@ -285,32 +271,26 @@ class IfEditTab(BaseAutomationTab):
     def _toggle_page_settings(self):
         is_enabled = self.convergence_switch.get() == 1
         state = "normal" if is_enabled else "disabled"
-
-        page2_keys = ["sanction_no", "sanction_date", "est_time_completion", "avg_labour_per_day",
-                      "expected_mandays", "tech_sanction_amount", "unskilled_labour_cost",
-                      "mgnrega_material_cost", "skilled_labour_cost", "semi_skilled_labour_cost", "scheme1_cost",
-                      "fin_sanction_no", "fin_sanction_date", "fin_sanction_amount", "fin_scheme_input"]
-        
-        page3_keys = ["activity_code", "unit_price", "quantity"]
-
-        convergence_keys = ["convergence_scheme_type", "state_scheme_name", "centre_scheme_name"]
-
-        for key in page2_keys + convergence_keys + page3_keys:
-            if key in self.ui_fields:
-                self.ui_fields[key].configure(state=state)
-
-        if is_enabled:
-            self._toggle_scheme_dropdowns()
+        page_keys = [
+            "sanction_no", "sanction_date", "est_time_completion", "avg_labour_per_day",
+            "expected_mandays", "tech_sanction_amount", "unskilled_labour_cost",
+            "mgnrega_material_cost", "skilled_labour_cost", "semi_skilled_labour_cost", "scheme1_cost",
+            "fin_sanction_no", "fin_sanction_date", "fin_sanction_amount", "fin_scheme_input",
+            "activity_code", "unit_price", "quantity",
+            "convergence_scheme_type", "state_scheme_name", "centre_scheme_name"
+        ]
+        for key in page_keys:
+            if key in self.ui_fields: self.ui_fields[key].configure(state=state)
+        if is_enabled: self._toggle_scheme_dropdowns()
 
     def _toggle_scheme_dropdowns(self, _=None):
         if self.convergence_switch.get() == 0:
             self.ui_fields['state_scheme_name'].configure(state="disabled")
             self.ui_fields['centre_scheme_name'].configure(state="disabled")
             return
-
-        is_state_selected = self.ui_fields['convergence_scheme_type'].get() == "State"
-        self.ui_fields['state_scheme_name'].configure(state="normal" if is_state_selected else "disabled")
-        self.ui_fields['centre_scheme_name'].configure(state="normal" if not is_state_selected else "disabled")
+        is_state = self.ui_fields['convergence_scheme_type'].get() == "State"
+        self.ui_fields['state_scheme_name'].configure(state="normal" if is_state else "disabled")
+        self.ui_fields['centre_scheme_name'].configure(state="disabled" if is_state else "normal")
 
     def set_ui_state(self, running: bool):
         self.set_common_ui_state(running)
@@ -320,12 +300,10 @@ class IfEditTab(BaseAutomationTab):
         self.profile_name_entry.configure(state=state)
         self.save_profile_button.configure(state=state)
         self.delete_profile_button.configure(state=state)
-
         for field in self.ui_fields.values():
             if field.winfo_exists(): field.configure(state=state)
         if not running:
-            for key in ['estimated_pd', 'beneficiaries_count']:
-                 self.ui_fields[key].configure(state="normal")
+            for key in ['estimated_pd', 'beneficiaries_count']: self.ui_fields[key].configure(state="normal")
             self._toggle_page_settings()
 
     def reset_ui(self):
@@ -343,17 +321,15 @@ class IfEditTab(BaseAutomationTab):
                 with open(path, 'r', encoding='utf-8-sig') as f: self.csv_headers = next(csv.reader(f))
                 required_cols = ['work_code', 'beneficiary_type', 'job_card']
                 self.column_map = {col: self.csv_headers.index(col) for col in required_cols}
-                self.app.log_message(self.log_display, f"CSV loaded successfully. Required columns found.", "success")
+                self.app.log_message(self.log_display, "CSV loaded. Required columns found.", "success")
             except Exception as e:
-                messagebox.showerror("CSV Error", f"Could not find all required columns in the CSV header.\nRequired: {', '.join(required_cols)}\n\nError: {e}")
+                messagebox.showerror("CSV Error", f"Required columns not in CSV header: {', '.join(required_cols)}\n\nError: {e}")
                 self.csv_path = None; self.column_map = {}; self.file_label.configure(text="No file selected")
 
     def start_automation(self):
         if not self.csv_path or not self.column_map:
-            messagebox.showwarning("Input Missing", "Please select a valid CSV file with the required columns."); return
-
+            messagebox.showwarning("Input Missing", "Please select a valid CSV file."); return
         self._save_profile(profile_name="Last Used Config", is_autosave=True)
-
         form_config = {key: field.get() for key, field in self.ui_fields.items()}
         form_config['convergence_scheme_name'] = form_config['state_scheme_name'] if form_config['convergence_scheme_type'] == "State" else form_config['centre_scheme_name']
         self.app.start_automation_thread(self.automation_key, self.run_automation_logic, args=(form_config,))
@@ -396,11 +372,10 @@ class IfEditTab(BaseAutomationTab):
             current_year = datetime.now().year; wait = WebDriverWait(driver, 20)
             driver.get(config.IF_EDIT_CONFIG["url"])
 
-            # --- Page 1 --- (Logic remains the same)
+            # --- Page 1 ---
             self.app.log_message(self.log_display, "Page 1: Entering work details...")
             work_code_input = wait.until(EC.element_to_be_clickable((By.ID, "ctl00_ContentPlaceHolder1_txtwrksearchkey")))
-            work_code_input.send_keys(work_code)
-            work_code_input.send_keys(Keys.TAB); time.sleep(3)
+            work_code_input.send_keys(work_code); work_code_input.send_keys(Keys.TAB); time.sleep(3)
             Select(wait.until(EC.element_to_be_clickable((By.ID, "ctl00_ContentPlaceHolder1_ddlworkName")))).select_by_index(1); time.sleep(2)
             wait.until(EC.element_to_be_clickable((By.ID, "ctl00_ContentPlaceHolder1_TxtEstpd"))).clear()
             driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_TxtEstpd").send_keys(cfg["estimated_pd"])
@@ -421,72 +396,62 @@ class IfEditTab(BaseAutomationTab):
             if cfg['run_convergence'] == 0:
                 self._log_result(work_code, job_card, "Success", "Page 1 submitted (non-convergence)."); return
             
-            # --- Page 2 --- (Logic remains the same)
+            # --- Page 2 ---
             self.app.log_message(self.log_display, "Page 2: Entering sanction details...")
             wait.until(EC.presence_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_txtsanctionno")))
-            def fill_input(element_id, text):
-                element = driver.find_element(By.ID, element_id)
-                element.clear(); element.send_keys(text)
-            fill_input("ctl00_ContentPlaceHolder1_txtsanctionno", cfg["sanction_no"].format(year=current_year))
-            fill_input("ctl00_ContentPlaceHolder1_txtsanctionDate", cfg["sanction_date"].format(year=current_year))
-            fill_input("ctl00_ContentPlaceHolder1_txtEstTimecompWork", cfg["est_time_completion"])
-            fill_input("ctl00_ContentPlaceHolder1_txtAvglabourperday", cfg["avg_labour_per_day"])
-            fill_input("ctl00_ContentPlaceHolder1_txtExcpectedmanday", cfg["expected_mandays"])
-            fill_input("ctl00_ContentPlaceHolder1_txtTechsancAmt", cfg["tech_sanction_amount"])
-            fill_input("ctl00_ContentPlaceHolder1_Sanc_Tech_Labr_Unskilled", cfg["unskilled_labour_cost"])
-            fill_input("ctl00_ContentPlaceHolder1_Est_Cost_Material", cfg["mgnrega_material_cost"])
-            fill_input("ctl00_ContentPlaceHolder1_skilled", cfg["skilled_labour_cost"])
-            fill_input("ctl00_ContentPlaceHolder1_txt_semiskilled", cfg["semi_skilled_labour_cost"])
-            fill_input("ctl00_ContentPlaceHolder1_scheme_val1", cfg["scheme1_cost"])
-            fill_input("ctl00_ContentPlaceHolder1_txtFinsan_no", cfg["fin_sanction_no"].format(year=current_year))
-            fill_input("ctl00_ContentPlaceHolder1_sanc_fin_date", cfg["fin_sanction_date"].format(year=current_year))
-            fill_input("ctl00_ContentPlaceHolder1_sanc_fin_Amt", cfg["fin_sanction_amount"])
+            def fill(id, val): driver.find_element(By.ID, id).clear(); driver.find_element(By.ID, id).send_keys(val)
+            fill("ctl00_ContentPlaceHolder1_txtsanctionno", cfg["sanction_no"].format(year=current_year))
+            fill("ctl00_ContentPlaceHolder1_txtsanctionDate", cfg["sanction_date"].format(year=current_year))
+            fill("ctl00_ContentPlaceHolder1_txtEstTimecompWork", cfg["est_time_completion"])
+            fill("ctl00_ContentPlaceHolder1_txtAvglabourperday", cfg["avg_labour_per_day"])
+            fill("ctl00_ContentPlaceHolder1_txtExcpectedmanday", cfg["expected_mandays"])
+            fill("ctl00_ContentPlaceHolder1_txtTechsancAmt", cfg["tech_sanction_amount"])
+            fill("ctl00_ContentPlaceHolder1_Sanc_Tech_Labr_Unskilled", cfg["unskilled_labour_cost"])
+            fill("ctl00_ContentPlaceHolder1_Est_Cost_Material", cfg["mgnrega_material_cost"])
+            fill("ctl00_ContentPlaceHolder1_skilled", cfg["skilled_labour_cost"])
+            fill("ctl00_ContentPlaceHolder1_txt_semiskilled", cfg["semi_skilled_labour_cost"])
+            fill("ctl00_ContentPlaceHolder1_scheme_val1", cfg["scheme1_cost"])
+            fill("ctl00_ContentPlaceHolder1_txtFinsan_no", cfg["fin_sanction_no"].format(year=current_year))
+            fill("ctl00_ContentPlaceHolder1_sanc_fin_date", cfg["fin_sanction_date"].format(year=current_year))
+            fill("ctl00_ContentPlaceHolder1_sanc_fin_Amt", cfg["fin_sanction_amount"])
             fin_scheme_input = driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_fin_scheme1")
-            fin_scheme_input.clear(); fin_scheme_input.send_keys(cfg["fin_scheme_input"])
-            fin_scheme_input.send_keys(Keys.TAB); time.sleep(1)
+            fin_scheme_input.clear(); fin_scheme_input.send_keys(cfg["fin_scheme_input"]); fin_scheme_input.send_keys(Keys.TAB); time.sleep(1)
             
-            try:
-                update_button = driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_btUpdate")
-                driver.execute_script("arguments[0].click();", update_button)
-            except NoSuchElementException:
-                save_button = driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_btSave")
-                driver.execute_script("arguments[0].click();", save_button)
+            try: driver.execute_script("arguments[0].click();", driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_btUpdate"))
+            except NoSuchElementException: driver.execute_script("arguments[0].click();", driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_btSave"))
             self.app.log_message(self.log_display, "Page 2 submitted.", "success")
 
-            # --- Page 3 --- (Logic is now fixed and takes values from UI)
+            # --- Page 3 (NEW ROBUST TIMING LOGIC V2) ---
             self.app.log_message(self.log_display, "Page 3: Adding activity...")
             wait.until(EC.presence_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_ddlAct")))
             
-            # Use a loop in case multiple activities need to be added (future-proofing)
-            # For now, it just runs once with the UI values.
             activity_code = cfg.get("activity_code", "").strip()
             unit_price = cfg.get("unit_price", "").strip()
             quantity = cfg.get("quantity", "").strip()
 
             if not all([activity_code, unit_price, quantity]):
-                self._log_result(work_code, job_card, "Skipped", "Page 3 settings are incomplete.")
-                return
+                self._log_result(work_code, job_card, "Skipped", "Page 3 settings are incomplete."); return
 
             self.app.log_message(self.log_display, f"  > Adding activity: {activity_code}")
             
-            Select(driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_ddlAct")).select_by_value(activity_code)
-            time.sleep(2) # Wait for potential post-back
+            activity_dropdown = driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_ddlAct")
+            Select(activity_dropdown).select_by_value(activity_code)
+            wait.until(EC.staleness_of(activity_dropdown))
 
             unit_price_input = wait.until(EC.element_to_be_clickable((By.ID, "ctl00_ContentPlaceHolder1_txtAct_UnitPrice")))
-            unit_price_input.clear()
             unit_price_input.send_keys(unit_price)
-            unit_price_input.send_keys(Keys.TAB)
-            time.sleep(2) # Wait for validation scripts
+            time.sleep(1)
+            driver.find_element(By.TAG_NAME, 'body').click()
+            wait.until(EC.staleness_of(unit_price_input))
 
             qty_input = wait.until(EC.element_to_be_clickable((By.ID, "ctl00_ContentPlaceHolder1_txtAct_Qty")))
-            qty_input.clear()
             qty_input.send_keys(quantity)
             qty_input.send_keys(Keys.TAB)
-            time.sleep(1) # Wait for validation scripts
+            time.sleep(1)
 
             driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_btsave").click()
             self.app.log_message(self.log_display, f"SUCCESS: Final 'Save' clicked for {job_card}.", "success")
-            time.sleep(3) # Wait for page to process save
+            time.sleep(3) 
 
             self._log_result(work_code, job_card, "Success", "All pages processed.")
 
