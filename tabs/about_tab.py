@@ -100,26 +100,41 @@ class AboutTab(ctk.CTkFrame):
         self.changelog_text.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
         self._load_changelog_from_file()
 
-        # --- Updates Tab ---
+        # --- Revamped Updates Tab ---
         update_tab = self.tab_view.tab("Updates")
+        update_tab.grid_rowconfigure(5, weight=1) # Allow row 5 (textbox) to expand
         update_tab.grid_columnconfigure(0, weight=1)
-        # Add a wrapping frame for padding
-        update_wrapper_frame = ctk.CTkFrame(update_tab, fg_color="transparent")
-        update_wrapper_frame.pack(expand=True, fill="both", padx=10, pady=10)
-
-        update_frame = ctk.CTkFrame(update_wrapper_frame, fg_color="transparent")
-        update_frame.pack(expand=True)
         
-        self.current_version_label = ctk.CTkLabel(update_frame, text=f"Current Version: {config.APP_VERSION}")
-        self.latest_version_label = ctk.CTkLabel(update_frame, text="Latest Version: Checking...")
-        self.update_button = ctk.CTkButton(update_frame, text="Check for Updates", command=self.check_for_updates)
-        self.update_progress = ctk.CTkProgressBar(update_frame)
+        update_wrapper_frame = ctk.CTkFrame(update_tab, fg_color="transparent")
+        update_wrapper_frame.grid(row=0, column=0, sticky='nsew', padx=15, pady=15)
+        update_wrapper_frame.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(update_wrapper_frame, text="Application Updates", font=ctk.CTkFont(size=18, weight="bold")).grid(row=0, column=0, pady=(0, 10))
+        ctk.CTkLabel(update_wrapper_frame, text="Keep your NREGA Bot up-to-date to get the latest features, bug fixes, and performance improvements.", wraplength=400, justify="center").grid(row=1, column=0, pady=(0, 20))
+        
+        status_frame = ctk.CTkFrame(update_wrapper_frame)
+        status_frame.grid(row=2, column=0, pady=10, sticky='ew')
+        status_frame.grid_columnconfigure(0, weight=1)
+        
+        self.current_version_label = ctk.CTkLabel(status_frame, text=f"Current Version: {config.APP_VERSION}")
+        self.latest_version_label = ctk.CTkLabel(status_frame, text="Latest Version: Checking...")
+        self.current_version_label.pack(pady=2)
+        self.latest_version_label.pack(pady=2)
+        
+        self.update_button = ctk.CTkButton(update_wrapper_frame, text="Check for Updates", command=self.check_for_updates)
+        self.update_button.grid(row=3, column=0, pady=(20, 10), ipady=4, ipadx=10)
+        
+        self.update_progress = ctk.CTkProgressBar(update_wrapper_frame)
         self.update_progress.set(0)
         
-        # FIXED: Added padding between the labels
-        self.current_version_label.pack(pady=5, padx=20)
-        self.latest_version_label.pack(pady=5, padx=20)
-        self.update_button.pack(pady=(20, 10), padx=20, ipady=4, fill='x')
+        # --- NEW: Changelog display for new version ---
+        self.new_version_changelog_label = ctk.CTkLabel(update_tab, text="What's New in the Next Version:", font=ctk.CTkFont(weight="bold"))
+        self.new_version_changelog_textbox = ctk.CTkTextbox(update_tab, wrap=tkinter.WORD, state="disabled", fg_color=("gray90", "gray20"))
+        
+        versions_url = f"{config.MAIN_WEBSITE_URL}/versions.html"
+        versions_link = ctk.CTkLabel(update_tab, text="View Full Version History Online ↗", text_color=("#3B82F6", "#60A5FA"), cursor="hand2")
+        versions_link.grid(row=6, column=0, sticky='s', pady=(10, 5))
+        versions_link.bind("<Button-1>", lambda e: webbrowser.open(versions_url))
     
     def _load_changelog_from_file(self):
         changelog_content = {}
@@ -149,11 +164,27 @@ class AboutTab(ctk.CTkFrame):
         self.action_panel_container.grid_rowconfigure(0, weight=1)
         self._update_action_panel("Loading", "N/A")
 
+    def _create_disclaimer_frame(self, parent):
+        disclaimer_frame = ctk.CTkFrame(parent, fg_color=("gray90", "gray20"))
+        disclaimer_frame.grid_columnconfigure(0, weight=1)
+
+        title_label = ctk.CTkLabel(disclaimer_frame, text="⚠️ Disclaimer", font=ctk.CTkFont(weight="bold"))
+        title_label.pack(pady=(10, 5), padx=20, anchor="w")
+        
+        disclaimer_text1 = "⚡ This tool interacts with a live government website. If the portal's structure changes, some features may break until updated."
+        label1 = ctk.CTkLabel(disclaimer_frame, text=disclaimer_text1, wraplength=300, justify="left")
+        label1.pack(pady=(0, 10), padx=20, anchor="w")
+
+        disclaimer_text2 = "🛠️ Use this tool responsibly. The author provides no warranties and is not liable for data entry errors. Always double-check automated work."
+        label2 = ctk.CTkLabel(disclaimer_frame, text=disclaimer_text2, wraplength=300, justify="left")
+        label2.pack(pady=(0, 15), padx=20, anchor="w")
+        
+        return disclaimer_frame
+
     def _update_action_panel(self, status, key_type):
         for widget in self.action_panel_container.winfo_children():
             widget.destroy()
 
-        # Trial and Renew/Expired panels are unchanged and correct
         if key_type == 'trial':
             panel = ctk.CTkFrame(self.action_panel_container, border_color="#3B82F6", border_width=2)
             panel.grid(row=0, column=0, sticky="nsew")
@@ -161,6 +192,7 @@ class AboutTab(ctk.CTkFrame):
             ctk.CTkLabel(panel, text="Trial Version Active", font=ctk.CTkFont(size=16, weight="bold"), text_color="#3B82F6").pack(pady=(20,10), padx=20)
             ctk.CTkLabel(panel, text="Upgrade to a full license to unlock all features permanently and remove limitations.", wraplength=300, justify="center").pack(pady=5, padx=20)
             ctk.CTkButton(panel, text="Upgrade to Full License", command=lambda: self.app.show_purchase_window(context='upgrade')).pack(pady=20, ipady=5)
+            self._create_disclaimer_frame(panel).pack(side='bottom', fill='x', pady=15, padx=10)
             return
 
         elif status in ["Expired", "Expires Soon"]:
@@ -170,9 +202,9 @@ class AboutTab(ctk.CTkFrame):
             ctk.CTkLabel(panel, text="Your License Needs Attention!", font=ctk.CTkFont(size=16, weight="bold"), text_color="#DD6B20").pack(pady=(20,10), padx=20)
             ctk.CTkLabel(panel, text="Renew your subscription to continue using all features without interruption.", wraplength=300, justify="center").pack(pady=5, padx=20)
             ctk.CTkButton(panel, text="Renew Subscription Now", command=lambda: self.app.show_purchase_window(context='renew')).pack(pady=20, ipady=5)
+            self._create_disclaimer_frame(panel).pack(side='bottom', fill='x', pady=15, padx=10)
             return
         
-        # --- CLEANED UP: Final User Management Panel for Paid Users ---
         panel = ctk.CTkFrame(self.action_panel_container)
         panel.grid(row=0, column=0, sticky="nsew")
         panel.grid_rowconfigure(1, weight=1)
@@ -180,7 +212,6 @@ class AboutTab(ctk.CTkFrame):
         
         ctk.CTkLabel(panel, text="Account Management", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(20,10), padx=20)
         
-        # --- Activated Devices Section ---
         devices_frame = ctk.CTkFrame(panel, fg_color="transparent")
         devices_frame.pack(expand=True, fill="both", padx=15, pady=(0, 10))
         
@@ -191,7 +222,6 @@ class AboutTab(ctk.CTkFrame):
 
         ctk.CTkLabel(devices_frame, text=f"Activated Devices ({activated_count} of {max_devices} used)", font=ctk.CTkFont(weight="bold")).pack(anchor="w", pady=(0, 5))
 
-        # Create a scrollable area for the device list
         scroll_area = ctk.CTkScrollableFrame(devices_frame, fg_color="transparent")
         scroll_area.pack(expand=True, fill="both")
 
@@ -214,14 +244,18 @@ class AboutTab(ctk.CTkFrame):
                 )
                 deactivate_btn.pack(side="right", padx=(0, 10))
 
-        # --- Bottom Action Buttons ---
-        bottom_frame = ctk.CTkFrame(panel, fg_color="transparent")
-        bottom_frame.pack(fill='x', padx=15, pady=(5, 15), side='bottom')
-        bottom_frame.grid_columnconfigure((0, 1), weight=1)
+        bottom_frame = ctk.CTkFrame(panel)
+        bottom_frame.pack(fill='x', side='bottom')
+        
+        self._create_disclaimer_frame(bottom_frame).pack(fill='x', padx=10, pady=(10,0))
+        
+        button_container = ctk.CTkFrame(bottom_frame, fg_color="transparent")
+        button_container.pack(fill='x', padx=10, pady=(10, 15))
+        button_container.grid_columnconfigure((0, 1), weight=1)
 
         manage_url = f"{config.LICENSE_SERVER_URL}/account"
-        ctk.CTkButton(bottom_frame, text="Manage on Website", fg_color="transparent", border_width=1, text_color=("gray10", "#DCE4EE"), command=lambda: webbrowser.open(manage_url)).grid(row=0, column=0, sticky="ew", padx=(0, 5))
-        ctk.CTkButton(bottom_frame, text="Contact Support", fg_color="transparent", border_width=1, text_color=("gray10", "#DCE4EE"), command=self.contact_support_email).grid(row=0, column=1, sticky="ew", padx=(5, 0))
+        ctk.CTkButton(button_container, text="Manage on Website", fg_color="transparent", border_width=1, text_color=("gray10", "#DCE4EE"), command=lambda: webbrowser.open(manage_url)).grid(row=0, column=0, sticky="ew", padx=(0, 5))
+        ctk.CTkButton(button_container, text="Contact Support", fg_color="transparent", border_width=1, text_color=("gray10", "#DCE4EE"), command=self.contact_support_email).grid(row=0, column=1, sticky="ew", padx=(5, 0))
         
     def request_single_device_deactivation(self, machine_id_to_deactivate):
         user_name = self.license_info.get('user_name', 'N/A')
@@ -319,3 +353,20 @@ class AboutTab(ctk.CTkFrame):
 
     def download_and_install_update(self, url, version):
         self.app.download_and_install_update(url, version)
+
+    def show_new_version_changelog(self, changelog_notes):
+        self.new_version_changelog_label.grid(row=4, column=0, pady=(15, 5), padx=5, sticky='w')
+        self.new_version_changelog_textbox.grid(row=5, column=0, sticky='nsew', padx=5, pady=(0,5))
+        
+        self.new_version_changelog_textbox.configure(state="normal")
+        self.new_version_changelog_textbox.delete("1.0", tkinter.END)
+        if changelog_notes:
+            for change in changelog_notes:
+                self.new_version_changelog_textbox.insert(tkinter.END, f"• {change}\n")
+        else:
+            self.new_version_changelog_textbox.insert(tkinter.END, "Changelog not available for this version.")
+        self.new_version_changelog_textbox.configure(state="disabled")
+
+    def hide_new_version_changelog(self):
+        self.new_version_changelog_label.grid_forget()
+        self.new_version_changelog_textbox.grid_forget()

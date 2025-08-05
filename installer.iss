@@ -1,8 +1,8 @@
 ; NREGA Bot Inno Setup Script
-; Version 2.5.4 (Bitmap Fix)
+; Version 2.5.5 (Bitmap Fix)
 ; This script creates a professional, branded, and robust installer.
 
-; The AppVersion is now passed from the build script, e.g., /DAppVersion="2.5.4"
+; The AppVersion is now passed from the build script, e.g., /DAppVersion="2.5.5"
 #define AppName "NREGA Bot"
 #define AppPublisher "PoddarSolutions"
 #define AppURL "https://nregabot.com"

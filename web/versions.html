@@ -41,8 +41,25 @@
 
                 <div class="max-w-4xl mx-auto space-y-8">
 
-                    <!-- NEW VERSION 2.5.3 BLOCK -->
                     <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border-2 border-blue-500 dark:border-blue-500 shadow-lg">
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.5.4 (NREGA Bot)</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: August 5, 2025</p>
+                        <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
+                            <li>✨ **New Feature (Duplicate MR Print):** Added UI controls to select PDF orientation (Landscape/Portrait) and adjust content scale (50-100%).</li>
+                            <li>✨ **New Feature (Muster Roll Gen):** Added UI controls for PDF orientation and scale to match the Duplicate MR Print tab.</li>
+                            <li>🐞 **Critical Bug Fix (IF Edit Tab):** Completely overhauled the Page 3 automation logic to resolve persistent 'stale element' errors by implementing a more robust sequence of waits and actions.</li>
+                            <li>🐞 **Critical Bug Fix (macOS):** Resolved a common app crash on macOS caused by showing message boxes from a background thread.</li>
+                            <li>🐞 **Bug Fix (PDF Generation):** Fixed a bug where the 'Landscape' orientation setting was being ignored by the browser's print-to-PDF function.</li>
+                            <li>🐞 **Bug Fix (UI):** Fixed a bug preventing the scrollbar from working on results tables (Treeview) on macOS by setting a more compatible UI theme.</li>
+                            <li>🛠️ **Improvement (All Tabs):** Added strategic delays and more intelligent waits to several automation sequences to improve reliability.</li>
+                        </ul>
+                        <div class="mt-6 flex flex-col sm:flex-row gap-4">
+                            <a href="https://nregabot.com/updates/NREGABot-v2.5.4-Setup.exe" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download for Windows</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.5.4-macOS.dmg" class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download for macOS</a>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.5.3 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: August 2, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
@@ -61,7 +78,6 @@
                         </div>
                     </div>
                     
-                    <!-- PREVIOUS VERSION 2.5.2 BLOCK -->
                     <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.5.2 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: July 29, 2025</p>

@@ -1,4 +1,11 @@
 {
+  "2.5.5": [
+    "🐞 Critical Bug Fix (Duplicate MR Print): Completely overhauled the automation logic to resolve a persistent timeout error. The script now correctly handles the print page's loading behavior, making the feature reliable again.",
+    "🐞 Critical Bug Fix (Firefox PDF Saving): Fixed a critical error that prevented saving PDFs in Firefox on both 'MR Gen' and 'Duplicate MR Print' tabs. The app now uses the correct browser-specific commands, enabling full functionality on Firefox.",
+    "🛠️ Improvement (MR Gen): The automation is now more resilient to slow server responses. It will wait up to 30 seconds for the 'Technical Staff' list to populate, preventing timeouts on slow connections.",
+    "🛠️ Improvement (Error Handling): Added a user-friendly pop-up message that appears if automation is started before a browser is launched, guiding the user to the correct action.",
+    "🛠️ Improvement (UI/UX): Standardized the PDF filename for the 'Duplicate MR Print' tab to use the last 6 digits of the work code, ensuring consistency with the 'MR Gen' tab."
+  ],
   "2.5.4": [
     "✨ New Feature (Duplicate MR Print): Added UI controls to select PDF orientation (Landscape/Portrait) and adjust content scale (50-100%).",
     "✨ New Feature (Muster Roll Gen): Added UI controls for PDF orientation and scale to match the Duplicate MR Print tab.",

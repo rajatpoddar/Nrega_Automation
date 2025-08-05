@@ -280,6 +280,8 @@ class MusterrollGenTab(BaseAutomationTab):
             self.app.log_message(self.log_display, f"Processing {len(inputs['work_codes'])} work keys.")
             return inputs['work_codes']
 
+    # In musterroll_gen_tab.py
+
     def _process_single_item(self, driver, wait, inputs, item, output_dir, session_skip_list):
         try:
             driver.get(config.MUSTER_ROLL_CONFIG["base_url"])
@@ -291,19 +293,35 @@ class MusterrollGenTab(BaseAutomationTab):
                 self._log_result(item, "Skipped", "Already processed this session")
                 return
 
-            # TIMING FIX: Add delay before entering dates
             time.sleep(1)
             driver.find_element(By.ID, "txtDateFrom").send_keys(inputs['start_date'])
             driver.find_element(By.ID, "txtDateTo").send_keys(inputs['end_date'])
             
             Select(wait.until(EC.element_to_be_clickable((By.ID, "ddldesg")))).select_by_visible_text(inputs['designation'])
-            wait.until(EC.element_to_be_clickable((By.XPATH, "//select[@id='ddlstaff']/option[position()>1]")))
-            staff_dropdown = Select(driver.find_element(By.ID, "ddlstaff"))
+
+            # --- NEW: Implement a longer, specific wait for the staff dropdown to populate ---
+            self.app.log_message(self.log_display, "   - Waiting for Technical Staff list to populate (up to 30 seconds)...")
+            try:
+                # Create a new wait object with a longer timeout specifically for this action
+                long_wait = WebDriverWait(driver, 30)
+                # Wait until the dropdown has more than one option (i.e., it has been populated)
+                long_wait.until(EC.presence_of_element_located((By.XPATH, "//select[@id='ddlstaff']/option[position()>1]")))
+                
+                staff_dropdown = Select(driver.find_element(By.ID, "ddlstaff"))
+                
+                if inputs['staff'] not in [opt.text for opt in staff_dropdown.options]:
+                    raise ValueError(f"Staff name '{inputs['staff']}' not found for the selected designation. Stopping.")
+                
+                staff_dropdown.select_by_visible_text(inputs['staff'])
+
+            except TimeoutException:
+                # This will be caught if the staff list doesn't populate within 30 seconds
+                error_msg = "Staff list did not populate within 30 seconds. The server might be too slow. Skipping item."
+                self.app.log_message(self.log_display, error_msg, "error")
+                self._log_result(item, "Failed", "Timeout waiting for staff list")
+                return # Exit this function for the current item and move to the next
+            # --- END OF IMPROVEMENT ---
             
-            if inputs['staff'] not in [opt.text for opt in staff_dropdown.options]:
-                raise ValueError(f"Staff name '{inputs['staff']}' not found for the selected designation. Stopping.")
-            
-            staff_dropdown.select_by_visible_text(inputs['staff'])
             body_element = driver.find_element(By.TAG_NAME, 'body')
             driver.find_element(By.ID, "btnProceed").click()
             
@@ -342,11 +360,19 @@ class MusterrollGenTab(BaseAutomationTab):
 
     def _save_mr_as_pdf(self, driver, full_work_code, output_dir, orientation, scale):
         try:
-            safe_work_code = full_work_code.replace('/', '_').split('(')[-1].replace(')', '')
+            # Takes the part after the last '/' and then gets the last 6 characters.
+            safe_work_code = full_work_code.split('/')[-1][-6:]
             pdf_filename = f"{safe_work_code}.pdf"
             save_path = os.path.join(output_dir, pdf_filename)
 
             is_landscape = (orientation == "Landscape")
+            pdf_scale = scale / 100.0
+            pdf_data_base64 = None
+
+            # --- FINAL CORRECTED LOGIC ---
+
+            # For both browsers, we will inject CSS to control orientation.
+            # This is the most reliable cross-browser method.
             if is_landscape:
                 self.app.log_message(self.log_display, "   - Injecting CSS to force landscape orientation...")
                 driver.execute_script(
@@ -358,23 +384,41 @@ class MusterrollGenTab(BaseAutomationTab):
                     "else { style.appendChild(document.createTextNode(css)); }"
                     "head.appendChild(style);"
                 )
-            
-            pdf_scale = scale / 100.0
-            print_options = {
-                "landscape": is_landscape,
-                "displayHeaderFooter": False,
-                "printBackground": False,
-                "scale": pdf_scale,
-                "marginTop": 0.4, "marginBottom": 0.4,
-                "marginLeft": 0.4, "marginRight": 0.4
-            }
-            
-            result = driver.execute_cdp_cmd("Page.printToPDF", print_options)
-            pdf_data = base64.b64decode(result['data'])
-            
-            with open(save_path, 'wb') as f:
-                f.write(pdf_data)
-            return save_path
+
+            if self.app.active_browser == 'firefox':
+                self.app.log_message(self.log_display, "   - Using Firefox's basic print command...")
+                # NOTE: We must inform the user that scale settings from the UI are ignored for Firefox.
+                self.app.log_message(self.log_display, "   - Note: PDF Scale setting is not supported for Firefox and will be ignored.", "warning")
+                
+                # The command for Firefox takes NO arguments.
+                pdf_data_base64 = driver.print_page()
+
+            elif self.app.active_browser == 'chrome':
+                self.app.log_message(self.log_display, "   - Using Chrome's print command (CDP)...")
+                
+                # Chrome uses the Chrome DevTools Protocol (CDP) command with full options.
+                print_options = {
+                    "landscape": is_landscape,
+                    "displayHeaderFooter": False,
+                    "printBackground": False,
+                    "scale": pdf_scale, # Scale setting is respected here
+                    "marginTop": 0.4, "marginBottom": 0.4,
+                    "marginLeft": 0.4, "marginRight": 0.4
+                }
+                result = driver.execute_cdp_cmd("Page.printToPDF", print_options)
+                pdf_data_base64 = result['data']
+
+            # --- End of browser-specific logic ---
+
+            if pdf_data_base64:
+                pdf_data = base64.b64decode(pdf_data_base64)
+                with open(save_path, 'wb') as f:
+                    f.write(pdf_data)
+                return save_path
+            else:
+                self.app.log_message(self.log_display, "Error: PDF data was not generated.", "error")
+                return None
+
         except Exception as e:
             self.app.log_message(self.log_display, f"Error saving PDF: {e}", "error")
             return None

@@ -598,6 +598,8 @@ class NregaBotApp(ctk.CTk):
         for tab in self.tab_instances.values():
             if hasattr(tab, 'style_treeview') and hasattr(tab, 'results_tree'): tab.style_treeview(tab.results_tree)
     
+    # In main_app.py
+
     def _update_about_tab_info(self):
         try:
             about_tab_instance = self.tab_instances.get("About")
@@ -607,11 +609,17 @@ class NregaBotApp(ctk.CTk):
                 if info['status'] == 'available':
                     about_tab_instance.latest_version_label.configure(text=f"Latest Version: {info['version']}")
                     about_tab_instance.update_button.configure(text=f"Download & Install v{info['version']}", state="normal", fg_color=ctk.ThemeManager.theme["CTkButton"]["fg_color"], command=lambda: about_tab_instance.download_and_install_update(info['url'], info['version']))
+                    # NEW: Call the function to show the changelog
+                    about_tab_instance.show_new_version_changelog(info.get('changelog', []))
                 elif info['status'] == 'updated':
                     about_tab_instance.latest_version_label.configure(text=f"Latest Version: {config.APP_VERSION}")
                     about_tab_instance.update_button.configure(text="You are up to date", state="disabled")
+                    # NEW: Call the function to hide the changelog
+                    about_tab_instance.hide_new_version_changelog()
                 else:
                     about_tab_instance.latest_version_label.configure(text=f"Latest Version: {info['status'].capitalize()}"); about_tab_instance.update_button.configure(text="Check for Updates", state="normal")
+                    # NEW: Call the function to hide the changelog
+                    about_tab_instance.hide_new_version_changelog()
         except Exception as e:
             print(f"Could not update About tab UI: {e}")
             if SENTRY_DSN: sentry_sdk.capture_exception(e)
@@ -853,12 +861,19 @@ class NregaBotApp(ctk.CTk):
                 latest_version = data.get("latest_version")
                 url_key = "download_url_macos" if sys.platform == "darwin" else "download_url_windows"
                 download_url = data.get(url_key)
+                # NEW: Get the changelog notes from the version.json file
+                changelog_notes = data.get("changelog", {}).get(latest_version, [])
+
                 if latest_version and parse_version(latest_version) > parse_version(config.APP_VERSION):
-                    self.update_info = {"status": "available", "version": latest_version, "url": download_url}
+                    self.update_info = {"status": "available", "version": latest_version, "url": download_url, "changelog": changelog_notes}
                     self.after(0, self.show_update_prompt, latest_version)
-                else: self.update_info = {"status": "updated", "version": latest_version, "url": download_url}
-            except Exception as e: self.update_info['status'] = 'error'; print(f"Update check failed: {e}")
-            finally: self.after(0, self._update_about_tab_info)
+                else:
+                    self.update_info = {"status": "updated", "version": latest_version, "url": download_url}
+            except Exception as e:
+                self.update_info['status'] = 'error'
+                print(f"Update check failed: {e}")
+            finally:
+                self.after(0, self._update_about_tab_info)
         threading.Thread(target=_check, daemon=True).start()
 
     def show_update_prompt(self, version):
@@ -868,6 +883,10 @@ class NregaBotApp(ctk.CTk):
             if about_tab_instance: about_tab_instance.tab_view.set("Updates")
 
     def update_history(self, field_key: str, value: str): self.history_manager.save_entry(field_key, value)
+
+    # In main_app.py
+
+    # In main_app.py
 
     def download_and_install_update(self, url, version):
         about_tab = self.tab_instances.get("About")
@@ -899,16 +918,20 @@ class NregaBotApp(ctk.CTk):
                 
                 self.after(0, lambda: about_tab.update_button.configure(text="Download Complete. Installing..."))
                 
-                # --- MODIFIED SECTION ---
+                # --- MODIFIED & IMPROVED SECTION ---
                 if sys.platform == "win32": # Windows
                     messagebox.showinfo(
                         "Ready to Update",
                         "The update has been downloaded. The application will now close to run the installer.",
-                        parent=self # Ensure messagebox is on top
+                        parent=self
                     )
+                    # Launch the installer process
                     os.startfile(download_path)
-                    # Forcefully close the app after a short delay
-                    self.after(500, self.on_closing, True) 
+                    
+                    # Force a fast, ungraceful exit.
+                    # This is acceptable because the app is about to be replaced.
+                    # This avoids the race condition with the Inno Setup installer check.
+                    self.after(200, os._exit, 0)
 
                 elif sys.platform == "darwin": # macOS
                     subprocess.call(["open", download_path])

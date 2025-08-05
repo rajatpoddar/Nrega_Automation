@@ -13,7 +13,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, StaleElementReferenceException
+from selenium.common.exceptions import TimeoutException, StaleElementReferenceException, NoSuchElementException
 
 import config
 from .base_tab import BaseAutomationTab
@@ -31,32 +31,27 @@ class DuplicateMrTab(BaseAutomationTab):
         
         self._create_widgets()
         self._load_history()
-        self.current_panchayat = "" # To store panchayat name for saving files
+        self.current_panchayat = ""
 
     def _create_widgets(self):
-        # --- Main container ---
         main_container = ctk.CTkFrame(self, fg_color="transparent")
         main_container.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
         main_container.grid_columnconfigure(0, weight=1)
         main_container.grid_rowconfigure(1, weight=1)
 
-        # --- Input Frame ---
         input_frame = ctk.CTkFrame(main_container)
         input_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
         input_frame.grid_columnconfigure(1, weight=1)
 
-        # Panchayat Entry
         ctk.CTkLabel(input_frame, text="Panchayat Name:").grid(row=0, column=0, padx=15, pady=10, sticky="w")
         self.panchayat_entry = AutocompleteEntry(input_frame, placeholder_text="Start typing Panchayat name...")
         self.panchayat_entry.grid(row=0, column=1, padx=15, pady=10, sticky="ew")
 
-        # Output Action
         ctk.CTkLabel(input_frame, text="Output Action:").grid(row=1, column=0, padx=15, pady=10, sticky="w")
         self.output_action_var = ctk.StringVar(value="Save as PDF Only")
         self.output_action_menu = ctk.CTkOptionMenu(input_frame, variable=self.output_action_var, values=["Save as PDF Only", "Print and Save PDF"])
         self.output_action_menu.grid(row=1, column=1, padx=15, pady=10, sticky="w")
 
-        # --- PDF Options ---
         ctk.CTkLabel(input_frame, text="Orientation:").grid(row=2, column=0, padx=15, pady=10, sticky="w")
         self.orientation_var = ctk.StringVar(value="Landscape")
         self.orientation_segmented_button = ctk.CTkSegmentedButton(input_frame, variable=self.orientation_var, values=["Landscape", "Portrait"])
@@ -68,17 +63,15 @@ class DuplicateMrTab(BaseAutomationTab):
         scale_frame.grid_columnconfigure(0, weight=1)
 
         self.scale_slider = ctk.CTkSlider(scale_frame, from_=50, to=100, number_of_steps=50, command=self._update_scale_label)
-        self.scale_slider.set(75) # Default to 75%
+        self.scale_slider.set(75)
         self.scale_slider.grid(row=0, column=0, sticky="ew")
 
         self.scale_label = ctk.CTkLabel(scale_frame, text="75%", width=40)
         self.scale_label.grid(row=0, column=1, padx=(10, 0))
         
-        # Action Buttons
         action_frame = self._create_action_buttons(input_frame)
         action_frame.grid(row=4, column=0, columnspan=2, sticky="ew", padx=15, pady=(10, 15))
 
-        # --- Data Notebook (Work Codes, Results, Logs) ---
         notebook = ctk.CTkTabview(main_container)
         notebook.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
         
@@ -86,13 +79,11 @@ class DuplicateMrTab(BaseAutomationTab):
         results_tab = notebook.add("Results")
         self._create_log_and_status_area(notebook)
         
-        # --- Work Codes Tab ---
         work_codes_tab.grid_columnconfigure(0, weight=1)
         work_codes_tab.grid_rowconfigure(0, weight=1)
         self.work_codes_textbox = ctk.CTkTextbox(work_codes_tab, height=150)
         self.work_codes_textbox.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
 
-        # --- Results Tab ---
         results_tab.grid_columnconfigure(0, weight=1)
         results_tab.grid_rowconfigure(1, weight=1)
         results_action_frame = ctk.CTkFrame(results_tab, fg_color="transparent")
@@ -104,6 +95,7 @@ class DuplicateMrTab(BaseAutomationTab):
         self.results_tree = ttk.Treeview(results_tab, columns=cols, show='headings')
         for col in cols: self.results_tree.heading(col, text=col)
         self.results_tree.column("Timestamp", width=100, anchor="center")
+        self.results_tree.column("Work Code", width=250)
         self.results_tree.column("MSR No", width=100, anchor="center")
         self.style_treeview(self.results_tree)
 
@@ -148,36 +140,29 @@ class DuplicateMrTab(BaseAutomationTab):
         
         driver = self.app.get_driver()
         if not driver:
-            self.app.log_message(self.log_display, "Browser not available.", "error")
+            messagebox.showerror(
+                "Browser Not Found",
+                "No active browser session was found.\n\nPlease use the 'Launch Chrome' or 'Launch Firefox' buttons at the top-right to start a browser before running the automation."
+            )
             self.app.after(0, self.set_ui_state, False)
             return
 
         try:
-            total_codes = len(work_codes)
-            for i, work_code in enumerate(work_codes):
+            for work_code in work_codes:
                 if self.app.stop_events[self.automation_key].is_set():
-                    self.app.log_message(self.log_display, "Automation stopped by user.", "warning")
                     break
-                
-                self.update_status(f"Processing WC {i+1}/{total_codes}: {work_code}", (i + 1) / total_codes)
-                self.app.log_message(self.log_display, f"--- Processing Work Code: {work_code} ---")
+                self.app.log_message(self.log_display, f"\n--- Processing Work Code: {work_code} ---")
                 self._process_single_work_code(driver, work_code, action, panchayat, orientation, scale)
-
         except Exception as e:
-            error_msg = str(e).splitlines()[0]
-            self.app.log_message(self.log_display, f"A critical error occurred: {error_msg}", "error")
-        
+            self.app.log_message(self.log_display, f"A critical error occurred: {str(e).splitlines()[0]}", "error")
         finally:
             self.app.after(0, self.set_ui_state, False)
-            self.update_status("Automation Finished", 1.0)
             self.app.log_message(self.log_display, "\n--- Automation Finished ---")
-            # CRASH FIX: Call the completion dialog safely on the main thread.
             self.app.after(100, self._show_completion_dialog)
 
     def _show_completion_dialog(self):
-        """Safely shows the completion message box on the main UI thread."""
         final_message = "Duplicate MR process has finished."
-        output_dir = os.path.join(self.app.get_user_downloads_path(), "Duplicate MR", datetime.now().strftime('%Y-%m-%d'), self.current_panchayat)
+        output_dir = os.path.join(self.app.get_user_downloads_path(), "NREGABot_Duplicate_MR_Output", datetime.now().strftime('%Y-%m-%d'), self.current_panchayat)
         
         if os.path.exists(output_dir) and any(os.scandir(output_dir)):
             if messagebox.askyesno("Complete", f"{final_message}\n\nDo you want to open the output folder?"):
@@ -186,7 +171,7 @@ class DuplicateMrTab(BaseAutomationTab):
             messagebox.showinfo("Complete", final_message)
 
     def _process_single_work_code(self, driver, work_code, action, panchayat, orientation, scale):
-        wait = WebDriverWait(driver, 20)
+        wait = WebDriverWait(driver, 40)
         url = config.DUPLICATE_MR_CONFIG["url"]
         try:
             msr_options = self._get_msr_list(driver, wait, work_code, panchayat, url)
@@ -197,16 +182,13 @@ class DuplicateMrTab(BaseAutomationTab):
                 
                 self.app.log_message(self.log_display, f"--- Processing MSR {i+1}/{len(msr_options)}: {msr_no} ---")
                 
-                self.app.log_message(self.log_display, "Navigating to page to select MSR...")
                 driver.get(url)
-                # TIMING FIX: Add a delay to ensure the page is fully loaded before interacting.
-                time.sleep(2)
                 
                 panchayat_dd_element = wait.until(EC.element_to_be_clickable((By.ID, "ddlPanchayat")))
                 Select(panchayat_dd_element).select_by_visible_text(panchayat)
-                wait.until(EC.staleness_of(panchayat_dd_element))
-
+                
                 wc_input = wait.until(EC.element_to_be_clickable((By.ID, "txtWork")))
+                
                 wc_input.clear()
                 wc_input.send_keys(work_code)
                 driver.find_element(By.ID, "imgButtonSearch").click()
@@ -214,45 +196,52 @@ class DuplicateMrTab(BaseAutomationTab):
 
                 wait.until(lambda d: len(Select(d.find_element(By.ID, "ddlworkcode")).options) > 1)
                 Select(driver.find_element(By.ID, "ddlworkcode")).select_by_index(1)
-                wait.until(EC.staleness_of(wc_input))
                 
-                current_msr_dd = Select(wait.until(EC.element_to_be_clickable((By.ID, "ddlmsrno"))))
+                wait.until(lambda d: len(Select(d.find_element(By.ID, "ddlmsrno")).options) > 1)
+
+                current_msr_dd = Select(driver.find_element(By.ID, "ddlmsrno"))
                 current_msr_dd.select_by_value(msr_no)
                 
                 driver.find_element(By.ID, "btnproceed").click()
                 
-                # TIMING FIX: Add a delay to allow the print preview page to fully render.
-                self.app.log_message(self.log_display, "Waiting 2 seconds for print page to stabilize...")
-                time.sleep(2)
+                self.app.log_message(self.log_display, "   - Loading print page content...")
                 
+                try:
+                    iframe_wait = WebDriverWait(driver, 5)
+                    iframe_wait.until(EC.frame_to_be_available_and_switch_to_it((By.TAG_NAME, 'iframe')))
+                    self.app.log_message(self.log_display, "   - Switched to content iframe.")
+                except TimeoutException:
+                    self.app.log_message(self.log_display, "   - No iframe detected, proceeding in main document.")
+
+                self.app.log_message(self.log_display, "   - Waiting for 'Print' link to become available...")
                 wait.until(EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, "Print")))
+                self.app.log_message(self.log_display, "   - Print page is ready.")
                 
                 pdf_path = self._save_mr_as_pdf(driver, work_code, msr_no, orientation, scale)
+                
                 if pdf_path: self._log_result(work_code, msr_no, "Saved as PDF")
                 else: self._log_result(work_code, msr_no, "PDF Save Failed")
 
-                if "Print" in action and pdf_path:
-                    self.app.log_message(self.log_display, "Opening system print dialog...")
+                if "Print and Save" in action and pdf_path:
                     driver.execute_script("window.print();")
                     time.sleep(5)
+                
+                driver.switch_to.default_content()
         
         except TimeoutException:
-            self.app.log_message(self.log_display, "Operation timed out. Work code may be invalid or MSRs not available.", "error")
-            self._log_result(work_code, "N/A", "Timeout or no MSRs found")
+            self._log_result(work_code, "N/A", "Timeout")
+        except NoSuchElementException:
+            self._log_result(work_code, "N/A", "Element not found")
         except Exception as e:
-            error_msg = str(e).splitlines()[0]
-            self.app.log_message(self.log_display, f"Error processing {work_code}: {error_msg}", "error")
-            self._log_result(work_code, "N/A", f"Error: {error_msg}")
+            self._log_result(work_code, "N/A", "Unexpected Error")
 
     def _get_msr_list(self, driver, wait, work_code, panchayat, url):
         self.app.log_message(self.log_display, f"Getting MSR list for Work Code: {work_code}")
         driver.get(url)
-        time.sleep(2)
         
         panchayat_dd_element = wait.until(EC.element_to_be_clickable((By.ID, "ddlPanchayat")))
         Select(panchayat_dd_element).select_by_visible_text(panchayat)
-        wait.until(EC.staleness_of(panchayat_dd_element))
-
+        
         wc_input = wait.until(EC.element_to_be_clickable((By.ID, "txtWork")))
         wc_input.clear(); wc_input.send_keys(work_code)
         driver.find_element(By.ID, "imgButtonSearch").click()
@@ -260,64 +249,72 @@ class DuplicateMrTab(BaseAutomationTab):
         
         wait.until(lambda d: len(Select(d.find_element(By.ID, "ddlworkcode")).options) > 1)
         Select(driver.find_element(By.ID, "ddlworkcode")).select_by_index(1)
-        wait.until(EC.staleness_of(wc_input))
         
         wait.until(lambda d: len(Select(d.find_element(By.ID, "ddlmsrno")).options) > 1)
         msr_dd_element = driver.find_element(By.ID, "ddlmsrno")
         msr_options = [opt.get_attribute('value') for opt in Select(msr_dd_element).options if '--' not in opt.text]
         
         if not msr_options:
-            self.app.log_message(self.log_display, "No MSR numbers found for this work code.", "warning")
+            self.app.log_message(self.log_display, "No MSR numbers found.", "warning")
             self._log_result(work_code, "N/A", "No MSRs found")
             return []
         
         self.app.log_message(self.log_display, f"Found {len(msr_options)} MSRs: {', '.join(msr_options)}")
         return msr_options
 
+    # --- RE-INSERTED MISSING FUNCTION ---
     def _save_mr_as_pdf(self, driver, work_code, msr_no, orientation, scale):
         try:
             today_str = datetime.now().strftime('%Y-%m-%d')
-            output_dir = os.path.join(self.app.get_user_downloads_path(), "Duplicate MR", today_str, self.current_panchayat)
+            output_dir = os.path.join(self.app.get_user_downloads_path(), "NREGABot_Duplicate_MR_Output", today_str, self.current_panchayat)
             os.makedirs(output_dir, exist_ok=True)
             
-            safe_work_code = work_code.replace('/', '_')
+            safe_work_code = work_code.split('/')[-1][-6:]
             filename = f"MR_{safe_work_code}_{msr_no}.pdf"
             filepath = os.path.join(output_dir, filename)
 
-            # --- LANDSCAPE FIX: Inject CSS to force landscape mode ---
             is_landscape = (orientation == "Landscape")
+            pdf_scale = scale / 100.0
+            pdf_data_base64 = None
+
             if is_landscape:
-                self.app.log_message(self.log_display, "Injecting CSS to force landscape orientation...")
                 driver.execute_script(
                     "var css = '@page { size: landscape; }';"
                     "var head = document.head || document.getElementsByTagName('head')[0];"
                     "var style = document.createElement('style');"
-                    "style.type = 'text/css';"
-                    "style.media = 'print';"
+                    "style.type = 'text/css'; style.media = 'print';"
                     "if (style.styleSheet){ style.styleSheet.cssText = css; }"
                     "else { style.appendChild(document.createTextNode(css)); }"
                     "head.appendChild(style);"
                 )
+            
+            if self.app.active_browser == 'firefox':
+                self.app.log_message(self.log_display, "   - Note: PDF Scale setting is not supported for Firefox and will be ignored.", "warning")
+                pdf_data_base64 = driver.print_page()
+            
+            elif self.app.active_browser == 'chrome':
+                print_options = {
+                    "landscape": is_landscape,
+                    "displayHeaderFooter": False,
+                    "printBackground": False,
+                    "scale": pdf_scale,
+                    "marginTop": 0.4, "marginBottom": 0.4,
+                    "marginLeft": 0.4, "marginRight": 0.4
+                }
+                result = driver.execute_cdp_cmd('Page.printToPDF', print_options)
+                pdf_data_base64 = result['data']
 
-            pdf_scale = scale / 100.0
-            print_options = {
-                "landscape": is_landscape,
-                "displayHeaderFooter": False,
-                "printBackground": False,
-                "scale": pdf_scale,
-                "marginTop": 0.4, "marginBottom": 0.4,
-                "marginLeft": 0.4, "marginRight": 0.4
-            }
-            
-            result = driver.execute_cdp_cmd('Page.printToPDF', print_options)
-            pdf_data = base64.b64decode(result['data'])
-            
-            with open(filepath, 'wb') as f:
-                f.write(pdf_data)
-            return filepath
+            if pdf_data_base64:
+                pdf_data = base64.b64decode(pdf_data_base64)
+                with open(filepath, 'wb') as f:
+                    f.write(pdf_data)
+                return filepath
+            else:
+                return None
         except Exception as e:
             self.app.log_message(self.log_display, f"Error saving PDF: {e}", "error")
             return None
+    # --- END RE-INSERTED FUNCTION ---
 
     def set_ui_state(self, running: bool):
         self.set_common_ui_state(running)
