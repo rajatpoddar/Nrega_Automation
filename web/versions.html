@@ -42,6 +42,30 @@
                 <div class="max-w-4xl mx-auto space-y-8">
 
                     <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border-2 border-blue-500 dark:border-blue-500 shadow-lg">
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.5.5 (NREGA Bot)</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: August 6, 2025</p>
+                        <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
+                            <li>✨ **Feature:** Added a new 'File Manager' tab for cloud storage. Users can now upload, download, and manage files across devices.</li>
+                            <li>✨ **Feature:** Added a 'Feedback' tab for users to submit bug reports and feature requests directly from the app.</li>
+                            <li>✨ **Feature:** Implemented a web-based file manager on the user account page, including a drag-and-drop uploader.</li>
+                            <li>✨ **Feature:** Added new admin panel pages to view user feedback and manage user file storage.</li>
+                            <li>🛠️ **Improvement (MR Gen):** Generated Muster Roll PDFs with the same name will now be saved with a number (e.g., 'file (1).pdf') instead of being overwritten.</li>
+                            <li>🛠️ **Improvement (MR Gen):** Enhanced error handling to detect and skip date overlap errors and other specific page issues without crashing.</li>
+                            <li>🛠️ **Improvement (Trial Activation):** Added validation to ensure email and mobile number formats are correct during trial registration.</li>
+                            <li>🛠️ **Improvement (Server):** Refactored the monolithic server file into a scalable, blueprint-based structure for better maintenance.</li>
+                            <li>🐞 **Critical Bug Fix (Duplicate MR Print):** Overhauled logic to resolve persistent timeouts by correctly handling page loading behavior.</li>
+                            <li>🐞 **Critical Bug Fix (Firefox PDF Saving):** Fixed error preventing PDF saves in Firefox on 'MR Gen' and 'Duplicate MR Print' tabs.</li>
+                            <li>🛠️ **Improvement (MR Gen):** Automation now waits up to 30 seconds for the 'Technical Staff' list to populate, preventing timeouts on slow connections.</li>
+                            <li>🛠️ **Improvement (UI/UX):** Added a user-friendly pop-up if automation is started before a browser is launched.</li>
+                            <li>🛠️ **Improvement (UI/UX):** Standardized PDF filenames for 'Duplicate MR Print' to use the last 6 digits of the work code.</li>
+                        </ul>
+                        <div class="mt-6 flex flex-col sm:flex-row gap-4">
+                            <a href="https://nregabot.com/updates/NREGABot-v2.5.5-Setup.exe" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download for Windows</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.5.5-macOS.dmg" class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download for macOS</a>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.5.4 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: August 5, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
