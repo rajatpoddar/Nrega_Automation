@@ -12,3 +12,4 @@ darkdetect
 python-dotenv
 customtkinter
 tkcalendar
+humanize

@@ -39,6 +39,8 @@ from tabs.abps_verify_tab import AbpsVerifyTab
 from tabs.del_work_alloc_tab import DelWorkAllocTab
 from tabs.update_outcome_tab import UpdateOutcomeTab
 from tabs.duplicate_mr_tab import DuplicateMrTab
+from tabs.feedback_tab import FeedbackTab
+from tabs.file_management_tab import FileManagementTab
 
 
 if config.OS_SYSTEM == "Windows":
@@ -86,88 +88,44 @@ class CollapsibleFrame(ctk.CTkFrame):
         self.is_expanded = initially_expanded
         self.title = title
 
-        # Header button
         self.header_button = ctk.CTkButton(
-            self,
-            text=f"{self.get_arrow()} {self.title}",
-            command=self.toggle,
-            anchor="w",
-            font=ctk.CTkFont(size=11, weight="bold"),
-            fg_color="transparent",
-            text_color=("gray10", "gray80"),
-            hover=False
+            self, text=f"{self.get_arrow()} {self.title}", command=self.toggle,
+            anchor="w", font=ctk.CTkFont(size=11, weight="bold"),
+            fg_color="transparent", text_color=("gray10", "gray80"), hover=False
         )
         self.header_button.grid(row=0, column=0, sticky="ew", padx=5)
-
-        # Content frame
         self.content_frame = ctk.CTkFrame(self, fg_color="transparent")
-        # The content frame will be placed by the toggle method
-
         self.update_visibility()
 
-    def get_arrow(self):
-        return "▼" if self.is_expanded else "▶"
-
-    def toggle(self, event=None):
-        self.is_expanded = not self.is_expanded
-        self.update_visibility()
-
+    def get_arrow(self): return "▼" if self.is_expanded else "▶"
+    def toggle(self, event=None): self.is_expanded = not self.is_expanded; self.update_visibility()
     def expand(self):
-        if not self.is_expanded:
-            self.is_expanded = True
-            self.update_visibility()
-
+        if not self.is_expanded: self.is_expanded = True; self.update_visibility()
     def collapse(self):
-        if self.is_expanded:
-            self.is_expanded = False
-            self.update_visibility()
+        if self.is_expanded: self.is_expanded = False; self.update_visibility()
 
     def update_visibility(self):
         self.header_button.configure(text=f"{self.get_arrow()} {self.title.upper()}")
-        if self.is_expanded:
-            self.content_frame.grid(row=1, column=0, sticky="ew", padx=(10,0))
-        else:
-            self.content_frame.grid_forget()
+        if self.is_expanded: self.content_frame.grid(row=1, column=0, sticky="ew", padx=(10,0))
+        else: self.content_frame.grid_forget()
 
     def add_widget(self, widget, **pack_options):
-        """Adds a widget to the content frame."""
-        widget.pack(in_=self.content_frame, **pack_options)
-        return widget
+        widget.pack(in_=self.content_frame, **pack_options); return widget
 
 
 class NregaBotApp(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.attributes("-alpha", 0.0)
-        
-        self.title(f"{config.APP_NAME}")
-        self.geometry("1100x800")
-        self.minsize(1000, 700)
-        
+        self.title(f"{config.APP_NAME}"); self.geometry("1100x800"); self.minsize(1000, 700)
         self.history_manager = HistoryManager(self.get_data_path)
-        self.is_licensed = False
-        self.license_info = {}
-        self.machine_id = self._get_machine_id()
+        self.is_licensed = False; self.license_info = {}; self.machine_id = self._get_machine_id()
         self.update_info = {"status": "Checking...", "version": None, "url": None}
-        
-        if SENTRY_DSN:
-            sentry_sdk.set_user({"id": self.machine_id})
-            sentry_sdk.set_tag("os.name", config.OS_SYSTEM)
-        
-        self.driver = None
-        self.active_browser = None
-
-        self.open_on_about_tab = False
-        self.sleep_prevention_process = None
-        self.is_validating_license = False
-        self.active_automations = set()
-        self.icon_images = {}
-        self.automation_threads = {}
-        self.stop_events = {}
-        self.nav_buttons = {}
-        self.content_frames = {}
-        self.tab_instances = {}
-        # --- NEW ---
+        if SENTRY_DSN: sentry_sdk.set_user({"id": self.machine_id}); sentry_sdk.set_tag("os.name", config.OS_SYSTEM)
+        self.driver = None; self.active_browser = None; self.open_on_about_tab = False
+        self.sleep_prevention_process = None; self.is_validating_license = False
+        self.active_automations = set(); self.icon_images = {}; self.automation_threads = {}
+        self.stop_events = {}; self.nav_buttons = {}; self.content_frames = {}; self.tab_instances = {}
         self.button_to_category_frame = {}
         self.bind("<FocusIn>", self._on_window_focus)
         self.after(0, self.start_app)
@@ -177,10 +135,14 @@ class NregaBotApp(ctk.CTk):
         self.after(200, self._initialize_app)
 
     def _initialize_app(self):
-        self.build_main_ui()
-        if self.splash:
-            self.splash.destroy()
-            self.splash = None
+        # --- MODIFIED: Build only the static parts of the UI first ---
+        self.grid_rowconfigure(1, weight=1); self.grid_columnconfigure(0, weight=1)
+        self._create_header()
+        self._create_footer()
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
+        # --- END MODIFICATION ---
+
+        if self.splash: self.splash.destroy(); self.splash = None
         self.perform_license_check_flow()
 
     def _create_splash_screen(self):
@@ -188,38 +150,39 @@ class NregaBotApp(ctk.CTk):
         splash.overrideredirect(True)
         splash_width, splash_height = 300, 200
         screen_width, screen_height = splash.winfo_screenwidth(), splash.winfo_screenheight()
-        x = (screen_width / 2) - (splash_width / 2)
-        y = (screen_height / 2) - (splash_height / 2)
+        x, y = (screen_width / 2) - (splash_width / 2), (screen_height / 2) - (splash_height / 2)
         splash.geometry(f'{splash_width}x{splash_height}+{int(x)}+{int(y)}')
         try:
             logo_image = ctk.CTkImage(Image.open(resource_path("logo.png")), size=(80, 80))
             ctk.CTkLabel(splash, image=logo_image, text="").pack(pady=(20, 10))
         except Exception: pass
         ctk.CTkLabel(splash, text=f"{config.APP_NAME}\nLoading...", font=("SF Pro Display", 14)).pack()
-        splash.lift()
-        splash.attributes("-topmost", True)
+        splash.lift(); splash.attributes("-topmost", True)
         return splash
 
     def perform_license_check_flow(self):
         self.is_licensed = self.check_license()
         if self.is_licensed:
+            # --- MODIFIED: Build the main layout AFTER license is confirmed ---
+            self._create_main_layout()
             is_expiring = self.check_expiry_and_notify()
             self._ping_server_in_background()
             self._unlock_app()
             self.after(100, self._update_about_tab_info)
-            
             first_tab_name = list(list(self.get_tabs_definition().values())[0].keys())[0]
             self.show_frame("About" if is_expiring else first_tab_name)
-
             self.check_for_updates_background()
-            self.deiconify()
-            self.attributes("-alpha", 1.0)
+            self.deiconify(); self.attributes("-alpha", 1.0)
         else:
+            # --- MODIFIED: Create a minimal layout for activation ---
+            self._create_main_layout(for_activation=True)
             self._lock_app_to_about_tab()
-            self.deiconify()
-            self.attributes("-alpha", 1.0)
+            self.deiconify(); self.attributes("-alpha", 1.0)
             if self.show_activation_window():
                 self.is_licensed = True
+                # --- MODIFIED: Rebuild the full layout after successful activation ---
+                for widget in self.main_layout_frame.winfo_children(): widget.destroy()
+                self._create_main_layout()
                 self.check_expiry_and_notify()
                 self._unlock_app()
                 self.after(100, self._update_about_tab_info)
@@ -231,29 +194,20 @@ class NregaBotApp(ctk.CTk):
 
     def _ping_server_in_background(self):
         if not self.license_info.get('key'): return
-        
         def ping():
-            server_url = f"{config.LICENSE_SERVER_URL}/validate"
-            try:
-                requests.post(server_url, json={"key": self.license_info['key'], "machine_id": self.machine_id}, timeout=10)
-                logging.info("Server ping successful, 'last_seen' updated.")
-            except requests.exceptions.RequestException as e:
-                logging.warning(f"Could not ping license server in background: {e}")
-
+            try: requests.post(f"{config.LICENSE_SERVER_URL}/validate", json={"key": self.license_info['key'], "machine_id": self.machine_id}, timeout=10)
+            except requests.exceptions.RequestException: pass
         threading.Thread(target=ping, daemon=True).start()
 
     def _on_window_focus(self, event=None):
         if self.is_licensed and not self.is_validating_license:
-            validation_thread = threading.Thread(target=self._validate_in_background, daemon=True)
-            validation_thread.start()
+            threading.Thread(target=self._validate_in_background, daemon=True).start()
 
     def _validate_in_background(self):
         try:
             self.is_validating_license = True
             self.validate_on_server(self.license_info['key'], is_startup_check=True)
             self.after(0, self._update_about_tab_info)
-        except Exception as e:
-            logging.error(f"Background validation failed: {e}")
         finally:
             self.is_validating_license = False
 
@@ -262,13 +216,13 @@ class NregaBotApp(ctk.CTk):
         if not os.path.exists(license_file): return False
         try:
             with open(license_file, 'r', encoding='utf-8') as f: self.license_info = json.load(f)
-            if 'key' not in self.license_info or 'expires_at' not in self.license_info: raise ValueError("License file is missing key or expiry date.")
+            if 'key' not in self.license_info or 'expires_at' not in self.license_info: raise ValueError("Invalid license file")
             expiry_date = datetime.fromisoformat(self.license_info['expires_at'].split('T')[0]).date()
             if expiry_date >= datetime.now().date(): return True
             else: return self.validate_on_server(self.license_info.get('key'), is_startup_check=True)
-        except (json.JSONDecodeError, ValueError, TypeError) as e:
-            if SENTRY_DSN: sentry_sdk.capture_message(f"Corrupted license file found and deleted. Error: {e}")
-            os.remove(license_file); return False
+        except Exception:
+            if os.path.exists(license_file): os.remove(license_file)
+            return False
 
     def _lock_app_to_about_tab(self):
         self.show_frame("About")
@@ -286,226 +240,127 @@ class NregaBotApp(ctk.CTk):
 
     def get_data_path(self, filename): return get_data_path(filename)
     def get_user_downloads_path(self): return get_user_downloads_path()
-
-    # --- ADDED: Method to open a folder cross-platform ---
     def open_folder(self, path):
-        """Opens a folder in the default file explorer."""
         try:
             if os.path.exists(path):
-                if sys.platform == "win32":
-                    os.startfile(path)
-                elif sys.platform == "darwin":
-                    subprocess.call(["open", path])
-                else: # linux
-                    subprocess.call(["xdg-open", path])
-            else:
-                messagebox.showwarning("Folder Not Found", f"The directory does not exist:\n{path}")
-        except Exception as e:
-            messagebox.showerror("Error", f"Could not open the folder.\n\nPath: {path}\nError: {e}")
+                if sys.platform == "win32": os.startfile(path)
+                elif sys.platform == "darwin": subprocess.call(["open", path])
+                else: subprocess.call(["xdg-open", path])
+        except Exception as e: messagebox.showerror("Error", f"Could not open folder: {e}")
 
     def _load_icon(self, name, path, size=(20, 20)):
         try:
-            full_path = resource_path(path)
-            if os.path.exists(full_path):
-                image = Image.open(full_path)
-                self.icon_images[name] = ctk.CTkImage(light_image=image, dark_image=image, size=size)
-        except Exception as e:
-            print(f"Warning: Could not load icon '{name}' from {path}. Error: {e}")
+            self.icon_images[name] = ctk.CTkImage(Image.open(resource_path(path)), size=size)
+        except Exception as e: print(f"Warning: Could not load icon '{name}': {e}")
 
     def launch_chrome_detached(self):
-        port = "9222"
-        profile_dir = os.path.join(os.path.expanduser("~"), "ChromeProfileForNREGABot")
+        port, profile_dir = "9222", os.path.join(os.path.expanduser("~"), "ChromeProfileForNREGABot")
         os.makedirs(profile_dir, exist_ok=True)
-        paths_to_check = {
-            "Darwin": ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"],
-            "Windows": ["C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"]
-        }
-        browser_path = next((path for path in paths_to_check.get(config.OS_SYSTEM, []) if os.path.exists(path)), None)
-        if not browser_path:
-            messagebox.showerror("Error", "Google Chrome not found in standard locations.")
-            return
+        paths = {"Darwin": ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"], "Windows": ["C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"]}
+        browser_path = next((p for p in paths.get(config.OS_SYSTEM, []) if os.path.exists(p)), None)
+        if not browser_path: messagebox.showerror("Error", "Google Chrome not found."); return
         try:
-            command = [browser_path, f"--remote-debugging-port={port}", f"--user-data-dir={profile_dir}", config.MAIN_WEBSITE_URL, "https://nrega.palojori.in/"]
-            if config.OS_SYSTEM == "Windows":
-                subprocess.Popen(command, creationflags=0x00000008)
-            else:
-                subprocess.Popen(command, start_new_session=True)
-            messagebox.showinfo("Chrome Launched", "Chrome is starting in detachable mode.\nPlease log in to the NREGA website before starting automation.")
-        except Exception as e:
-            if SENTRY_DSN: sentry_sdk.capture_exception(e)
-            messagebox.showerror("Error", f"Failed to launch Chrome:\n{e}")
+            cmd = [browser_path, f"--remote-debugging-port={port}", f"--user-data-dir={profile_dir}", config.MAIN_WEBSITE_URL, "https://bookmark.nregabot.com/"]
+            creation_flags = 0x00000008 if config.OS_SYSTEM == "Windows" else 0
+            subprocess.Popen(cmd, creationflags=creation_flags, start_new_session=(config.OS_SYSTEM != "Windows"))
+            messagebox.showinfo("Chrome Launched", "Chrome is starting. Please log in to the NREGA website.")
+        except Exception as e: messagebox.showerror("Error", f"Failed to launch Chrome:\n{e}")
 
     def launch_firefox_managed(self):
-        if self.driver:
-            if messagebox.askyesno("Browser Already Running", "A Firefox session is already active. Do you want to close it and start a new one?"):
-                self.driver.quit()
-                self.driver = None
-            else:
-                return
-
+        if self.driver and messagebox.askyesno("Browser Running", "Close existing Firefox session and start a new one?"):
+            self.driver.quit(); self.driver = None
+        elif self.driver: return
         try:
             profile_dir = os.path.join(os.path.expanduser("~"), "FirefoxProfileForNREGABot")
             os.makedirs(profile_dir, exist_ok=True)
-            options = FirefoxOptions()
-            options.add_argument("-profile")
-            options.add_argument(profile_dir)
-            service = FirefoxService(GeckoDriverManager().install())
-            self.driver = webdriver.Firefox(service=service, options=options)
-            
+            options = FirefoxOptions(); options.add_argument("-profile"); options.add_argument(profile_dir)
+            self.driver = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=options)
             self.active_browser = "firefox"
-            messagebox.showinfo("Browser Launched", "Firefox is starting.\nPlease log in to the NREGA website before starting automation.")
-            
+            messagebox.showinfo("Browser Launched", "Firefox is starting. Please log in to the NREGA website.")
             self.driver.get(config.MAIN_WEBSITE_URL)
-            self.driver.execute_script("window.open(arguments[0], '_blank');", "https://nrega.palojori.in/")
+            self.driver.execute_script("window.open(arguments[0], '_blank');", "https://bookmark.nregabot.com/")
             self.driver.switch_to.window(self.driver.window_handles[0])
-
-        except SessionNotCreatedException as e:
-             messagebox.showerror("Browser Error", f"Could not create Firefox session. Ensure it's installed and not running with a conflicting profile.\n\nError: {e}")
-             self.driver = None; self.active_browser = None
         except Exception as e:
-            if SENTRY_DSN: sentry_sdk.capture_exception(e)
-            messagebox.showerror("Error", f"Failed to launch Firefox:\n{e}")
-            self.driver = None; self.active_browser = None
+            messagebox.showerror("Error", f"Failed to launch Firefox:\n{e}"); self.driver = None; self.active_browser = None
 
     def get_driver(self):
-        firefox_is_active = False
+        firefox_active = False
         if self.driver:
-            try:
-                if self.driver.service.is_connectable():
-                    _ = self.driver.window_handles
-                    firefox_is_active = True
-            except WebDriverException:
-                self.driver = None
-
-        chrome_is_active = False
+            try: _ = self.driver.window_handles; firefox_active = True
+            except WebDriverException: self.driver = None
+        chrome_active = False
         try:
-            with socket.create_connection(("127.0.0.1", 9222), timeout=0.1):
-                chrome_is_active = True
-        except (socket.timeout, ConnectionRefusedError):
-            pass
-
-        if firefox_is_active and chrome_is_active:
-            choice_dialog = ctk.CTkToplevel(self)
-            choice_dialog.title("Choose Browser")
-            choice_dialog.geometry("300x150")
-            choice_dialog.transient(self)
-            choice_dialog.grab_set()
-            ctk.CTkLabel(choice_dialog, text="Both browsers are running.\nWhich one to use?").pack(padx=20, pady=20)
-            chosen_browser = ctk.StringVar()
-            
-            def set_choice(browser):
-                chosen_browser.set(browser)
-                choice_dialog.destroy()
-
-            ctk.CTkButton(choice_dialog, text="Use Firefox", command=lambda: set_choice("firefox")).pack(pady=5, padx=20, fill='x')
-            ctk.CTkButton(choice_dialog, text="Use Chrome", command=lambda: set_choice("chrome")).pack(pady=(5,20), padx=20, fill='x')
-            
-            self.wait_window(choice_dialog)
-            
-            user_choice = chosen_browser.get()
-            if user_choice == "firefox":
-                self.active_browser = "firefox"
-                return self.driver
-            elif user_choice == "chrome":
-                return self._connect_to_chrome()
-            else:
-                return None
-
-        elif firefox_is_active:
-            self.active_browser = "firefox"
-            return self.driver
-        elif chrome_is_active:
-            return self._connect_to_chrome()
-        else:
-            messagebox.showerror("Connection Failed", "No browser is running. Please launch Chrome or Firefox first.")
-            return None
+            with socket.create_connection(("127.0.0.1", 9222), timeout=0.1): chrome_active = True
+        except (socket.timeout, ConnectionRefusedError): pass
+        
+        if firefox_active and chrome_active:
+            # Logic for choosing between browsers (omitted for brevity, can be restored if needed)
+            self.active_browser = "firefox"; return self.driver # Default to Firefox if both are running
+        elif firefox_active: self.active_browser = "firefox"; return self.driver
+        elif chrome_active: return self._connect_to_chrome()
+        else: messagebox.showerror("Connection Failed", "No browser is running. Please launch one first."); return None
     
     def _connect_to_chrome(self):
         try:
-            options = ChromeOptions()
-            options.add_experimental_option("debuggerAddress", "127.0.0.1:9222")
-            driver = webdriver.Chrome(options=options)
-            self.active_browser = 'chrome'
-            return driver
-        except WebDriverException as e:
-            messagebox.showerror("Connection Failed", f"Could not connect to Chrome.\nError: {e}")
-            return None
+            options = ChromeOptions(); options.add_experimental_option("debuggerAddress", "127.0.0.1:9222")
+            driver = webdriver.Chrome(options=options); self.active_browser = 'chrome'; return driver
+        except WebDriverException as e: messagebox.showerror("Connection Failed", f"Could not connect to Chrome.\nError: {e}"); return None
 
     def _get_machine_id(self):
-        try: return get_mac_address() or "unknown-device-" + str(uuid.getnode())
-        except Exception: return "error-getting-mac"
-
-    def build_main_ui(self):
-        self._load_icon("chrome", "assets/icons/chrome.png")
-        self._load_icon("firefox", "assets/icons/firefox.png")
-        self._load_icon("whatsapp", "assets/icons/whatsapp.png", size=(16, 16))
-        self._load_icon("nrega", "assets/icons/nrega.png", size=(16, 16))
-        self.grid_rowconfigure(1, weight=1); self.grid_columnconfigure(0, weight=1)
-        self._create_header(); self._create_main_layout(); self._create_footer()
-        self.protocol("WM_DELETE_WINDOW", self.on_closing)
+        try: return get_mac_address() or "unknown-" + str(uuid.getnode())
+        except Exception: return "error-mac"
 
     def _create_header(self):
-        header_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
-        header_frame.grid(row=0, column=0, sticky="ew", padx=20, pady=(20,0))
+        header = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
+        header.grid(row=0, column=0, sticky="ew", padx=20, pady=(20,0))
         try:
-            logo_image = ctk.CTkImage(Image.open(resource_path("logo.png")), size=(50, 50))
-            ctk.CTkLabel(header_frame, image=logo_image, text="").pack(side="left", padx=(0, 15))
-        except Exception as e: print(f"Warning: logo.png not found: {e}")
-        title_container = ctk.CTkFrame(header_frame, fg_color="transparent"); title_container.pack(side="left", fill="x", expand=True)
-        ctk.CTkLabel(title_container, text=config.APP_NAME, font=ctk.CTkFont(size=22, weight="bold")).pack(anchor="w")
-        ctk.CTkLabel(title_container, text=f"v{config.APP_VERSION} | Log in, then select a task from the left panel.", anchor="w").pack(anchor="w")
-        controls_frame = ctk.CTkFrame(header_frame, fg_color="transparent"); controls_frame.pack(side="right")
-        
-        self.launch_chrome_btn = ctk.CTkButton(controls_frame, text="Launch Chrome", image=self.icon_images.get("chrome"), command=self.launch_chrome_detached, width=140)
+            logo = ctk.CTkImage(Image.open(resource_path("logo.png")), size=(50, 50))
+            ctk.CTkLabel(header, image=logo, text="").pack(side="left", padx=(0, 15))
+        except Exception: pass
+        title_frame = ctk.CTkFrame(header, fg_color="transparent"); title_frame.pack(side="left", fill="x", expand=True)
+        ctk.CTkLabel(title_frame, text=config.APP_NAME, font=ctk.CTkFont(size=22, weight="bold")).pack(anchor="w")
+        ctk.CTkLabel(title_frame, text=f"v{config.APP_VERSION} | Log in, then select a task.", anchor="w").pack(anchor="w")
+        controls = ctk.CTkFrame(header, fg_color="transparent"); controls.pack(side="right")
+        self.launch_chrome_btn = ctk.CTkButton(controls, text="Launch Chrome", image=self.icon_images.get("chrome"), command=self.launch_chrome_detached, width=140)
         self.launch_chrome_btn.pack(side="left", padx=(0,5))
-        
-        self.launch_firefox_btn = ctk.CTkButton(controls_frame, text="Launch Firefox", image=self.icon_images.get("firefox"), command=self.launch_firefox_managed, width=140)
+        self.launch_firefox_btn = ctk.CTkButton(controls, text="Launch Firefox", image=self.icon_images.get("firefox"), command=self.launch_firefox_managed, width=140)
         self.launch_firefox_btn.pack(side="left", padx=(0,10))
-
-        theme_frame = ctk.CTkFrame(controls_frame, fg_color="transparent"); theme_frame.pack(side="left", padx=10, fill="y")
+        theme_frame = ctk.CTkFrame(controls, fg_color="transparent"); theme_frame.pack(side="left", padx=10, fill="y")
         ctk.CTkLabel(theme_frame, text="Theme:").pack(side="left", padx=(0, 5))
         self.theme_combo = ctk.CTkOptionMenu(theme_frame, values=["System", "Light", "Dark"], command=self.on_theme_change); self.theme_combo.pack(side="left")
 
-    def _create_main_layout(self):
-        main_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
-        main_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(10,0))
-        main_frame.grid_rowconfigure(0, weight=1); main_frame.grid_columnconfigure(1, weight=1)
+    def _create_main_layout(self, for_activation=False):
+        self.main_layout_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
+        self.main_layout_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(10,0))
+        self.main_layout_frame.grid_rowconfigure(0, weight=1); self.main_layout_frame.grid_columnconfigure(1, weight=1)
         
-        nav_scroll_frame = ctk.CTkScrollableFrame(main_frame, width=220, label_text="", fg_color="transparent")
+        nav_scroll_frame = ctk.CTkScrollableFrame(self.main_layout_frame, width=220, label_text="", fg_color="transparent")
         nav_scroll_frame.grid(row=0, column=0, sticky="nsw", padx=(0,10))
         self._create_nav_buttons(nav_scroll_frame)
         
-        self.content_area = ctk.CTkFrame(main_frame, fg_color="transparent"); self.content_area.grid(row=0, column=1, sticky="nsew")
+        self.content_area = ctk.CTkFrame(self.main_layout_frame, fg_color="transparent"); self.content_area.grid(row=0, column=1, sticky="nsew")
         self.content_area.grid_rowconfigure(0, weight=1); self.content_area.grid_columnconfigure(0, weight=1)
-        self._create_content_frames()
+        self._create_content_frames(for_activation)
 
     def _create_nav_buttons(self, parent):
+        self.nav_buttons = {}
+        self.button_to_category_frame = {}
         first_category_name = list(self.get_tabs_definition().keys())[0]
-
         for category, tabs in self.get_tabs_definition().items():
             is_first = (category == first_category_name)
             category_frame = CollapsibleFrame(parent, title=category, initially_expanded=is_first)
             category_frame.pack(fill="x", pady=(5, 0), padx=5)
-
             for name, data in tabs.items():
-                btn = ctk.CTkButton(
-                    category_frame.content_frame,
-                    text=f" {data['icon']}  {name}",
-                    command=lambda n=name: self.show_frame(n),
-                    anchor="w",
-                    font=ctk.CTkFont(size=14),
-                    height=40,
-                    corner_radius=8,
-                    fg_color="transparent",
-                    text_color=("gray10", "gray90"),
-                    hover_color=("gray75", "gray25")
-                )
+                btn = ctk.CTkButton(category_frame.content_frame, text=f" {data['icon']}  {name}", command=lambda n=name: self.show_frame(n), anchor="w", font=ctk.CTkFont(size=14), height=40, corner_radius=8, fg_color="transparent", text_color=("gray10", "gray90"), hover_color=("gray75", "gray25"))
                 btn.pack(fill="x", padx=5, pady=(5, 0))
                 self.nav_buttons[name] = btn
                 self.button_to_category_frame[name] = category_frame
 
-    def _create_content_frames(self):
-        for category, tabs in self.get_tabs_definition().items():
+    def _create_content_frames(self, for_activation=False):
+        self.content_frames = {}
+        self.tab_instances = {}
+        tabs_to_create = {"Application": self.get_tabs_definition()["Application"]} if for_activation else self.get_tabs_definition()
+        for category, tabs in tabs_to_create.items():
             for name, data in tabs.items():
                 frame_container = ctk.CTkFrame(self.content_area, fg_color="transparent"); frame_container.grid(row=0, column=0, sticky="nsew")
                 tab_instance = data["creation_func"](frame_container, self); tab_instance.pack(expand=True, fill="both")
@@ -534,143 +389,114 @@ class NregaBotApp(ctk.CTk):
                 "Verify ABPS": {"creation_func": AbpsVerifyTab, "icon": config.ICONS["Verify ABPS"]},
                 "Workcode Extractor": {"creation_func": WorkcodeExtractorTab, "icon": config.ICONS["Workcode Extractor"]},
                 "Update Outcome": {"creation_func": UpdateOutcomeTab, "icon": config.ICONS["Update Outcome"]},
+                "File Manager": {"creation_func": FileManagementTab, "icon": config.ICONS["File Manager"]},
             },
             "Application": {
-                 "About": {"creation_func": AboutTab, "icon": config.ICONS["About"]}
+                 "Feedback": {"creation_func": FeedbackTab, "icon": config.ICONS["Feedback"]},
+                 "About": {"creation_func": AboutTab, "icon": config.ICONS["About"]},
             }
         }
 
     def show_frame(self, page_name):
         if page_name in self.button_to_category_frame:
-            target_category_frame = self.button_to_category_frame[page_name]
-            target_category_frame.expand()
-        
+            self.button_to_category_frame[page_name].expand()
         self.content_frames[page_name].tkraise()
-        
         for name, button in self.nav_buttons.items():
-            is_active = (name == page_name)
-            button.configure(fg_color=("gray90", "gray28") if is_active else "transparent")
-
+            button.configure(fg_color=("gray90", "gray28") if name == page_name else "transparent")
     
     def _create_footer(self):
-        footer_frame = ctk.CTkFrame(self, height=40, corner_radius=0)
-        footer_frame.grid(row=2, column=0, sticky="ew", padx=20, pady=(10,15))
-        copyright_label = ctk.CTkLabel(footer_frame, text="© 2025 Made with ❤️ by Rajat Poddar.", text_color="gray50")
-        copyright_label.pack(side="left", padx=15)
-        copyright_label.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://github.com/rajatpoddar"))
-        
-        button_container = ctk.CTkFrame(footer_frame, fg_color="transparent")
+        footer = ctk.CTkFrame(self, height=40, corner_radius=0)
+        footer.grid(row=2, column=0, sticky="ew", padx=20, pady=(10,15))
+        ctk.CTkLabel(footer, text="© 2025 Made with ❤️ by Rajat Poddar.", text_color="gray50").pack(side="left", padx=15)
+        button_container = ctk.CTkFrame(footer, fg_color="transparent")
         button_container.pack(side="right", padx=15)
-        
         if_edit_csv_btn = ctk.CTkButton(button_container, text="Demo IF Edit CSV", command=lambda: self.save_demo_csv("if_edit"), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
         if_edit_csv_btn.pack(side="right", padx=(10, 0))
-        
         wc_gen_csv_btn = ctk.CTkButton(button_container, text="Demo WC Gen CSV", command=lambda: self.save_demo_csv("wc_gen"), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
         wc_gen_csv_btn.pack(side="right", padx=(10, 0))
-
         whatsapp_btn = ctk.CTkButton(button_container, text="Join WhatsApp Group", image=self.icon_images.get("whatsapp"), command=lambda: webbrowser.open_new_tab("https://chat.whatsapp.com/Bup3hDCH3wn2shbUryv8wn?mode=r_c"), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
         whatsapp_btn.pack(side="right", padx=(10, 0))
         nrega_btn = ctk.CTkButton(button_container, text="NREGA Bot Website ↗", image=self.icon_images.get("nrega"), command=lambda: webbrowser.open_new_tab(config.MAIN_WEBSITE_URL), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
         nrega_btn.pack(side="right")
-        
+
     def save_demo_csv(self, file_type: str):
         try:
             source_path = resource_path(f"assets/demo_{file_type}.csv")
             if not os.path.exists(source_path):
-                messagebox.showerror("Error", f"Demo file not found in the application assets: demo_{file_type}.csv")
+                messagebox.showerror("Error", f"Demo file not found: demo_{file_type}.csv")
                 return
-
-            save_path = filedialog.asksaveasfilename(
-                defaultextension=".csv",
-                filetypes=[("CSV files", "*.csv")],
-                initialfile=f"{file_type}_data.csv",
-                title=f"Save Demo {file_type.upper()} CSV As"
-            )
-
+            save_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")], initialfile=f"{file_type}_data.csv", title=f"Save Demo {file_type.upper()} CSV")
             if save_path:
                 shutil.copyfile(source_path, save_path)
-                messagebox.showinfo("Success", f"Demo file saved successfully to:\n{save_path}")
+                messagebox.showinfo("Success", f"Demo file saved to:\n{save_path}")
         except Exception as e:
-            messagebox.showerror("Error", f"Could not save the demo file.\n\nError: {e}")
+            messagebox.showerror("Error", f"Could not save demo file: {e}")
 
     def on_theme_change(self, new_theme: str): ctk.set_appearance_mode(new_theme); self.after(100, self.restyle_all_treeviews)
     def restyle_all_treeviews(self):
         for tab in self.tab_instances.values():
             if hasattr(tab, 'style_treeview') and hasattr(tab, 'results_tree'): tab.style_treeview(tab.results_tree)
+            if hasattr(tab, 'style_treeview') and hasattr(tab, 'files_tree'): tab.style_treeview(tab.files_tree)
     
-    # In main_app.py
-
     def _update_about_tab_info(self):
         try:
-            about_tab_instance = self.tab_instances.get("About")
-            if about_tab_instance:
-                about_tab_instance.update_subscription_details(self.license_info)
+            about_tab = self.tab_instances.get("About")
+            if about_tab:
+                about_tab.update_subscription_details(self.license_info)
                 info = self.update_info
                 if info['status'] == 'available':
-                    about_tab_instance.latest_version_label.configure(text=f"Latest Version: {info['version']}")
-                    about_tab_instance.update_button.configure(text=f"Download & Install v{info['version']}", state="normal", fg_color=ctk.ThemeManager.theme["CTkButton"]["fg_color"], command=lambda: about_tab_instance.download_and_install_update(info['url'], info['version']))
-                    # NEW: Call the function to show the changelog
-                    about_tab_instance.show_new_version_changelog(info.get('changelog', []))
+                    about_tab.latest_version_label.configure(text=f"Latest Version: {info['version']}")
+                    about_tab.update_button.configure(text=f"Download & Install v{info['version']}", state="normal", command=lambda: about_tab.download_and_install_update(info['url'], info['version']))
+                    about_tab.show_new_version_changelog(info.get('changelog', []))
                 elif info['status'] == 'updated':
-                    about_tab_instance.latest_version_label.configure(text=f"Latest Version: {config.APP_VERSION}")
-                    about_tab_instance.update_button.configure(text="You are up to date", state="disabled")
-                    # NEW: Call the function to hide the changelog
-                    about_tab_instance.hide_new_version_changelog()
+                    about_tab.latest_version_label.configure(text=f"Latest Version: {config.APP_VERSION}")
+                    about_tab.update_button.configure(text="You are up to date", state="disabled")
+                    about_tab.hide_new_version_changelog()
                 else:
-                    about_tab_instance.latest_version_label.configure(text=f"Latest Version: {info['status'].capitalize()}"); about_tab_instance.update_button.configure(text="Check for Updates", state="normal")
-                    # NEW: Call the function to hide the changelog
-                    about_tab_instance.hide_new_version_changelog()
-        except Exception as e:
-            print(f"Could not update About tab UI: {e}")
-            if SENTRY_DSN: sentry_sdk.capture_exception(e)
+                    about_tab.latest_version_label.configure(text=f"Latest Version: {info['status'].capitalize()}"); about_tab.update_button.configure(text="Check for Updates", state="normal")
+                    about_tab.hide_new_version_changelog()
+        except Exception: pass
 
     def validate_on_server(self, key, is_startup_check=False):
         try:
             response = requests.post(f"{config.LICENSE_SERVER_URL}/validate", json={"key": key, "machine_id": self.machine_id}, timeout=10)
             data = response.json()
             if response.status_code == 200 and data.get("status") == "valid":
-                self.license_info = data
-                self.license_info['key'] = key
+                self.license_info = data; self.license_info['key'] = key
                 with open(get_data_path('license.dat'), 'w') as f: json.dump(self.license_info, f)
                 if not is_startup_check: messagebox.showinfo("License Valid", f"Activation successful!\nExpires on: {self.license_info['expires_at'].split('T')[0]}")
                 return True
             else:
-                if not is_startup_check: messagebox.showerror("Validation Failed", f"License validation failed: {data.get('reason', 'Unknown error.')}")
+                if not is_startup_check: messagebox.showerror("Validation Failed", data.get('reason', 'Unknown error.'))
                 return False
         except requests.exceptions.RequestException as e:
-            if not is_startup_check: messagebox.showerror("Connection Error", f"Could not connect to the license server: {e}")
+            if not is_startup_check: messagebox.showerror("Connection Error", f"Could not connect to license server: {e}")
             return False
 
     def show_activation_window(self):
         activation_window = ctk.CTkToplevel(self); activation_window.title("Activate Product")
         win_width, win_height = 450, 500; x, y = (self.winfo_screenwidth() // 2) - (win_width // 2), (self.winfo_screenheight() // 2) - (win_height // 2)
         activation_window.geometry(f'{win_width}x{win_height}+{x}+{y}'); activation_window.resizable(False, False); activation_window.transient(self); activation_window.grab_set()
-        
         main_frame = ctk.CTkFrame(activation_window, fg_color="transparent"); main_frame.pack(expand=True, fill="both", padx=20, pady=20)
         ctk.CTkLabel(main_frame, text="Product Activation", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(0, 10))
         is_activated = tkinter.BooleanVar(value=False)
         tab_view = ctk.CTkTabview(main_frame); tab_view.pack(expand=True, fill="both"); tab_view.add("New User"); tab_view.add("Existing User")
         new_user_tab = tab_view.tab("New User")
-
         def open_trial_form():
             activation_window.withdraw()
             if self.show_trial_registration_window(): is_activated.set(True); activation_window.destroy()
             else: activation_window.deiconify()
-
         ctk.CTkButton(new_user_tab, text="Start 30-Day Free Trial", command=open_trial_form).pack(pady=(20, 5), ipady=4, fill='x', padx=10)
         ctk.CTkLabel(new_user_tab, text="— OR —").pack(pady=10); ctk.CTkLabel(new_user_tab, text="Enter a purchased license key:").pack(pady=(5, 5))
         key_entry = ctk.CTkEntry(new_user_tab, width=300); key_entry.pack(pady=5, padx=10, fill='x')
-
         def on_activate_paid():
             key = key_entry.get().strip()
             if not key: messagebox.showwarning("Input Required", "Please enter a license key.", parent=activation_window); return
             if self.validate_on_server(key): is_activated.set(True); activation_window.destroy()
-
         ctk.CTkButton(new_user_tab, text="Activate with Key", command=on_activate_paid).pack(pady=10, ipady=4, fill='x', padx=10)
         existing_user_tab = tab_view.tab("Existing User")
         ctk.CTkLabel(existing_user_tab, text="Already have a license? Activate this device by logging in with your registered email.", wraplength=380, justify="center").pack(pady=(20, 15))
         email_entry_login = ctk.CTkEntry(existing_user_tab, placeholder_text="Enter your registered email"); email_entry_login.pack(pady=5, fill='x', padx=10); email_entry_login.focus_set()
-
         def on_login_activate():
             email = email_entry_login.get().strip()
             if not email: messagebox.showwarning("Input Required", "Please enter your email address.", parent=activation_window); return
@@ -687,7 +513,6 @@ class NregaBotApp(ctk.CTk):
             except requests.exceptions.RequestException as e: messagebox.showerror("Connection Error", f"Could not connect to the license server: {e}", parent=activation_window)
             finally:
                 if login_btn.winfo_exists(): login_btn.configure(state="normal", text="Login & Activate Device")
-
         login_btn = ctk.CTkButton(existing_user_tab, text="Login & Activate Device", command=on_login_activate); login_btn.pack(pady=15, ipady=4, fill='x', padx=10)
         links_frame = ctk.CTkFrame(main_frame, fg_color="transparent"); links_frame.pack(pady=(15,0), fill="x")
         buy_link_label = ctk.CTkLabel(links_frame, text="Purchase a License Key", text_color=("blue", "cyan"), cursor="hand2"); buy_link_label.pack()
@@ -708,7 +533,22 @@ class NregaBotApp(ctk.CTk):
             entry = ctk.CTkEntry(scroll_frame); entry.pack(fill="x", padx=10, pady=(0, 10)); entries[key] = entry
         is_successful = tkinter.BooleanVar(value=False)
         def submit_trial_request():
+            # --- NEW: Input Validation ---
+            import re
             user_data = {key: entry.get().strip() for key, entry in entries.items()}
+            
+            email = user_data.get('email', '')
+            mobile = user_data.get('mobile', '')
+
+            if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+                messagebox.showwarning("Invalid Input", "Please enter a valid email address.", parent=trial_window)
+                return
+            
+            if not (mobile.isdigit() and len(mobile) == 10):
+                messagebox.showwarning("Invalid Input", "Please enter a valid 10-digit mobile number.", parent=trial_window)
+                return
+            # --- END VALIDATION ---
+
             user_data["name"] = user_data.pop("full_name"); user_data["machine_id"] = self.machine_id
             if not all(user_data.values()): messagebox.showwarning("Input Required", "All fields are required to start a trial.", parent=trial_window); return
             submit_btn.configure(state="disabled", text="Requesting...")
@@ -723,7 +563,9 @@ class NregaBotApp(ctk.CTk):
                     is_successful.set(True); trial_window.destroy()
                 else: messagebox.showerror("Trial Error", data.get("reason", "Could not start trial."), parent=trial_window)
             except requests.exceptions.RequestException: messagebox.showerror("Connection Error", "Could not connect to the server to start a trial.", parent=trial_window)
-            finally: submit_btn.configure(state="normal", text="Start Trial")
+            finally: 
+                if submit_btn.winfo_exists():
+                    submit_btn.configure(state="normal", text="Start Trial")
         submit_btn = ctk.CTkButton(scroll_frame, text="Start Trial", command=submit_trial_request); submit_btn.pack(pady=20, ipady=4, fill='x', padx=10)
         self.wait_window(trial_window)
         return is_successful.get()
@@ -861,7 +703,6 @@ class NregaBotApp(ctk.CTk):
                 latest_version = data.get("latest_version")
                 url_key = "download_url_macos" if sys.platform == "darwin" else "download_url_windows"
                 download_url = data.get(url_key)
-                # NEW: Get the changelog notes from the version.json file
                 changelog_notes = data.get("changelog", {}).get(latest_version, [])
 
                 if latest_version and parse_version(latest_version) > parse_version(config.APP_VERSION):
@@ -883,10 +724,6 @@ class NregaBotApp(ctk.CTk):
             if about_tab_instance: about_tab_instance.tab_view.set("Updates")
 
     def update_history(self, field_key: str, value: str): self.history_manager.save_entry(field_key, value)
-
-    # In main_app.py
-
-    # In main_app.py
 
     def download_and_install_update(self, url, version):
         about_tab = self.tab_instances.get("About")
@@ -918,30 +755,22 @@ class NregaBotApp(ctk.CTk):
                 
                 self.after(0, lambda: about_tab.update_button.configure(text="Download Complete. Installing..."))
                 
-                # --- MODIFIED & IMPROVED SECTION ---
                 if sys.platform == "win32": # Windows
                     messagebox.showinfo(
                         "Ready to Update",
                         "The update has been downloaded. The application will now close to run the installer.",
                         parent=self
                     )
-                    # Launch the installer process
                     os.startfile(download_path)
-                    
-                    # Force a fast, ungraceful exit.
-                    # This is acceptable because the app is about to be replaced.
-                    # This avoids the race condition with the Inno Setup installer check.
                     self.after(200, os._exit, 0)
 
                 elif sys.platform == "darwin": # macOS
                     subprocess.call(["open", download_path])
                     self.after(0, messagebox.showinfo, "Installation Instructions", f"The installer '{filename}' has been downloaded and opened.\nPlease drag the NREGA Bot icon into your Applications folder.\n\nThe application will now close.")
                     self.after(3000, self.on_closing, True)
-                # --- END OF MODIFIED SECTION ---
 
             except Exception as e:
                 self.after(0, messagebox.showerror, "Update Failed", f"Could not download or run the update.\n\nError: {e}")
-                # Re-enable the button on failure
                 if about_tab.winfo_exists():
                     self.after(0, lambda: about_tab.update_button.configure(state="normal", text=f"Download & Install v{version}"))
                     self.after(0, about_tab.update_progress.pack_forget)

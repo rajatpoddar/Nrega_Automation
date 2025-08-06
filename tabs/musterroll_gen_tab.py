@@ -1,4 +1,4 @@
-# tabs/musterroll_gen_tab.py (Updated with Date Picker and Print Option)
+# tabs/musterroll_gen_tab.py (Updated with Improved Error Handling)
 import tkinter
 from tkinter import ttk, messagebox
 import customtkinter as ctk
@@ -57,7 +57,6 @@ class MusterrollGenTab(BaseAutomationTab):
         self.output_action_combobox.set("Save as PDF")
         self.output_action_combobox.grid(row=4, column=1, sticky='ew', padx=(15,5), pady=5)
         
-        # --- PDF Options ---
         ctk.CTkLabel(controls_frame, text="Orientation:").grid(row=4, column=2, sticky='w', padx=10, pady=5)
         self.orientation_var = ctk.StringVar(value="Landscape")
         self.orientation_segmented_button = ctk.CTkSegmentedButton(controls_frame, variable=self.orientation_var, values=["Landscape", "Portrait"])
@@ -238,7 +237,7 @@ class MusterrollGenTab(BaseAutomationTab):
         
         except Exception as e:
             self.app.log_message(self.log_display, f"A critical error occurred: {e}", "error")
-            if "in str" not in str(e): messagebox.showerror("Critical Error", f"An unexpected error stopped the automation:\n\n{e}")
+            if "in str" not in str(e): messagebox.showerror("Critical Error", f"An unexpected error stopped the automation. Please check the logs for details.\n\nError: {e}")
         
         finally:
             self.app.after(0, self.set_ui_state, False)
@@ -260,82 +259,73 @@ class MusterrollGenTab(BaseAutomationTab):
             panchayat_dropdown = Select(wait.until(EC.presence_of_element_located((By.ID, "exe_agency"))))
             target_panchayat = config.AGENCY_PREFIX + panchayat_name
             if target_panchayat not in [opt.text for opt in panchayat_dropdown.options]:
-                messagebox.showerror("Validation Error", f"Panchayat name '{panchayat_name}' not found.")
+                messagebox.showerror("Validation Error", f"Panchayat name '{panchayat_name}' not found on the website. Please check for spelling mistakes.")
                 return False
             self.app.log_message(self.log_display, "Panchayat name is valid.", "success")
             return True
         except Exception as e:
-            self.app.log_message(self.log_display, f"Validation failed: {e}", "error")
+            self.app.log_message(self.log_display, f"Validation failed: Could not load the page or find the Panchayat dropdown. Error: {e}", "error")
             return False
 
     def _get_items_to_process(self, driver, wait, inputs):
         if inputs['auto_mode']:
             self.app.log_message(self.log_display, "Auto Mode: Fetching available work codes...")
-            Select(driver.find_element(By.ID, "exe_agency")).select_by_visible_text(config.AGENCY_PREFIX + inputs['panchayat'])
-            wait.until(lambda d: len(Select(d.find_element(By.ID, "ddlWorkCode")).options) > 1)
-            items = [opt.text for opt in Select(driver.find_element(By.ID, "ddlWorkCode")).options if opt.get_attribute("value")]
-            self.app.log_message(self.log_display, f"Found {len(items)} available work codes.")
-            return items
+            try:
+                Select(driver.find_element(By.ID, "exe_agency")).select_by_visible_text(config.AGENCY_PREFIX + inputs['panchayat'])
+                wait.until(lambda d: len(Select(d.find_element(By.ID, "ddlWorkCode")).options) > 1)
+                items = [opt.text for opt in Select(driver.find_element(By.ID, "ddlWorkCode")).options if opt.get_attribute("value")]
+                self.app.log_message(self.log_display, f"Found {len(items)} available work codes.")
+                return items
+            except Exception as e:
+                self.app.log_message(self.log_display, f"Could not fetch work codes automatically. Error: {e}", "error")
+                return []
         else:
-            self.app.log_message(self.log_display, f"Processing {len(inputs['work_codes'])} work keys.")
+            self.app.log_message(self.log_display, f"Processing {len(inputs['work_codes'])} provided work keys.")
             return inputs['work_codes']
-
-    # In musterroll_gen_tab.py
 
     def _process_single_item(self, driver, wait, inputs, item, output_dir, session_skip_list):
         try:
+            self.app.log_message(self.log_display, "   - Navigating to MR page...")
             driver.get(config.MUSTER_ROLL_CONFIG["base_url"])
-            time.sleep(1) # Delay for page load
+            
+            self.app.log_message(self.log_display, "   - Selecting Panchayat...")
             Select(wait.until(EC.presence_of_element_located((By.ID, "exe_agency")))).select_by_visible_text(config.AGENCY_PREFIX + inputs['panchayat'])
+            
+            self.app.log_message(self.log_display, f"   - Selecting work code for '{item}'...")
             full_work_code_text = self._select_work_code(driver, wait, item, inputs['auto_mode'])
             
             if full_work_code_text in session_skip_list:
-                self._log_result(item, "Skipped", "Already processed this session")
+                self._log_result(item, "Skipped", "Already processed in this session.")
                 return
 
-            time.sleep(1)
+            self.app.log_message(self.log_display, "   - Entering dates and staff details...")
             driver.find_element(By.ID, "txtDateFrom").send_keys(inputs['start_date'])
             driver.find_element(By.ID, "txtDateTo").send_keys(inputs['end_date'])
-            
             Select(wait.until(EC.element_to_be_clickable((By.ID, "ddldesg")))).select_by_visible_text(inputs['designation'])
 
-            # --- NEW: Implement a longer, specific wait for the staff dropdown to populate ---
-            self.app.log_message(self.log_display, "   - Waiting for Technical Staff list to populate (up to 30 seconds)...")
-            try:
-                # Create a new wait object with a longer timeout specifically for this action
-                long_wait = WebDriverWait(driver, 30)
-                # Wait until the dropdown has more than one option (i.e., it has been populated)
-                long_wait.until(EC.presence_of_element_located((By.XPATH, "//select[@id='ddlstaff']/option[position()>1]")))
-                
-                staff_dropdown = Select(driver.find_element(By.ID, "ddlstaff"))
-                
-                if inputs['staff'] not in [opt.text for opt in staff_dropdown.options]:
-                    raise ValueError(f"Staff name '{inputs['staff']}' not found for the selected designation. Stopping.")
-                
-                staff_dropdown.select_by_visible_text(inputs['staff'])
-
-            except TimeoutException:
-                # This will be caught if the staff list doesn't populate within 30 seconds
-                error_msg = "Staff list did not populate within 30 seconds. The server might be too slow. Skipping item."
-                self.app.log_message(self.log_display, error_msg, "error")
-                self._log_result(item, "Failed", "Timeout waiting for staff list")
-                return # Exit this function for the current item and move to the next
-            # --- END OF IMPROVEMENT ---
+            self.app.log_message(self.log_display, "   - Waiting for Technical Staff list to populate...")
+            long_wait = WebDriverWait(driver, 30)
+            long_wait.until(EC.presence_of_element_located((By.XPATH, "//select[@id='ddlstaff']/option[position()>1]")))
+            staff_dropdown = Select(driver.find_element(By.ID, "ddlstaff"))
             
+            if inputs['staff'] not in [opt.text for opt in staff_dropdown.options]:
+                raise ValueError(f"Staff name '{inputs['staff']}' not found for the selected designation. Please check the name and try again.")
+            staff_dropdown.select_by_visible_text(inputs['staff'])
+            
+            self.app.log_message(self.log_display, "   - Submitting form...")
             body_element = driver.find_element(By.TAG_NAME, 'body')
             driver.find_element(By.ID, "btnProceed").click()
             
-            self.app.log_message(self.log_display, "Waiting for page to reload...")
             wait.until(EC.staleness_of(body_element))
-            time.sleep(2) 
+            time.sleep(2) # Allow page to fully render after reload
             
-            if self._check_for_page_errors(driver):
-                self._log_result(item, "Skipped", "Page error (Geotag/Limit/No Worker)")
+            error_reason = self._check_for_page_errors(driver)
+            if error_reason:
+                self._log_result(item, "Skipped", error_reason)
                 session_skip_list.add(full_work_code_text)
                 return
             
-            self.app.log_message(self.log_display, "Muster Roll is valid. Generating output...")
-            
+            self.app.log_message(self.log_display, "   - Muster Roll is valid. Generating output...")
             pdf_path = self._save_mr_as_pdf(driver, full_work_code_text, output_dir, inputs['orientation'], inputs['scale'])
             
             log_detail = f"Saved as {os.path.basename(pdf_path)}" if pdf_path else "PDF Save Failed"
@@ -346,35 +336,37 @@ class MusterrollGenTab(BaseAutomationTab):
 
             self._log_result(item, "Success" if pdf_path else "Failed", log_detail)
             session_skip_list.add(full_work_code_text)
-            time.sleep(1)
 
         except (NoSuchElementException, TimeoutException, StaleElementReferenceException) as e:
-            error_message = str(e).split('\n')[0]
+            error_message = f"A browser error occurred: {str(e).splitlines()[0]}"
             self.app.log_message(self.log_display, f"ERROR on '{item}': {error_message}", "error")
-            self._log_result(item, "Failed", error_message)
+            self._log_result(item, "Failed", "Browser/Timeout Error. Check logs.")
         except ValueError as e: 
-            error_message = str(e).split('\n')[0]
-            self.app.log_message(self.log_display, f"CRITICAL ERROR: {error_message}", "error")
+            error_message = str(e)
+            self.app.log_message(self.log_display, f"CRITICAL VALIDATION ERROR: {error_message}", "error")
             self._log_result(item, "Failed", error_message)
-            raise e
+            raise e # Stop the entire automation for a critical data error
 
     def _save_mr_as_pdf(self, driver, full_work_code, output_dir, orientation, scale):
         try:
-            # Takes the part after the last '/' and then gets the last 6 characters.
             safe_work_code = full_work_code.split('/')[-1][-6:]
-            pdf_filename = f"{safe_work_code}.pdf"
+            base_filename = safe_work_code
+            extension = ".pdf"
+            counter = 1
+            pdf_filename = f"{base_filename}{extension}"
             save_path = os.path.join(output_dir, pdf_filename)
+
+            while os.path.exists(save_path):
+                pdf_filename = f"{base_filename} ({counter}){extension}"
+                save_path = os.path.join(output_dir, pdf_filename)
+                counter += 1
 
             is_landscape = (orientation == "Landscape")
             pdf_scale = scale / 100.0
             pdf_data_base64 = None
 
-            # --- FINAL CORRECTED LOGIC ---
-
-            # For both browsers, we will inject CSS to control orientation.
-            # This is the most reliable cross-browser method.
             if is_landscape:
-                self.app.log_message(self.log_display, "   - Injecting CSS to force landscape orientation...")
+                self.app.log_message(self.log_display, "   - Injecting CSS for landscape orientation...")
                 driver.execute_script(
                     "var css = '@page { size: landscape; }';"
                     "var head = document.head || document.getElementsByTagName('head')[0];"
@@ -386,29 +378,19 @@ class MusterrollGenTab(BaseAutomationTab):
                 )
 
             if self.app.active_browser == 'firefox':
-                self.app.log_message(self.log_display, "   - Using Firefox's basic print command...")
-                # NOTE: We must inform the user that scale settings from the UI are ignored for Firefox.
-                self.app.log_message(self.log_display, "   - Note: PDF Scale setting is not supported for Firefox and will be ignored.", "warning")
-                
-                # The command for Firefox takes NO arguments.
+                self.app.log_message(self.log_display, "   - Using Firefox's print command...")
+                self.app.log_message(self.log_display, "   - Note: PDF Scale setting is ignored for Firefox.", "warning")
                 pdf_data_base64 = driver.print_page()
 
             elif self.app.active_browser == 'chrome':
-                self.app.log_message(self.log_display, "   - Using Chrome's print command (CDP)...")
-                
-                # Chrome uses the Chrome DevTools Protocol (CDP) command with full options.
+                self.app.log_message(self.log_display, "   - Using Chrome's advanced print command (CDP)...")
                 print_options = {
-                    "landscape": is_landscape,
-                    "displayHeaderFooter": False,
-                    "printBackground": False,
-                    "scale": pdf_scale, # Scale setting is respected here
-                    "marginTop": 0.4, "marginBottom": 0.4,
+                    "landscape": is_landscape, "displayHeaderFooter": False, "printBackground": False,
+                    "scale": pdf_scale, "marginTop": 0.4, "marginBottom": 0.4,
                     "marginLeft": 0.4, "marginRight": 0.4
                 }
                 result = driver.execute_cdp_cmd("Page.printToPDF", print_options)
                 pdf_data_base64 = result['data']
-
-            # --- End of browser-specific logic ---
 
             if pdf_data_base64:
                 pdf_data = base64.b64decode(pdf_data_base64)
@@ -416,7 +398,7 @@ class MusterrollGenTab(BaseAutomationTab):
                     f.write(pdf_data)
                 return save_path
             else:
-                self.app.log_message(self.log_display, "Error: PDF data was not generated.", "error")
+                self.app.log_message(self.log_display, "Error: PDF data was not generated by the browser.", "error")
                 return None
 
         except Exception as e:
@@ -424,38 +406,46 @@ class MusterrollGenTab(BaseAutomationTab):
             return None
 
     def _select_work_code(self, driver, wait, item, is_auto_mode):
-        if is_auto_mode:
-            wait.until(lambda d: len(Select(d.find_element(By.ID, "ddlWorkCode")).options) > 1)
-            Select(driver.find_element(By.ID, "ddlWorkCode")).select_by_visible_text(item)
-            return item
-        else:
-            search_key = item
-            search_box = wait.until(EC.presence_of_element_located((By.ID, "txtWork")))
-            search_box.clear()
-            search_box.send_keys(search_key)
-            driver.find_element(By.ID, "imgButtonSearch").click()
-            self.app.log_message(self.log_display, f"Searching for key: {search_key}")
-            time.sleep(2)
-            wait.until(lambda d: len(Select(d.find_element(By.ID, "ddlWorkCode")).options) > 1)
-            work_code_dropdown = Select(driver.find_element(By.ID, "ddlWorkCode"))
-            found_option = next((opt for opt in work_code_dropdown.options if search_key in opt.text and opt.get_attribute("value")), None)
-            if found_option:
-                full_work_code_text = found_option.text
-                work_code_dropdown.select_by_visible_text(full_work_code_text)
-                self.app.log_message(self.log_display, f"Found and selected work: {full_work_code_text}")
-                return full_work_code_text
+        try:
+            if is_auto_mode:
+                wait.until(lambda d: len(Select(d.find_element(By.ID, "ddlWorkCode")).options) > 1)
+                Select(driver.find_element(By.ID, "ddlWorkCode")).select_by_visible_text(item)
+                return item
             else:
-                raise NoSuchElementException(f"Could not find work for search key '{item}'.")
+                search_key = item
+                search_box = wait.until(EC.presence_of_element_located((By.ID, "txtWork")))
+                search_box.clear()
+                search_box.send_keys(search_key)
+                driver.find_element(By.ID, "imgButtonSearch").click()
+                time.sleep(2) # Wait for search results to populate
+                wait.until(lambda d: len(Select(d.find_element(By.ID, "ddlWorkCode")).options) > 1)
+                work_code_dropdown = Select(driver.find_element(By.ID, "ddlWorkCode"))
+                found_option = next((opt for opt in work_code_dropdown.options if search_key in opt.text and opt.get_attribute("value")), None)
+                if found_option:
+                    full_work_code_text = found_option.text
+                    work_code_dropdown.select_by_visible_text(full_work_code_text)
+                    self.app.log_message(self.log_display, f"   - Found and selected: {full_work_code_text}")
+                    return full_work_code_text
+                else:
+                    raise NoSuchElementException(f"Could not find a matching work for search key '{item}'.")
+        except Exception as e:
+            self.app.log_message(self.log_display, f"   - Error selecting work code: {e}", "error")
+            raise # Re-raise the exception to be caught by the main processing loop
 
-    def _check_for_page_errors(self, driver):
-        page_source = driver.page_source
-        if "Geotag is not received" in page_source:
-            return True
+    def _check_for_page_errors(self, driver) -> str | None:
+        """Checks for known error messages on the page. Returns the error string if found, else None."""
+        page_source = driver.page_source.lower()
+        if "geotag is not received" in page_source:
+            return "Skipped: Geotag not received"
         if "greater than allowed limit" in page_source:
-            return True
-        if "No Worker Available" in page_source:
-            return True
-        return False
+            return "Skipped: Greater than allowed limit"
+        if "no worker available" in page_source:
+            return "Skipped: No worker available"
+        if "no muster roll available" in page_source:
+            return "Skipped: No Muster Roll available"
+        if "overlap that period" in page_source:
+            return "Skipped: Date period overlaps with existing MR"
+        return None
 
     def _log_result(self, item_key, status, details):
         timestamp = datetime.now().strftime("%H:%M:%S")
