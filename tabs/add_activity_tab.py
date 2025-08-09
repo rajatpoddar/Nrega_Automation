@@ -159,6 +159,18 @@ class AddActivityTab(BaseAutomationTab):
         self.app.after(0, lambda: self.results_tree.insert("", "end", values=(work_key, status, details, timestamp)))
 
     def _process_single_work_key(self, driver, work_key, unit_price, quantity):
+        """
+        Automates the process of adding a new activity to a single work key on the NREGA portal.
+        
+        This function navigates to the activity page, enters all the required data,
+        and intelligently waits for the server to respond after saving.
+        
+        Args:
+            driver: The Selenium WebDriver instance.
+            work_key (str): The work key to process.
+            unit_price (str): The unit price for the activity.
+            quantity (str): The quantity for the activity.
+        """
         wait = WebDriverWait(driver, 20)
         activity_code = config.ADD_ACTIVITY_CONFIG['defaults']['activity_code']
         progress_element_id = 'ctl00_ContentPlaceHolder1_UpdateProgress2'
@@ -209,14 +221,24 @@ class AddActivityTab(BaseAutomationTab):
             driver.execute_script("javascript:setTimeout('__doPostBack(\\'ctl00$ContentPlaceHolder1$txtAct_Qty\\',\\'\\')', 0)")
             wait_for_postback_to_finish()
 
-            time.sleep(1)
+            time.sleep(0.5)
 
             # 6. Click Save
             self.app.log_message(self.log_display, "Saving activity...")
             driver.find_element(By.ID, 'ctl00_ContentPlaceHolder1_btsave').click()
 
             # Check for success/error message
-            time.sleep(2)
+            try:
+                WebDriverWait(driver, 10).until(
+                    EC.any_of(
+                        EC.presence_of_element_located((By.XPATH, "//*[@id='ctl00_ContentPlaceHolder1_lblmsg' and normalize-space()]")),
+                        EC.presence_of_element_located((By.XPATH, "//*[@id='ctl00_ContentPlaceHolder1_lblError' and normalize-space()]"))
+                    )
+                )
+            except TimeoutException:
+                self._log_result(work_key, "Success", "Saved (No confirmation message found).")
+                return
+                
             try:
                 success_msg_element = driver.find_element(By.ID, 'ctl00_ContentPlaceHolder1_lblmsg')
                 if success_msg_element.text.strip():
@@ -230,7 +252,7 @@ class AddActivityTab(BaseAutomationTab):
                 if error_msg_element.text.strip():
                     raise ValueError(error_msg_element.text.strip())
             except NoSuchElementException:
-                self._log_result(work_key, "Success", "Saved (No confirmation message found).")
+                pass
 
         except UnexpectedAlertPresentException as e:
             self._log_result(work_key, "Failed", f"Unexpected Alert: {e.alert_text}")

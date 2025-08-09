@@ -34,10 +34,15 @@ An intuitive, tab-based interface for every automation task:
 - 📋 **Wagelist Automation** – Generate new wagelists and send them for e-FMS payment processing with a single click.
 - ✅ **Jobcard Verification & Photo Upload** – Verify job cards for an entire village and automatically upload the correct family photo for each card.
 - ✏️ **eMB Entry** – Automate filling the Measurement Book (MB) entry page for multiple work codes.
+- 🔍 **eMB Verify** – Quickly verify Measurement Book (MB) entries in bulk.
 - 🏗️ **Workcode Generator (Dynamic)** – Create new work codes in bulk by loading categories from the website and reading data from a simple CSV file.
 - 🔧 **IF Editor (Dynamic)** – Automate the multi-page IF editing process with a flexible UI and a simple CSV for inputs.
+- 🪄 **Add Activity** - Automate the process of adding activities to work codes.
 - 💳 **Verify ABPS** – Automate checking worker Aadhaar numbers with NPCI, with an option to process all villages in a panchayat.
 - ✂️ **Workcode Extractor** – A handy utility to parse and extract clean lists of work codes from any block of text.
+- 🗑️ **Delete Work Allocation** - Remove work allocations for specified job cards in bulk.
+- 🏁 **Scheme Closing** - Automate the process of closing schemes for completed work.
+- 📁 **File Manager** - A built-in cloud file manager to save and organize your important documents like Muster Roll PDFs.
 - 🎨 **Dark/Light Theme** – A modern interface that respects your system's theme for comfortable viewing.
 
 ---

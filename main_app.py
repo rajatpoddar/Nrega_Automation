@@ -749,7 +749,10 @@ class NregaBotApp(ctk.CTk):
             return
 
         about_tab.update_button.configure(state="disabled")
-        about_tab.update_progress.pack(pady=(0, 10), padx=20, fill='x')
+        # --- FIX: Use grid instead of pack ---
+        about_tab.update_progress.grid(row=4, column=0, pady=(10, 10), padx=20, sticky='ew')
+        # --- END FIX ---
+
 
         def _download_worker():
             try:
@@ -787,10 +790,12 @@ class NregaBotApp(ctk.CTk):
                     self.after(3000, self.on_closing, True)
 
             except Exception as e:
-                self.after(0, messagebox.showerror, "Update Failed", f"Could not download or run the update.\n\nError: {e}")
+                self.after(0, messagebox.showerror, "Update Failed", f"Could not download or run the update.\\n\\nError: {e}")
                 if about_tab.winfo_exists():
                     self.after(0, lambda: about_tab.update_button.configure(state="normal", text=f"Download & Install v{version}"))
-                    self.after(0, about_tab.update_progress.pack_forget)
+                    # --- FIX: Use grid_forget instead of pack_forget ---
+                    self.after(0, about_tab.update_progress.grid_forget)
+                    # --- END FIX ---
                     self.after(0, about_tab.update_progress.set, 0)
         
         threading.Thread(target=_download_worker, daemon=True).start()
