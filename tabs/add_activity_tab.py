@@ -174,8 +174,7 @@ class AddActivityTab(BaseAutomationTab):
                 self.app.log_message(self.log_display, "Page loaded quickly.")
 
         try:
-            # --- FIXED: Unconditionally navigate to the page for every work key ---
-            # This ensures a fresh start and prevents stale element errors.
+            # Always navigate fresh to avoid stale elements
             driver.get(config.ADD_ACTIVITY_CONFIG["url"])
 
             # 1. Enter work key and trigger reload
@@ -192,22 +191,20 @@ class AddActivityTab(BaseAutomationTab):
             Select(driver.find_element(By.ID, work_name_dd_id)).select_by_index(1)
             self.app.log_message(self.log_display, "Work selected. Loading details...")
 
-            # 3. Select Activity and wait for page to be ready
+            # 3. Select Activity
             activity_dd_id = 'ctl00_ContentPlaceHolder1_ddlAct'
             wait.until(EC.element_to_be_clickable((By.ID, activity_dd_id)))
             Select(driver.find_element(By.ID, activity_dd_id)).select_by_value(activity_code)
             wait_for_postback_to_finish()
 
-            # 4. Fill Unit Price and wait for page to be ready
+            # 4. Fill Unit Price (no clearing)
             unit_price_input = wait.until(EC.presence_of_element_located((By.ID, 'ctl00_ContentPlaceHolder1_txtAct_UnitPrice')))
-            unit_price_input.clear()
             unit_price_input.send_keys(unit_price)
             driver.execute_script("javascript:setTimeout('__doPostBack(\\'ctl00$ContentPlaceHolder1$txtAct_UnitPrice\\',\\'\\')', 0)")
             wait_for_postback_to_finish()
 
-            # 5. Fill Quantity and wait for page to be ready
+            # 5. Fill Quantity (no clearing)
             quantity_input = wait.until(EC.presence_of_element_located((By.ID, 'ctl00_ContentPlaceHolder1_txtAct_Qty')))
-            quantity_input.clear()
             quantity_input.send_keys(quantity)
             driver.execute_script("javascript:setTimeout('__doPostBack(\\'ctl00$ContentPlaceHolder1$txtAct_Qty\\',\\'\\')', 0)")
             wait_for_postback_to_finish()
@@ -219,7 +216,7 @@ class AddActivityTab(BaseAutomationTab):
             driver.find_element(By.ID, 'ctl00_ContentPlaceHolder1_btsave').click()
 
             # Check for success/error message
-            time.sleep(2) 
+            time.sleep(2)
             try:
                 success_msg_element = driver.find_element(By.ID, 'ctl00_ContentPlaceHolder1_lblmsg')
                 if success_msg_element.text.strip():
@@ -233,7 +230,7 @@ class AddActivityTab(BaseAutomationTab):
                 if error_msg_element.text.strip():
                     raise ValueError(error_msg_element.text.strip())
             except NoSuchElementException:
-                 self._log_result(work_key, "Success", "Saved (No confirmation message found).")
+                self._log_result(work_key, "Success", "Saved (No confirmation message found).")
 
         except UnexpectedAlertPresentException as e:
             self._log_result(work_key, "Failed", f"Unexpected Alert: {e.alert_text}")
@@ -241,7 +238,6 @@ class AddActivityTab(BaseAutomationTab):
                 driver.switch_to.alert.accept()
             except:
                 pass
-        # --- ADDED: User-friendly error for stale elements ---
         except StaleElementReferenceException:
             self._log_result(work_key, "Failed", "Page refresh error. The script will retry on the next cycle.")
         except (TimeoutException, NoSuchElementException, ValueError) as e:

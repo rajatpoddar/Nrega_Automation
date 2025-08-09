@@ -41,6 +41,8 @@ from tabs.update_outcome_tab import UpdateOutcomeTab
 from tabs.duplicate_mr_tab import DuplicateMrTab
 from tabs.feedback_tab import FeedbackTab
 from tabs.file_management_tab import FileManagementTab
+from tabs.scheme_closing_tab import SchemeClosingTab
+from tabs.emb_verify_tab import EmbVerifyTab
 
 
 if config.OS_SYSTEM == "Windows":
@@ -376,6 +378,8 @@ class NregaBotApp(ctk.CTk):
                 "Send Wagelist": {"creation_func": WagelistSendTab, "icon": config.ICONS["Send Wagelist"]},
                 "FTO Generation": {"creation_func": FtoGenerationTab, "icon": config.ICONS["FTO Generation"]},
                 "eMB Entry⚠️": {"creation_func": MbEntryTab, "icon": config.ICONS["eMB Entry"]},
+                "eMB Verify": {"creation_func": EmbVerifyTab, "icon": config.ICONS["eMB Verify"]},
+                "Scheme Closing": {"creation_func": SchemeClosingTab, "icon": "🏁"},
                 "Del Work Alloc": {"creation_func": DelWorkAllocTab, "icon": "🗑️"},
                 "Duplicate MR Print": {"creation_func": DuplicateMrTab, "icon": config.ICONS["Duplicate MR Print"]},
             },
@@ -459,7 +463,8 @@ class NregaBotApp(ctk.CTk):
 
     def validate_on_server(self, key, is_startup_check=False):
         try:
-            response = requests.post(f"{config.LICENSE_SERVER_URL}/validate", json={"key": key, "machine_id": self.machine_id}, timeout=10)
+            # --- FIX: Added the /api/ prefix to the validation URL ---
+            response = requests.post(f"{config.LICENSE_SERVER_URL}/api/validate", json={"key": key, "machine_id": self.machine_id}, timeout=10)
             data = response.json()
             if response.status_code == 200 and data.get("status") == "valid":
                 self.license_info = data; self.license_info['key'] = key
@@ -472,6 +477,10 @@ class NregaBotApp(ctk.CTk):
         except requests.exceptions.RequestException as e:
             if not is_startup_check: messagebox.showerror("Connection Error", f"Could not connect to license server: {e}")
             return False
+        except json.JSONDecodeError:
+             if not is_startup_check: messagebox.showerror("Connection Error", f"Could not connect to the license server: Expecting value: line 1 column 1 (char 0)")
+             return False
+
 
     def show_activation_window(self):
         activation_window = ctk.CTkToplevel(self); activation_window.title("Activate Product")
@@ -610,28 +619,36 @@ class NregaBotApp(ctk.CTk):
 
         def proceed_to_payment():
             submit_btn.configure(state="disabled", text="Initializing...")
+            # --- FIX: Pass existing_key to pre-fill the form ---
             form_data = {
                 "name": self.license_info.get('user_name', ''), "email": self.license_info.get('user_email', ''),
                 "mobile": self.license_info.get('user_mobile', ''), "block": self.license_info.get('user_block', ''),
                 "district": self.license_info.get('user_district', ''), "state": self.license_info.get('user_state', ''),
-                "pincode": self.license_info.get('user_pincode', '')
+                "pincode": self.license_info.get('user_pincode', ''),
+                "existing_key": self.license_info.get('key') # Add the key here
             }
+            # --- END FIX ---
+            
             if not all([form_data['name'], form_data['email'], form_data['mobile']]):
                 messagebox.showwarning("User Details Missing", "Your user details could not be found. Please contact support.", parent=purchase_window)
                 submit_btn.configure(state="normal", text="Proceed to Payment"); return
+            
             plan_selection = plan_menu.get()
             plan = "yearly" if "Yearly" in plan_selection else "monthly"
             device_count = int(devices_input.get())
             form_data.update({'plan_type': plan, 'max_devices': device_count})
-            if context == 'renew': form_data['existing_key'] = self.license_info.get('key')
+
             try:
                 base_url = f"{config.LICENSE_SERVER_URL}/buy"
-                query_params = urlencode(form_data); full_url = f"{base_url}?{query_params}"
+                query_params = urlencode({k: v for k, v in form_data.items() if v is not None}) # Filter out None values
+                full_url = f"{base_url}?{query_params}"
                 webbrowser.open_new_tab(full_url)
-                submit_btn.configure(state="normal", text="Proceed to Payment")
+                purchase_window.destroy() # Close the window after opening the browser
             except Exception as e:
                 messagebox.showerror("Error", f"Could not open payment page: {e}", parent=purchase_window)
-                submit_btn.configure(state="normal", text="Proceed to Payment")
+            finally:
+                if submit_btn.winfo_exists():
+                    submit_btn.configure(state="normal", text="Proceed to Payment")
 
         submit_btn = ctk.CTkButton(main_frame, text="Proceed to Payment", command=proceed_to_payment)
         submit_btn.pack(pady=20, ipady=5, fill='x', padx=10)

@@ -1,8 +1,8 @@
-# tabs/musterroll_gen_tab.py (Updated with Improved Error Handling)
+# tabs/musterroll_gen_tab.py
 import tkinter
 from tkinter import ttk, messagebox
 import customtkinter as ctk
-import os, json, time, base64, sys, subprocess
+import os, json, time, base64, sys, subprocess, requests
 from datetime import datetime
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
@@ -25,6 +25,7 @@ class MusterrollGenTab(BaseAutomationTab):
         self.load_inputs()
 
     def _create_widgets(self):
+        # This frame holds all the user input fields
         controls_frame = ctk.CTkFrame(self)
         controls_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10,0))
         controls_frame.grid_columnconfigure((1,3), weight=1)
@@ -57,14 +58,22 @@ class MusterrollGenTab(BaseAutomationTab):
         self.output_action_combobox.set("Save as PDF")
         self.output_action_combobox.grid(row=4, column=1, sticky='ew', padx=(15,5), pady=5)
         
-        ctk.CTkLabel(controls_frame, text="Orientation:").grid(row=4, column=2, sticky='w', padx=10, pady=5)
+        self.save_to_cloud_var = tkinter.BooleanVar(value=True) # Default to checked
+        self.save_to_cloud_checkbox = ctk.CTkCheckBox(
+            controls_frame, 
+            text="Save generated PDF to Cloud", 
+            variable=self.save_to_cloud_var
+        )
+        self.save_to_cloud_checkbox.grid(row=4, column=2, columnspan=2, sticky='w', padx=15, pady=5)
+
+        ctk.CTkLabel(controls_frame, text="Orientation:").grid(row=5, column=0, sticky='w', padx=15, pady=5)
         self.orientation_var = ctk.StringVar(value="Landscape")
         self.orientation_segmented_button = ctk.CTkSegmentedButton(controls_frame, variable=self.orientation_var, values=["Landscape", "Portrait"])
-        self.orientation_segmented_button.grid(row=4, column=3, sticky='ew', padx=(5,15), pady=5)
+        self.orientation_segmented_button.grid(row=5, column=1, sticky='ew', padx=(15,5), pady=5)
 
-        ctk.CTkLabel(controls_frame, text="PDF Scale:").grid(row=5, column=0, sticky='w', padx=15, pady=5)
+        ctk.CTkLabel(controls_frame, text="PDF Scale:").grid(row=5, column=2, sticky='w', padx=10, pady=5)
         scale_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
-        scale_frame.grid(row=5, column=1, columnspan=3, sticky="ew", padx=15, pady=5)
+        scale_frame.grid(row=5, column=3, sticky="ew", padx=(5,15), pady=5)
         scale_frame.grid_columnconfigure(0, weight=1)
         self.scale_slider = ctk.CTkSlider(scale_frame, from_=50, to=100, number_of_steps=50, command=self._update_scale_label)
         self.scale_slider.set(75)
@@ -72,7 +81,7 @@ class MusterrollGenTab(BaseAutomationTab):
         self.scale_label = ctk.CTkLabel(scale_frame, text="75%", width=40)
         self.scale_label.grid(row=0, column=1, padx=(10, 0))
         
-        ctk.CTkLabel(controls_frame, text="ℹ️ Generated Muster Rolls are saved in 'Downloads/NREGA_MR_Output'.", text_color="gray50").grid(row=6, column=1, columnspan=3, sticky='w', padx=15, pady=(10,15))
+        ctk.CTkLabel(controls_frame, text="ℹ️ Generated Muster Rolls are saved in 'Downloads/NREGABot_MR_Output'.", text_color="gray50").grid(row=6, column=1, columnspan=3, sticky='w', padx=15, pady=(10,15))
         
         action_frame_container = ctk.CTkFrame(self)
         action_frame_container.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
@@ -127,6 +136,7 @@ class MusterrollGenTab(BaseAutomationTab):
         self.scale_slider.configure(state=state)
         self.output_action_combobox.configure(state=state)
         self.work_codes_text.configure(state=state)
+        self.save_to_cloud_checkbox.configure(state=state)
         
     def start_automation(self):
         for item in self.results_tree.get_children(): self.results_tree.delete(item)
@@ -143,7 +153,8 @@ class MusterrollGenTab(BaseAutomationTab):
             'orientation': self.orientation_var.get(),
             'scale': self.scale_slider.get(),
             'output_action': self.output_action_combobox.get(), 
-            'work_codes_raw': self.work_codes_text.get("1.0", tkinter.END).strip()
+            'work_codes_raw': self.work_codes_text.get("1.0", tkinter.END).strip(),
+            'save_to_cloud': self.save_to_cloud_var.get()
         }
 
         if not all(inputs[k] for k in ['panchayat', 'start_date', 'end_date', 'designation', 'staff']):
@@ -172,8 +183,12 @@ class MusterrollGenTab(BaseAutomationTab):
             
     def save_inputs(self, inputs):
         try:
+            inputs_to_save = inputs.copy()
+            inputs_to_save.pop('work_codes_raw', None)
+            inputs_to_save.pop('work_codes', None)
+            inputs_to_save.pop('auto_mode', None)
             with open(self.config_file, 'w') as f:
-                json.dump({k: v for k, v in inputs.items() if 'work' not in k}, f, indent=4)
+                json.dump(inputs_to_save, f, indent=4)
         except Exception as e: print(f"Error saving inputs: {e}")
         
     def load_inputs(self):
@@ -188,6 +203,7 @@ class MusterrollGenTab(BaseAutomationTab):
                 self.orientation_var.set(data.get('orientation', 'Landscape'))
                 self.scale_slider.set(data.get('scale', 75)); self._update_scale_label(self.scale_slider.get())
                 self.output_action_combobox.set(data.get('output_action', 'Save as PDF'))
+                self.save_to_cloud_var.set(data.get('save_to_cloud', True))
         except Exception as e: print(f"Error loading inputs: {e}")
 
     def _print_file(self, file_path):
@@ -212,7 +228,9 @@ class MusterrollGenTab(BaseAutomationTab):
         output_dir = None
         try:
             driver = self.app.get_driver()
-            if not driver: self.app.after(0, self.set_ui_state, False); return
+            if not driver: 
+                self.app.after(0, self.set_ui_state, False)
+                return
             wait = WebDriverWait(driver, 20)
             
             output_dir = os.path.join(self.app.get_user_downloads_path(), config.MUSTER_ROLL_CONFIG['output_folder_name'], datetime.now().strftime('%Y-%m-%d'), inputs['panchayat'])
@@ -220,7 +238,8 @@ class MusterrollGenTab(BaseAutomationTab):
             self.app.log_message(self.log_display, f"Output will be in: {output_dir}", "info")
             
             if not self._validate_panchayat(driver, wait, inputs['panchayat']):
-                self.app.after(0, self.set_ui_state, False); return
+                self.app.after(0, self.set_ui_state, False)
+                return
             
             self.app.update_history("panchayat_name", inputs['panchayat'])
             self.app.update_history("staff_name", inputs['staff'])
@@ -230,14 +249,17 @@ class MusterrollGenTab(BaseAutomationTab):
             total_items = len(items_to_process)
 
             for index, item in enumerate(items_to_process):
-                if self.app.stop_events[self.automation_key].is_set(): self.app.log_message(self.log_display, "Stop signal received.", "warning"); break
+                if self.app.stop_events[self.automation_key].is_set(): 
+                    self.app.log_message(self.log_display, "Stop signal received.", "warning")
+                    break
                 self.app.log_message(self.log_display, f"\n--- Processing item ({index+1}/{total_items}): {item} ---", "info")
                 self.app.after(0, self.update_status, f"Processing {item}", (index+1)/total_items)
                 self._process_single_item(driver, wait, inputs, item, output_dir, session_skip_list)
         
         except Exception as e:
             self.app.log_message(self.log_display, f"A critical error occurred: {e}", "error")
-            if "in str" not in str(e): messagebox.showerror("Critical Error", f"An unexpected error stopped the automation. Please check the logs for details.\n\nError: {e}")
+            if "in str" not in str(e): 
+                messagebox.showerror("Critical Error", f"An unexpected error stopped the automation. Please check the logs for details.\n\nError: {e}")
         
         finally:
             self.app.after(0, self.set_ui_state, False)
@@ -284,6 +306,7 @@ class MusterrollGenTab(BaseAutomationTab):
             return inputs['work_codes']
 
     def _process_single_item(self, driver, wait, inputs, item, output_dir, session_skip_list):
+        full_work_code_text = ""
         try:
             self.app.log_message(self.log_display, "   - Navigating to MR page...")
             driver.get(config.MUSTER_ROLL_CONFIG["base_url"])
@@ -317,7 +340,7 @@ class MusterrollGenTab(BaseAutomationTab):
             driver.find_element(By.ID, "btnProceed").click()
             
             wait.until(EC.staleness_of(body_element))
-            time.sleep(2) # Allow page to fully render after reload
+            time.sleep(2)
             
             error_reason = self._check_for_page_errors(driver)
             if error_reason:
@@ -330,6 +353,16 @@ class MusterrollGenTab(BaseAutomationTab):
             
             log_detail = f"Saved as {os.path.basename(pdf_path)}" if pdf_path else "PDF Save Failed"
             
+            if pdf_path and inputs.get('save_to_cloud'):
+                self.app.log_message(self.log_display, "   - Uploading to cloud storage...")
+                upload_success = self._upload_to_cloud(pdf_path, inputs['panchayat'])
+                if upload_success:
+                    log_detail += " & Uploaded to Cloud"
+                    self.app.log_message(self.log_display, "   - Successfully uploaded to cloud.", "success")
+                else:
+                    log_detail += " (Cloud Upload Failed)"
+                    self.app.log_message(self.log_display, "   - Failed to upload to cloud.", "error")
+
             if inputs['output_action'] == "Print" and pdf_path:
                 self._print_file(pdf_path)
                 log_detail = f"Printed and Saved as {os.path.basename(pdf_path)}"
@@ -345,7 +378,11 @@ class MusterrollGenTab(BaseAutomationTab):
             error_message = str(e)
             self.app.log_message(self.log_display, f"CRITICAL VALIDATION ERROR: {error_message}", "error")
             self._log_result(item, "Failed", error_message)
-            raise e # Stop the entire automation for a critical data error
+            raise e
+        except Exception as e:
+            self.app.log_message(self.log_display, f"An unexpected error occurred processing '{item}': {e}", "error")
+            self._log_result(item, "Failed", f"Unexpected Error: {e}")
+
 
     def _save_mr_as_pdf(self, driver, full_work_code, output_dir, orientation, scale):
         try:
@@ -417,7 +454,7 @@ class MusterrollGenTab(BaseAutomationTab):
                 search_box.clear()
                 search_box.send_keys(search_key)
                 driver.find_element(By.ID, "imgButtonSearch").click()
-                time.sleep(2) # Wait for search results to populate
+                time.sleep(2)
                 wait.until(lambda d: len(Select(d.find_element(By.ID, "ddlWorkCode")).options) > 1)
                 work_code_dropdown = Select(driver.find_element(By.ID, "ddlWorkCode"))
                 found_option = next((opt for opt in work_code_dropdown.options if search_key in opt.text and opt.get_attribute("value")), None)
@@ -430,7 +467,7 @@ class MusterrollGenTab(BaseAutomationTab):
                     raise NoSuchElementException(f"Could not find a matching work for search key '{item}'.")
         except Exception as e:
             self.app.log_message(self.log_display, f"   - Error selecting work code: {e}", "error")
-            raise # Re-raise the exception to be caught by the main processing loop
+            raise
 
     def _check_for_page_errors(self, driver) -> str | None:
         """Checks for known error messages on the page. Returns the error string if found, else None."""
@@ -457,3 +494,44 @@ class MusterrollGenTab(BaseAutomationTab):
             self.skipped_count += 1
             self.app.after(0, lambda: self.skipped_label.configure(text=f"Skipped/Failed: {self.skipped_count}"))
         self.app.after(0, lambda: self.results_tree.insert("", "end", values=values))
+
+    def _upload_to_cloud(self, file_path, panchayat_name):
+        """Uploads a given file to the user's cloud storage via the API."""
+        if not self.app.license_info.get('key'):
+            self.app.log_message(self.log_display, "   - Cloud Upload Skipped: No license key found.", "warning")
+            return False
+            
+        headers = {'Authorization': f"Bearer {self.app.license_info['key']}"}
+        url = f"{config.LICENSE_SERVER_URL}/files/api/upload"
+        filename = os.path.basename(file_path)
+
+        try:
+            with open(file_path, 'rb') as f:
+                files = {'file': (filename, f, 'application/pdf')}
+                
+                # --- ENHANCEMENT: Create dynamic folder structure ---
+                date_folder = datetime.now().strftime('%Y-%m-%d')
+                # Sanitize panchayat name to be a valid folder name
+                safe_panchayat_name = "".join(c for c in panchayat_name if c.isalnum() or c in (' ', '_')).rstrip()
+                
+                relative_path = f'Muster_Rolls/{date_folder}/{safe_panchayat_name}/{filename}'
+                
+                data = {
+                    'parent_id': '', # The ultimate parent is the root
+                    'relative_path': relative_path
+                }
+                # --- END ENHANCEMENT ---
+                
+                response = requests.post(url, headers=headers, files=files, data=data, timeout=120)
+
+            if response.status_code == 201:
+                return True
+            else:
+                self.app.log_message(self.log_display, f"   - Cloud upload failed with status {response.status_code}: {response.text}", "error")
+                return False
+        except requests.exceptions.RequestException as e:
+            self.app.log_message(self.log_display, f"   - A connection error occurred during cloud upload: {e}", "error")
+            return False
+        except Exception as e:
+            self.app.log_message(self.log_display, f"   - An unexpected error occurred during cloud upload: {e}", "error")
+            return False

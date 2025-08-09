@@ -29,6 +29,7 @@ secrets.ini
 
 # Personal configuration files
 server/
+server 3.0/
 dashboard.py
 experiment/
 dmg/

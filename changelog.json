@@ -1,4 +1,13 @@
 {
+  "2.6.0": [
+      "✨Feature: Admin Dashboard search is now universal, allowing searches by License Key, User Name, Email, Mobile, and Machine ID.",
+      "🛠️ Improvement: Muster Roll PDFs saved to the cloud are now automatically organized into structured folders by date and Panchayat name (e.g., /Muster_Rolls/2025-08-09/PanchayatName/).",
+      "🛠️ Improvement: The license upgrade and renewal process is now seamless. The purchase form is automatically pre-filled with the user's details when they click 'Renew' or 'Upgrade'.",
+      "🐞 Bug Fix: Resolved an issue where active trial users were unable to log in to the desktop app using their email address.",
+      "🐞 Bug Fix: Fixed a critical error ('Expecting value: line 1 column 1') that occurred when activating a new license using a key.",
+      "🐞 Bug Fix (Server): Corrected a 'FileNotFoundError' that prevented file uploads by ensuring user directories are created automatically.",
+      "🐞 Bug Fix (Server): Implemented the missing API endpoint for email-based login, resolving a major activation failure."
+    ],
   "2.5.5": [
       "✨Feature: Added a new 'File Manager' tab for cloud storage. Users can now upload, download, and manage files across devices.",
       "✨Feature: Added a 'Feedback' tab for users to submit bug reports and feature requests directly from the app.",

@@ -8,7 +8,7 @@ APP_TAGLINE = "Your NREGA Task Management Companion"
 APP_DESCRIPTION = "A comprehensive tool for managing NREGA tasks efficiently."
 APP_AUTHOR = "Rajat Poddar"
 APP_AUTHOR_EMAIL = "Rajatpoddar@outlook.com"
-APP_VERSION = "2.5.5" # Version bumped for rebranding and new features
+APP_VERSION = "2.6.0" # Version bumped for rebranding and new features
 LICENSE_SERVER_URL = "https://license.nregabot.com"
 MAIN_WEBSITE_URL = "https://nregabot.com"
 SUPPORT_EMAIL = "nregabot@gmail.com"
@@ -21,13 +21,13 @@ OS_SYSTEM = platform.system()
 ICONS = {
     "MR Gen": "📄", "MR Payment": "💳", "FTO Generation": "📤",
     "Gen Wagelist": "📋", "Send Wagelist": "➡️", "Verify Jobcard": "✅",
-    "eMB Entry": "✏️", "WC Gen (Abua)": "🏗️", "IF Editor (Abua)": "🔧",
-    "Add Activity": "🪄","Verify ABPS": "💳", "Workcode Extractor": "✂️",
+    "eMB Entry": "✏️", "eMB Verify": "🔍", "WC Gen (Abua)": "🏗️", "IF Editor (Abua)": "🔧",
+    "Add Activity": "🪄","Verify ABPS": "💳",  "Workcode Extractor": "✂️", "Scheme Closing": "🏁",
     "Update Outcome": "📊", "Duplicate MR Print": "📠", "Feedback": "💬","File Manager": "📁",
     "About": "ℹ️", "Theme": {"light": "🌙", "dark": "☀️"}
 }
 
-# --- Automation Configurations ---
+# --- Automation Configurations --- 
 # Shared value for Panchayat prefix
 AGENCY_PREFIX = "Gram Panchayat -"
 
@@ -142,4 +142,9 @@ UPDATE_OUTCOME_CONFIG = {
 # --- Duplicate MR Print Configuration ---
 DUPLICATE_MR_CONFIG = {
     "url": "https://nregade4.nic.in/netnrega/reprintmsr.aspx"
+}
+
+# --- NEW: eMB Verify Configuration ---
+EMB_VERIFY_CONFIG = {
+    "url": "https://nregade4.nic.in/Netnrega/mbookverify.aspx"
 }

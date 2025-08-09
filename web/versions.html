@@ -42,10 +42,30 @@
                 <div class="max-w-4xl mx-auto space-y-8">
 
                     <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border-2 border-blue-500 dark:border-blue-500 shadow-lg">
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.6.0 (NREGA Bot)</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: August 9, 2025</p>
+                        <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
+                            <li>✨ **New Automation: eMB Verify** - Added a new tab to automate the verification of Measurement Book entries for a list of work codes.</li>
+                            <li>✨ **New Automation: Scheme Closing** - Added a new tab to automate the closing of schemes for multiple work codes.</li>
+                            <li>✨ **New Automation: Delete Work Allocation** - Added a new tab to quickly delete work allocations for a list of Muster Roll numbers.</li>
+                            <li>🛠️ **Improvement (Admin Search):** Admin Dashboard search is now universal, allowing searches by License Key, User Name, Email, Mobile, and Machine ID.</li>
+                            <li>🛠️ **Improvement (Cloud Storage):** Muster Roll PDFs saved to the cloud are now automatically organized into structured folders by date and Panchayat name.</li>
+                            <li>🛠️ **Improvement (UX):** The license upgrade and renewal process is now seamless. The purchase form is automatically pre-filled with the user's details.</li>
+                            <li>🐞 **Bug Fix:** Resolved an issue where active trial users were unable to log in to the desktop app using their email address.</li>
+                            <li>🐞 **Bug Fix:** Fixed a critical error that occurred when activating a new license using a key.</li>
+                            <li>🐞 **Bug Fix (Server):** Corrected a 'FileNotFoundError' that prevented file uploads by ensuring user directories are created automatically.</li>
+                        </ul>
+                        <div class="mt-6 flex flex-col sm:flex-row gap-4">
+                            <a href="https://nregabot.com/updates/NREGABot-v2.6.0-Setup.exe" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download for Windows</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.6.0-macOS.dmg" class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download for macOS</a>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.5.5 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: August 6, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
-                            <li>✨ **Feature:** Added a new 'File Manager' tab for cloud storage. Users can now upload, download, and manage files across devices.</li>
+                            <li>✨ **Feature:** Added a new 'File Manager' tab for cloud storage and a 'Feedback' tab for user submissions.</li>
                             <li>✨ **Feature:** Added a 'Feedback' tab for users to submit bug reports and feature requests directly from the app.</li>
                             <li>✨ **Feature:** Implemented a web-based file manager on the user account page, including a drag-and-drop uploader.</li>
                             <li>✨ **Feature:** Added new admin panel pages to view user feedback and manage user file storage.</li>

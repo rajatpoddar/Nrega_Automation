@@ -1,22 +1,16 @@
 {
-  "latest_version": "2.5.5",
-  "download_url_windows": "https://nregabot.com/updates/NREGABot-v2.5.5-Setup.exe",
-  "download_url_macos": "https://nregabot.com/updates/NREGABot-v2.5.5-macOS.dmg",
+  "latest_version": "2.6.0",
+  "download_url_windows": "https://nregabot.com/updates/NREGABot-v2.6.0-Setup.exe",
+  "download_url_macos": "https://nregabot.com/updates/NREGABot-v2.6.0-macOS.dmg",
   "changelog": {
-    "2.5.5": [
-      "✨Feature: Added a new 'File Manager' tab for cloud storage. Users can now upload, download, and manage files across devices.",
-      "✨Feature: Added a 'Feedback' tab for users to submit bug reports and feature requests directly from the app.",
-      "✨Feature: Implemented a web-based file manager on the user account page, including a drag-and-drop uploader.",
-      "✨Feature: Added new admin panel pages to view user feedback and manage user file storage.",
-      "🛠️ Improvement (MR Gen): Generated Muster Roll PDFs with the same name will now be saved with a number (e.g., 'file (1).pdf') instead of being overwritten.",
-      "🛠️ Improvement (MR Gen): Enhanced error handling to detect and skip date overlap errors and other specific page issues without crashing.",
-      "🛠️ Improvement (Trial Activation): Added validation to ensure email and mobile number formats are correct during trial registration.",
-      "🛠️ Improvement (Server): Refactored the monolithic server file into a scalable, blueprint-based structure for better maintenance.",
-      "🐞Critical Bug Fix (Duplicate MR Print): Overhauled logic to resolve persistent timeouts by correctly handling page loading behavior.",
-      "🐞Critical Bug Fix (Firefox PDF Saving): Fixed error preventing PDF saves in Firefox on 'MR Gen' and 'Duplicate MR Print' tabs.",
-      "🛠️ Improvement (MR Gen): Automation now waits up to 30 seconds for the 'Technical Staff' list to populate, preventing timeouts on slow connections.",
-      "🛠️ Improvement (UI/UX): Added a user-friendly pop-up if automation is started before a browser is launched.",
-      "🛠️ Improvement (UI/UX): Standardized PDF filenames for 'Duplicate MR Print' to use the last 6 digits of the work code."
+    "2.6.0": [
+      "✨Feature: Admin Dashboard search is now universal, allowing searches by License Key, User Name, Email, Mobile, and Machine ID.",
+      "🛠️ Improvement: Muster Roll PDFs saved to the cloud are now automatically organized into structured folders by date and Panchayat name (e.g., /Muster_Rolls/2025-08-09/PanchayatName/).",
+      "🛠️ Improvement: The license upgrade and renewal process is now seamless. The purchase form is automatically pre-filled with the user's details when they click 'Renew' or 'Upgrade'.",
+      "🐞 Bug Fix: Resolved an issue where active trial users were unable to log in to the desktop app using their email address.",
+      "🐞 Bug Fix: Fixed a critical error ('Expecting value: line 1 column 1') that occurred when activating a new license using a key.",
+      "🐞 Bug Fix (Server): Corrected a 'FileNotFoundError' that prevented file uploads by ensuring user directories are created automatically.",
+      "🐞 Bug Fix (Server): Implemented the missing API endpoint for email-based login, resolving a major activation failure."
     ]
   }
 }
