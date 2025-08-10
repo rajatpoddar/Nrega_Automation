@@ -24,19 +24,34 @@ class IfEditTab(BaseAutomationTab):
         self.profile_file = self.app.get_data_path("if_edit_profiles.json")
         self.saved_config = {}
 
+        # --- MODIFIED: Configure a single expanding row for the new tab view ---
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(2, weight=1) # Allow log/result area to expand
+        self.grid_rowconfigure(0, weight=1)
 
         self._create_widgets()
         self._load_profiles_from_file()
 
     def _create_widgets(self):
-        # --- Main container for all settings ---
-        settings_container = ctk.CTkScrollableFrame(self, label_text="Settings")
-        settings_container.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+        # --- NEW: Main tab view to organize Settings, Results, and Logs ---
+        notebook = ctk.CTkTabview(self)
+        notebook.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+
+        settings_tab = notebook.add("Settings")
+        results_tab = notebook.add("Results")
+        # The 'Logs & Status' tab will be added by the helper method below
+
+        # --- Configure the layout for the tabs ---
+        settings_tab.grid_rowconfigure(0, weight=1)
+        settings_tab.grid_columnconfigure(0, weight=1)
+        results_tab.grid_rowconfigure(1, weight=1)
+        results_tab.grid_columnconfigure(0, weight=1)
+        
+        # --- 1. Populate the "Settings" Tab ---
+        settings_container = ctk.CTkScrollableFrame(settings_tab, label_text="Configuration & Actions")
+        settings_container.grid(row=0, column=0, sticky="nsew")
         settings_container.grid_columnconfigure(0, weight=1)
 
-        # --- Profile Management Frame ---
+        # Profile Management Frame
         profile_frame = ctk.CTkFrame(settings_container)
         profile_frame.grid(row=0, column=0, sticky='ew', padx=5, pady=5)
         profile_frame.grid_columnconfigure(1, weight=1)
@@ -52,30 +67,33 @@ class IfEditTab(BaseAutomationTab):
         self.delete_profile_button = ctk.CTkButton(profile_actions, text="Delete", fg_color="transparent", border_width=1, text_color=("gray10", "#DCE4EE"), command=self._delete_profile)
         self.delete_profile_button.pack(side="left")
 
-        # --- CSV Frame ---
+        # CSV Frame
         csv_frame = ctk.CTkFrame(settings_container)
         csv_frame.grid(row=1, column=0, sticky="ew", padx=5, pady=5)
         csv_frame.grid_columnconfigure(1, weight=1)
         ctk.CTkLabel(csv_frame, text="Data File:", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, sticky="w", padx=15, pady=10)
+        
         file_frame = ctk.CTkFrame(csv_frame, fg_color="transparent")
         file_frame.grid(row=0, column=1, sticky='ew', pady=10, padx=15)
+        
         self.select_button = ctk.CTkButton(file_frame, text="Select CSV File", command=self.select_csv_file)
         self.select_button.pack(side="left", padx=(0, 10))
+
+        # --- MODIFIED: Changed button color for visibility ---
+        self.demo_csv_button = ctk.CTkButton(file_frame, text="Download Demo CSV", command=lambda: self.app.save_demo_csv("if_edit"), fg_color="#2E8B57", hover_color="#257247")
+        self.demo_csv_button.pack(side="left", padx=(0, 10))
+        
         self.file_label = ctk.CTkLabel(file_frame, text="No file selected", text_color="gray")
         self.file_label.pack(side="left")
 
-        # --- Convergence Switch ---
+        # Convergence Switch
         switch_frame = ctk.CTkFrame(settings_container)
         switch_frame.grid(row=2, column=0, sticky="ew", padx=5, pady=5)
         self.convergence_switch = ctk.CTkSwitch(switch_frame, text="Enable Page 2 & 3 (Convergence Work)", command=self._toggle_page_settings)
         self.convergence_switch.grid(row=0, column=0, padx=15, pady=10)
         self.ui_fields['run_convergence'] = self.convergence_switch
         
-        # --- Action Buttons ---
-        action_frame = self._create_action_buttons(parent_frame=self)
-        action_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
-
-        # --- Settings Notebook ---
+        # Settings Notebook (for Page 1, 2, 3)
         self.settings_notebook = ctk.CTkTabview(settings_container)
         self.settings_notebook.grid(row=3, column=0, sticky="ew", padx=5, pady=5)
         tab_p1 = self.settings_notebook.add("Page 1 Settings")
@@ -87,26 +105,28 @@ class IfEditTab(BaseAutomationTab):
         self._create_page3_widgets(tab_p3)
         self._toggle_page_settings()
 
-        # --- Results and Logs Notebook ---
-        notebook = ctk.CTkTabview(self)
-        notebook.grid(row=2, column=0, sticky="nsew", padx=10, pady=(0,10))
-        results_frame = notebook.add("Results")
-        self._create_log_and_status_area(parent_notebook=notebook)
-        
-        results_frame.grid_columnconfigure(0, weight=1); results_frame.grid_rowconfigure(1, weight=1)
-        results_action_frame = ctk.CTkFrame(results_frame, fg_color="transparent")
+        # Action Buttons
+        action_frame = self._create_action_buttons(parent_frame=settings_container)
+        action_frame.grid(row=4, column=0, sticky="ew", padx=5, pady=(20, 10))
+
+
+        # --- 2. Populate the "Results" Tab ---
+        results_action_frame = ctk.CTkFrame(results_tab, fg_color="transparent")
         results_action_frame.grid(row=0, column=0, sticky="ew", pady=(5, 10), padx=5)
         self.export_csv_button = ctk.CTkButton(results_action_frame, text="Export to CSV", command=lambda: self.export_treeview_to_csv(self.results_tree, "if_edit_results.csv"))
         self.export_csv_button.pack(side="left")
 
         cols = ("Work Code", "Job Card", "Status", "Details")
-        self.results_tree = ttk.Treeview(results_frame, columns=cols, show='headings')
+        self.results_tree = ttk.Treeview(results_tab, columns=cols, show='headings')
         for col in cols: self.results_tree.heading(col, text=col)
         self.results_tree.column("Work Code", width=200); self.results_tree.column("Job Card", width=200); self.results_tree.column("Status", width=100, anchor="center"); self.results_tree.column("Details", width=300)
         self.results_tree.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
-        scrollbar = ctk.CTkScrollbar(results_frame, command=self.results_tree.yview)
+        scrollbar = ctk.CTkScrollbar(results_tab, command=self.results_tree.yview)
         self.results_tree.configure(yscroll=scrollbar.set); scrollbar.grid(row=1, column=1, sticky='ns')
         self.style_treeview(self.results_tree)
+
+        # --- 3. Create the "Logs & Status" Tab using the helper ---
+        self._create_log_and_status_area(parent_notebook=notebook)
 
     def _create_field(self, parent, key, text, row, col=0, widget_type='entry', values=None, **kwargs):
         ctk.CTkLabel(parent, text=text).grid(row=row, column=col, sticky="w", padx=15, pady=5)
@@ -421,7 +441,7 @@ class IfEditTab(BaseAutomationTab):
             except NoSuchElementException: driver.execute_script("arguments[0].click();", driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_btSave"))
             self.app.log_message(self.log_display, "Page 2 submitted.", "success")
 
-            # --- Page 3 (NEW ROBUST TIMING LOGIC V2) ---
+            # --- Page 3 ---
             self.app.log_message(self.log_display, "Page 3: Adding activity...")
             wait.until(EC.presence_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_ddlAct")))
             

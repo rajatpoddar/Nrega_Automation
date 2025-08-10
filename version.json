@@ -1,16 +1,14 @@
 {
-  "latest_version": "2.6.0",
-  "download_url_windows": "https://nregabot.com/updates/NREGABot-v2.6.0-Setup.exe",
-  "download_url_macos": "https://nregabot.com/updates/NREGABot-v2.6.0-macOS.dmg",
+  "latest_version": "2.6.1",
+  "download_url_windows": "https://nregabot.com/updates/NREGABot-v2.6.1-Setup.exe",
+  "download_url_macos": "https://nregabot.com/updates/NREGABot-v2.6.1-macOS.dmg",
   "changelog": {
-    "2.6.0": [
-      "✨Feature: Admin Dashboard search is now universal, allowing searches by License Key, User Name, Email, Mobile, and Machine ID.",
-      "🛠️ Improvement: Muster Roll PDFs saved to the cloud are now automatically organized into structured folders by date and Panchayat name (e.g., /Muster_Rolls/2025-08-09/PanchayatName/).",
-      "🛠️ Improvement: The license upgrade and renewal process is now seamless. The purchase form is automatically pre-filled with the user's details when they click 'Renew' or 'Upgrade'.",
-      "🐞 Bug Fix: Resolved an issue where active trial users were unable to log in to the desktop app using their email address.",
-      "🐞 Bug Fix: Fixed a critical error ('Expecting value: line 1 column 1') that occurred when activating a new license using a key.",
-      "🐞 Bug Fix (Server): Corrected a 'FileNotFoundError' that prevented file uploads by ensuring user directories are created automatically.",
-      "🐞 Bug Fix (Server): Implemented the missing API endpoint for email-based login, resolving a major activation failure."
+    "2.6.1": [
+      "✨ Improvement: Re-architected the 'WC Gen' and 'IF Editor' tabs with a new tabbed layout (Settings, Results, Logs) for a much cleaner interface and to ensure all settings are always visible.",
+      "✨ Improvement: Selecting a saved profile in the 'WC Gen' tab now automatically loads all required categories from the website, streamlining the setup process.",
+      "✨ Improvement: Added new icons to the 'Launch Chrome', 'Launch Firefox', 'NREGA Bot Website', and 'Join WhatsApp Group' buttons for enhanced visual clarity.",
+      "🛠️ Improvement: Moved the 'Download Demo CSV' buttons from the main footer into their respective 'WC Gen' and 'IF Editor' tabs for better contextual access.",
+      "🐞 Bug Fix: Corrected the color of the 'Download Demo CSV' buttons to make them clearly visible in all themes."
     ]
   }
 }

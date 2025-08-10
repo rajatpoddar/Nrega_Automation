@@ -129,6 +129,14 @@ class NregaBotApp(ctk.CTk):
         self.active_automations = set(); self.icon_images = {}; self.automation_threads = {}
         self.stop_events = {}; self.nav_buttons = {}; self.content_frames = {}; self.tab_instances = {}
         self.button_to_category_frame = {}
+
+        # --- ADDED: Load all necessary icons ---
+        self._load_icon("chrome", "assets/icons/chrome.png")
+        self._load_icon("firefox", "assets/icons/firefox.png")
+        self._load_icon("nrega", "assets/icons/nrega.png")
+        self. _load_icon("whatsapp", "assets/icons/whatsapp.png")
+        # --- END ADDED ---
+
         self.bind("<FocusIn>", self._on_window_focus)
         self.after(0, self.start_app)
         
@@ -323,9 +331,11 @@ class NregaBotApp(ctk.CTk):
         ctk.CTkLabel(title_frame, text=config.APP_NAME, font=ctk.CTkFont(size=22, weight="bold")).pack(anchor="w")
         ctk.CTkLabel(title_frame, text=f"v{config.APP_VERSION} | Log in, then select a task.", anchor="w").pack(anchor="w")
         controls = ctk.CTkFrame(header, fg_color="transparent"); controls.pack(side="right")
+        # --- MODIFIED: Added image parameter ---
         self.launch_chrome_btn = ctk.CTkButton(controls, text="Launch Chrome", image=self.icon_images.get("chrome"), command=self.launch_chrome_detached, width=140)
         self.launch_chrome_btn.pack(side="left", padx=(0,5))
         self.launch_firefox_btn = ctk.CTkButton(controls, text="Launch Firefox", image=self.icon_images.get("firefox"), command=self.launch_firefox_managed, width=140)
+        # --- END MODIFIED ---
         self.launch_firefox_btn.pack(side="left", padx=(0,10))
         theme_frame = ctk.CTkFrame(controls, fg_color="transparent"); theme_frame.pack(side="left", padx=10, fill="y")
         ctk.CTkLabel(theme_frame, text="Theme:").pack(side="left", padx=(0, 5))
@@ -414,13 +424,11 @@ class NregaBotApp(ctk.CTk):
         ctk.CTkLabel(footer, text="© 2025 Made with ❤️ by Rajat Poddar.", text_color="gray50").pack(side="left", padx=15)
         button_container = ctk.CTkFrame(footer, fg_color="transparent")
         button_container.pack(side="right", padx=15)
-        if_edit_csv_btn = ctk.CTkButton(button_container, text="Demo IF Edit CSV", command=lambda: self.save_demo_csv("if_edit"), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
-        if_edit_csv_btn.pack(side="right", padx=(10, 0))
-        wc_gen_csv_btn = ctk.CTkButton(button_container, text="Demo WC Gen CSV", command=lambda: self.save_demo_csv("wc_gen"), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
-        wc_gen_csv_btn.pack(side="right", padx=(10, 0))
+        # --- MODIFIED: Added image parameter to buttons ---
         whatsapp_btn = ctk.CTkButton(button_container, text="Join WhatsApp Group", image=self.icon_images.get("whatsapp"), command=lambda: webbrowser.open_new_tab("https://chat.whatsapp.com/Bup3hDCH3wn2shbUryv8wn?mode=r_c"), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
         whatsapp_btn.pack(side="right", padx=(10, 0))
         nrega_btn = ctk.CTkButton(button_container, text="NREGA Bot Website ↗", image=self.icon_images.get("nrega"), command=lambda: webbrowser.open_new_tab(config.MAIN_WEBSITE_URL), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
+        # --- END MODIFIED ---
         nrega_btn.pack(side="right")
 
     def save_demo_csv(self, file_type: str):

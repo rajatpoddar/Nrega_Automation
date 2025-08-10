@@ -1,4 +1,11 @@
 {
+  "2.6.1": [
+      "✨ Improvement: Re-architected the 'WC Gen' and 'IF Editor' tabs with a new tabbed layout (Settings, Results, Logs) for a much cleaner interface and to ensure all settings are always visible.",
+      "✨ Improvement: Selecting a saved profile in the 'WC Gen' tab now automatically loads all required categories from the website, streamlining the setup process.",
+      "✨ Improvement: Added new icons to the 'Launch Chrome', 'Launch Firefox', 'NREGA Bot Website', and 'Join WhatsApp Group' buttons for enhanced visual clarity.",
+      "🛠️ Improvement: Moved the 'Download Demo CSV' buttons from the main footer into their respective 'WC Gen' and 'IF Editor' tabs for better contextual access.",
+      "🐞 Bug Fix: Corrected the color of the 'Download Demo CSV' buttons to make them clearly visible in all themes."
+    ],
   "2.6.0": [
       "✨Feature: Admin Dashboard search is now universal, allowing searches by License Key, User Name, Email, Mobile, and Machine ID.",
       "🛠️ Improvement: Muster Roll PDFs saved to the cloud are now automatically organized into structured folders by date and Panchayat name (e.g., /Muster_Rolls/2025-08-09/PanchayatName/).",
