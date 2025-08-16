@@ -402,6 +402,7 @@ class FileManagementTab(ctk.CTkFrame):
 
         def _create():
             try:
+                # --- FIX: Corrected the API endpoint URL ---
                 response = requests.post(f"{config.LICENSE_SERVER_URL}/files/api/create-folder", headers=headers, json=data, timeout=30)
                 if response.status_code == 201:
                     self.app.after(0, lambda: self.refresh_files(self.current_folder_id, add_to_history=False))
@@ -415,6 +416,8 @@ class FileManagementTab(ctk.CTkFrame):
                     self.app.after(0, messagebox.showerror, "Creation Failed", reason)
             except requests.exceptions.RequestException as e:
                 self.app.after(0, messagebox.showerror, "Connection Error", str(e))
+
+        threading.Thread(target=_create, daemon=True).start()
 
     def download_selected_item(self):
         selected_iid = self.files_tree.selection()
