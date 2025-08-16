@@ -1,14 +1,14 @@
 {
-  "latest_version": "2.6.1",
-  "download_url_windows": "https://nregabot.com/updates/NREGABot-v2.6.1-Setup.exe",
-  "download_url_macos": "https://nregabot.com/updates/NREGABot-v2.6.1-macOS.dmg",
+  "latest_version": "2.6.2",
+  "download_url_windows": "https://nregabot.com/updates/NREGABot-v2.6.2-Setup.exe",
+  "download_url_macos": "https://nregabot.com/updates/NREGABot-v2.6.2-macOS.dmg",
   "changelog": {
-    "2.6.1": [
-      "✨ Improvement: Re-architected the 'WC Gen' and 'IF Editor' tabs with a new tabbed layout (Settings, Results, Logs) for a much cleaner interface and to ensure all settings are always visible.",
-      "✨ Improvement: Selecting a saved profile in the 'WC Gen' tab now automatically loads all required categories from the website, streamlining the setup process.",
-      "✨ Improvement: Added new icons to the 'Launch Chrome', 'Launch Firefox', 'NREGA Bot Website', and 'Join WhatsApp Group' buttons for enhanced visual clarity.",
-      "🛠️ Improvement: Moved the 'Download Demo CSV' buttons from the main footer into their respective 'WC Gen' and 'IF Editor' tabs for better contextual access.",
-      "🐞 Bug Fix: Corrected the color of the 'Download Demo CSV' buttons to make them clearly visible in all themes."
+    "2.6.2": [
+      "✨ Feature: Major File Manager overhaul with drag & drop uploads, folder creation, and enhanced UI.",
+      "✨ Feature: Added new Quarterly and Half-Yearly subscription plans for more flexibility.",
+      "✨ Feature: Users can now upgrade their cloud storage capacity directly from their web account page.",
+      "✨ Improvement: The 'About' tab now displays the user's email and current cloud storage usage.",
+      "🐞 Bug Fix: Resolved critical bugs related to application startup, data synchronization, and UI stability for a much smoother experience."
     ]
   }
 }

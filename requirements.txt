@@ -13,3 +13,5 @@ python-dotenv
 customtkinter
 tkcalendar
 humanize
+tkinterdnd2
+requests-toolbelt

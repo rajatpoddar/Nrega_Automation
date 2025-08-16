@@ -12,14 +12,12 @@ class BaseAutomationTab(ctk.CTkFrame):
         self.app = app_instance
         self.automation_key = automation_key
 
-    # --- NEW: Reusable method to export Treeview data to CSV ---
     def export_treeview_to_csv(self, treeview_widget: ttk.Treeview, default_filename: str):
         """Exports the contents of a ttk.Treeview to a CSV file."""
         if not treeview_widget.get_children():
             messagebox.showinfo("No Data", "There are no results to export.")
             return
 
-        # Ask user for save location
         file_path = filedialog.asksaveasfilename(
             defaultextension=".csv",
             filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
@@ -29,31 +27,27 @@ class BaseAutomationTab(ctk.CTkFrame):
         )
         
         if not file_path:
-            return # User cancelled
+            return
 
         try:
             with open(file_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
-                # Write headers
                 headers = treeview_widget['columns']
                 writer.writerow(headers)
-                # Write data rows
                 for item_id in treeview_widget.get_children():
                     row = treeview_widget.item(item_id)['values']
                     writer.writerow(row)
             
             if messagebox.askyesno("Export Successful", f"Results successfully exported to:\n{file_path}\n\nDo you want to open the file?"):
-                # Open the file with the default application
                 if sys.platform == "win32":
                     os.startfile(file_path)
-                elif sys.platform == "darwin": # macOS
+                elif sys.platform == "darwin":
                     subprocess.call(["open", file_path])
-                else: # linux
+                else:
                     subprocess.call(["xdg-open", file_path])
 
         except Exception as e:
             messagebox.showerror("Export Error", f"Failed to export data to CSV.\n\nError: {e}")
-    # --- END NEW METHOD ---
 
     def _create_action_buttons(self, parent_frame) -> ctk.CTkFrame:
         action_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
@@ -97,18 +91,19 @@ class BaseAutomationTab(ctk.CTkFrame):
             self.app.clipboard_append(log_content)
             messagebox.showinfo("Copied", "Logs have been copied to the clipboard.")
 
+    # --- MODIFIED: style_treeview ---
     def style_treeview(self, treeview_widget: ttk.Treeview):
         style = ttk.Style()
-        bg_color = self.app._apply_appearance_mode(ctk.ThemeManager.theme["CTkFrame"]["fg_color"])
-        text_color = self.app._apply_appearance_mode(ctk.ThemeManager.theme["CTkLabel"]["text_color"])
-        header_bg = self.app._apply_appearance_mode(ctk.ThemeManager.theme["CTkButton"]["fg_color"])
-        selected_color = self.app._apply_appearance_mode(ctk.ThemeManager.theme["CTkButton"]["hover_color"])
-        
-        # --- SCROLLBAR FIX ---
-        # Use the 'clam' theme, which is more reliable for custom styling on macOS.
         style.theme_use("clam")
-        # --- END FIX ---
-
+        
+        current_appearance = ctk.get_appearance_mode().lower()
+        theme_data = ctk.ThemeManager.theme
+        
+        bg_color = theme_data["CTkFrame"]["fg_color"][0] if current_appearance == "light" else theme_data["CTkFrame"]["fg_color"][1]
+        text_color = theme_data["CTkLabel"]["text_color"][0] if current_appearance == "light" else theme_data["CTkLabel"]["text_color"][1]
+        header_bg = theme_data["CTkButton"]["fg_color"][0] if current_appearance == "light" else theme_data["CTkButton"]["fg_color"][1]
+        selected_color = theme_data["CTkButton"]["hover_color"][0] if current_appearance == "light" else theme_data["CTkButton"]["hover_color"][1]
+        
         style.configure("Treeview", background=bg_color, foreground=text_color, fieldbackground=bg_color, borderwidth=0)
         style.map('Treeview', background=[('selected', selected_color)])
         style.configure("Treeview.Heading", background=header_bg, foreground=text_color, relief="flat")
@@ -121,7 +116,6 @@ class BaseAutomationTab(ctk.CTkFrame):
         self.stop_button.configure(state="normal" if running else "disabled")
         if hasattr(self, 'copy_logs_button'):
             self.copy_logs_button.configure(state=state)
-        # Also disable any export buttons
         if hasattr(self, 'export_pdf_button'):
             self.export_pdf_button.configure(state=state)
         if hasattr(self, 'export_csv_button'):

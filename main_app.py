@@ -21,6 +21,9 @@ from webdriver_manager.firefox import GeckoDriverManager
 
 from tabs.history_manager import HistoryManager
 
+# --- ADDED: Import for Drag and Drop Root Window ---
+from tkinterdnd2 import TkinterDnD
+
 import config
 # --- TAB CLASS IMPORTS ---
 from tabs.msr_tab import MsrTab
@@ -79,11 +82,7 @@ if SENTRY_DSN:
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme(resource_path("theme.json"))
 
-# --- NEW CLASS: CollapsibleFrame ---
 class CollapsibleFrame(ctk.CTkFrame):
-    """
-    A collapsible frame widget that contains a header button and a content frame.
-    """
     def __init__(self, parent, title="", initially_expanded=False):
         super().__init__(parent, fg_color="transparent")
         self.grid_columnconfigure(0, weight=1)
@@ -95,7 +94,7 @@ class CollapsibleFrame(ctk.CTkFrame):
             anchor="w", font=ctk.CTkFont(size=11, weight="bold"),
             fg_color="transparent", text_color=("gray10", "gray80"), hover=False
         )
-        self.header_button.grid(row=0, column=0, sticky="ew", padx=5)
+        self.header_button.grid(row=0, column=0, sticky="ew", padx=0, pady=0)
         self.content_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.update_visibility()
 
@@ -108,14 +107,15 @@ class CollapsibleFrame(ctk.CTkFrame):
 
     def update_visibility(self):
         self.header_button.configure(text=f"{self.get_arrow()} {self.title.upper()}")
-        if self.is_expanded: self.content_frame.grid(row=1, column=0, sticky="ew", padx=(10,0))
+        if self.is_expanded: self.content_frame.grid(row=1, column=0, sticky="ew", padx=(5,0))
         else: self.content_frame.grid_forget()
 
     def add_widget(self, widget, **pack_options):
         widget.pack(in_=self.content_frame, **pack_options); return widget
 
 
-class NregaBotApp(ctk.CTk):
+# --- MODIFIED: Main application class now inherits from TkinterDnD.Tk ---
+class NregaBotApp(TkinterDnD.Tk):
     def __init__(self):
         super().__init__()
         self.attributes("-alpha", 0.0)
@@ -130,12 +130,10 @@ class NregaBotApp(ctk.CTk):
         self.stop_events = {}; self.nav_buttons = {}; self.content_frames = {}; self.tab_instances = {}
         self.button_to_category_frame = {}
 
-        # --- ADDED: Load all necessary icons ---
         self._load_icon("chrome", "assets/icons/chrome.png")
         self._load_icon("firefox", "assets/icons/firefox.png")
         self._load_icon("nrega", "assets/icons/nrega.png")
         self. _load_icon("whatsapp", "assets/icons/whatsapp.png")
-        # --- END ADDED ---
 
         self.bind("<FocusIn>", self._on_window_focus)
         self.after(0, self.start_app)
@@ -145,12 +143,10 @@ class NregaBotApp(ctk.CTk):
         self.after(200, self._initialize_app)
 
     def _initialize_app(self):
-        # --- MODIFIED: Build only the static parts of the UI first ---
         self.grid_rowconfigure(1, weight=1); self.grid_columnconfigure(0, weight=1)
         self._create_header()
         self._create_footer()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
-        # --- END MODIFICATION ---
 
         if self.splash: self.splash.destroy(); self.splash = None
         self.perform_license_check_flow()
@@ -173,7 +169,6 @@ class NregaBotApp(ctk.CTk):
     def perform_license_check_flow(self):
         self.is_licensed = self.check_license()
         if self.is_licensed:
-            # --- MODIFIED: Build the main layout AFTER license is confirmed ---
             self._create_main_layout()
             is_expiring = self.check_expiry_and_notify()
             self._ping_server_in_background()
@@ -184,13 +179,11 @@ class NregaBotApp(ctk.CTk):
             self.check_for_updates_background()
             self.deiconify(); self.attributes("-alpha", 1.0)
         else:
-            # --- MODIFIED: Create a minimal layout for activation ---
             self._create_main_layout(for_activation=True)
             self._lock_app_to_about_tab()
             self.deiconify(); self.attributes("-alpha", 1.0)
             if self.show_activation_window():
                 self.is_licensed = True
-                # --- MODIFIED: Rebuild the full layout after successful activation ---
                 for widget in self.main_layout_frame.winfo_children(): widget.destroy()
                 self._create_main_layout()
                 self.check_expiry_and_notify()
@@ -216,8 +209,18 @@ class NregaBotApp(ctk.CTk):
     def _validate_in_background(self):
         try:
             self.is_validating_license = True
-            self.validate_on_server(self.license_info['key'], is_startup_check=True)
-            self.after(0, self._update_about_tab_info)
+            # This fetches the full, updated license data from the server, including usage and limit
+            is_valid = self.validate_on_server(self.license_info['key'], is_startup_check=True)
+            if is_valid:
+                # If validation is successful, update the UI across the app
+                self.after(0, self._update_about_tab_info)
+                
+                file_manager_tab = self.tab_instances.get("File Manager")
+                if file_manager_tab:
+                    # Explicitly update the file manager's storage display with the new, correct data
+                    self.after(0, lambda: file_manager_tab.update_storage_info(self.license_info.get('total_usage'), self.license_info.get('max_storage')))
+                    # Then, refresh just the file list
+                    self.after(0, lambda: file_manager_tab.refresh_files(file_manager_tab.current_folder_id, add_to_history=False))
         finally:
             self.is_validating_license = False
 
@@ -304,8 +307,7 @@ class NregaBotApp(ctk.CTk):
         except (socket.timeout, ConnectionRefusedError): pass
         
         if firefox_active and chrome_active:
-            # Logic for choosing between browsers (omitted for brevity, can be restored if needed)
-            self.active_browser = "firefox"; return self.driver # Default to Firefox if both are running
+            self.active_browser = "firefox"; return self.driver
         elif firefox_active: self.active_browser = "firefox"; return self.driver
         elif chrome_active: return self._connect_to_chrome()
         else: messagebox.showerror("Connection Failed", "No browser is running. Please launch one first."); return None
@@ -331,11 +333,9 @@ class NregaBotApp(ctk.CTk):
         ctk.CTkLabel(title_frame, text=config.APP_NAME, font=ctk.CTkFont(size=22, weight="bold")).pack(anchor="w")
         ctk.CTkLabel(title_frame, text=f"v{config.APP_VERSION} | Log in, then select a task.", anchor="w").pack(anchor="w")
         controls = ctk.CTkFrame(header, fg_color="transparent"); controls.pack(side="right")
-        # --- MODIFIED: Added image parameter ---
         self.launch_chrome_btn = ctk.CTkButton(controls, text="Launch Chrome", image=self.icon_images.get("chrome"), command=self.launch_chrome_detached, width=140)
         self.launch_chrome_btn.pack(side="left", padx=(0,5))
         self.launch_firefox_btn = ctk.CTkButton(controls, text="Launch Firefox", image=self.icon_images.get("firefox"), command=self.launch_firefox_managed, width=140)
-        # --- END MODIFIED ---
         self.launch_firefox_btn.pack(side="left", padx=(0,10))
         theme_frame = ctk.CTkFrame(controls, fg_color="transparent"); theme_frame.pack(side="left", padx=10, fill="y")
         ctk.CTkLabel(theme_frame, text="Theme:").pack(side="left", padx=(0, 5))
@@ -346,8 +346,8 @@ class NregaBotApp(ctk.CTk):
         self.main_layout_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(10,0))
         self.main_layout_frame.grid_rowconfigure(0, weight=1); self.main_layout_frame.grid_columnconfigure(1, weight=1)
         
-        nav_scroll_frame = ctk.CTkScrollableFrame(self.main_layout_frame, width=220, label_text="", fg_color="transparent")
-        nav_scroll_frame.grid(row=0, column=0, sticky="nsw", padx=(0,10))
+        nav_scroll_frame = ctk.CTkScrollableFrame(self.main_layout_frame, width=200, label_text="", fg_color="transparent")
+        nav_scroll_frame.grid(row=0, column=0, sticky="nsw", padx=(0,5))
         self._create_nav_buttons(nav_scroll_frame)
         
         self.content_area = ctk.CTkFrame(self.main_layout_frame, fg_color="transparent"); self.content_area.grid(row=0, column=1, sticky="nsew")
@@ -361,10 +361,21 @@ class NregaBotApp(ctk.CTk):
         for category, tabs in self.get_tabs_definition().items():
             is_first = (category == first_category_name)
             category_frame = CollapsibleFrame(parent, title=category, initially_expanded=is_first)
-            category_frame.pack(fill="x", pady=(5, 0), padx=5)
+            category_frame.pack(fill="x", pady=0, padx=0)
             for name, data in tabs.items():
-                btn = ctk.CTkButton(category_frame.content_frame, text=f" {data['icon']}  {name}", command=lambda n=name: self.show_frame(n), anchor="w", font=ctk.CTkFont(size=14), height=40, corner_radius=8, fg_color="transparent", text_color=("gray10", "gray90"), hover_color=("gray75", "gray25"))
-                btn.pack(fill="x", padx=5, pady=(5, 0))
+                btn = ctk.CTkButton(
+                    category_frame.content_frame, 
+                    text=f" {data['icon']}  {name}", 
+                    command=lambda n=name: self.show_frame(n), 
+                    anchor="w", 
+                    font=ctk.CTkFont(size=13),
+                    height=32,
+                    corner_radius=6, 
+                    fg_color="transparent", 
+                    text_color=("gray10", "gray90"), 
+                    hover_color=("gray75", "gray25")
+                )
+                btn.pack(fill="x", padx=5, pady=2)
                 self.nav_buttons[name] = btn
                 self.button_to_category_frame[name] = category_frame
 
@@ -424,11 +435,9 @@ class NregaBotApp(ctk.CTk):
         ctk.CTkLabel(footer, text="© 2025 Made with ❤️ by Rajat Poddar.", text_color="gray50").pack(side="left", padx=15)
         button_container = ctk.CTkFrame(footer, fg_color="transparent")
         button_container.pack(side="right", padx=15)
-        # --- MODIFIED: Added image parameter to buttons ---
         whatsapp_btn = ctk.CTkButton(button_container, text="Join WhatsApp Group", image=self.icon_images.get("whatsapp"), command=lambda: webbrowser.open_new_tab("https://chat.whatsapp.com/Bup3hDCH3wn2shbUryv8wn?mode=r_c"), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
         whatsapp_btn.pack(side="right", padx=(10, 0))
         nrega_btn = ctk.CTkButton(button_container, text="NREGA Bot Website ↗", image=self.icon_images.get("nrega"), command=lambda: webbrowser.open_new_tab(config.MAIN_WEBSITE_URL), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
-        # --- END MODIFIED ---
         nrega_btn.pack(side="right")
 
     def save_demo_csv(self, file_type: str):
@@ -471,11 +480,11 @@ class NregaBotApp(ctk.CTk):
 
     def validate_on_server(self, key, is_startup_check=False):
         try:
-            # --- FIX: Added the /api/ prefix to the validation URL ---
             response = requests.post(f"{config.LICENSE_SERVER_URL}/api/validate", json={"key": key, "machine_id": self.machine_id}, timeout=10)
             data = response.json()
             if response.status_code == 200 and data.get("status") == "valid":
-                self.license_info = data; self.license_info['key'] = key
+                self.license_info = data
+                self.license_info['key'] = key
                 with open(get_data_path('license.dat'), 'w') as f: json.dump(self.license_info, f)
                 if not is_startup_check: messagebox.showinfo("License Valid", f"Activation successful!\nExpires on: {self.license_info['expires_at'].split('T')[0]}")
                 return True
@@ -550,7 +559,6 @@ class NregaBotApp(ctk.CTk):
             entry = ctk.CTkEntry(scroll_frame); entry.pack(fill="x", padx=10, pady=(0, 10)); entries[key] = entry
         is_successful = tkinter.BooleanVar(value=False)
         def submit_trial_request():
-            # --- NEW: Input Validation ---
             import re
             user_data = {key: entry.get().strip() for key, entry in entries.items()}
             
@@ -564,7 +572,6 @@ class NregaBotApp(ctk.CTk):
             if not (mobile.isdigit() and len(mobile) == 10):
                 messagebox.showwarning("Invalid Input", "Please enter a valid 10-digit mobile number.", parent=trial_window)
                 return
-            # --- END VALIDATION ---
 
             user_data["name"] = user_data.pop("full_name"); user_data["machine_id"] = self.machine_id
             if not all(user_data.values()): messagebox.showwarning("Input Required", "All fields are required to start a trial.", parent=trial_window); return
@@ -603,22 +610,36 @@ class NregaBotApp(ctk.CTk):
         
         ctk.CTkLabel(main_frame, text=title, font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(0, 15))
         ctk.CTkLabel(main_frame, text="1. Choose Your Plan", font=ctk.CTkFont(size=14, weight="bold"), anchor="w").pack(fill="x", padx=10, pady=(10,5))
-        plan_menu = ctk.CTkOptionMenu(main_frame, values=["Monthly Plan (₹99 / device)", "Yearly Plan (₹999 / device)"])
+        
+        # Updated plan list
+        plan_options = [
+            "Monthly Plan (₹99 / device)",
+            "Quarterly Plan (₹289 / device)",
+            "Half Yearly Plan (₹569 / device)",
+            "Yearly Plan (₹999 / device)"
+        ]
+        plan_menu = ctk.CTkOptionMenu(main_frame, values=plan_options)
         plan_menu.pack(fill="x", padx=10, pady=(0,5))
+
         ctk.CTkLabel(main_frame, text="Number of Devices:", anchor="w").pack(fill="x", padx=10, pady=(15, 5))
         devices_input = ctk.CTkOptionMenu(main_frame, values=["1", "2", "3"])
         devices_input.set(str(self.license_info.get('max_devices', 1)))
         devices_input.pack(fill="x", padx=10)
 
-        prices = {"monthly": 99, "yearly": 999}
+        # Updated prices dictionary
+        prices = {"monthly": 99, "quarterly": 289, "half_yearly": 569, "yearly": 999}
         total_price_label = ctk.CTkLabel(main_frame, text="Total: ₹99", font=ctk.CTkFont(size=18, weight="bold"))
         total_price_label.pack(pady=25)
         
         def update_price(*args):
-            plan_selection = plan_menu.get()
-            plan = "yearly" if "Yearly" in plan_selection else "monthly"
+            plan_selection = plan_menu.get().lower()
+            plan_key = "monthly" # Default
+            if "yearly" in plan_selection: plan_key = "yearly"
+            if "half yearly" in plan_selection: plan_key = "half_yearly"
+            if "quarterly" in plan_selection: plan_key = "quarterly"
+
             device_count = int(devices_input.get())
-            total_price = prices[plan] * device_count
+            total_price = prices[plan_key] * device_count
             total_price_label.configure(text=f"Total: ₹{total_price}")
 
         plan_menu.configure(command=lambda v: update_price())
@@ -627,31 +648,33 @@ class NregaBotApp(ctk.CTk):
 
         def proceed_to_payment():
             submit_btn.configure(state="disabled", text="Initializing...")
-            # --- FIX: Pass existing_key to pre-fill the form ---
             form_data = {
                 "name": self.license_info.get('user_name', ''), "email": self.license_info.get('user_email', ''),
                 "mobile": self.license_info.get('user_mobile', ''), "block": self.license_info.get('user_block', ''),
                 "district": self.license_info.get('user_district', ''), "state": self.license_info.get('user_state', ''),
                 "pincode": self.license_info.get('user_pincode', ''),
-                "existing_key": self.license_info.get('key') # Add the key here
+                "existing_key": self.license_info.get('key')
             }
-            # --- END FIX ---
             
             if not all([form_data['name'], form_data['email'], form_data['mobile']]):
                 messagebox.showwarning("User Details Missing", "Your user details could not be found. Please contact support.", parent=purchase_window)
                 submit_btn.configure(state="normal", text="Proceed to Payment"); return
             
-            plan_selection = plan_menu.get()
-            plan = "yearly" if "Yearly" in plan_selection else "monthly"
+            plan_selection = plan_menu.get().lower()
+            plan_key = "monthly" # Default
+            if "yearly" in plan_selection: plan_key = "yearly"
+            if "half yearly" in plan_selection: plan_key = "half_yearly"
+            if "quarterly" in plan_selection: plan_key = "quarterly"
+            
             device_count = int(devices_input.get())
-            form_data.update({'plan_type': plan, 'max_devices': device_count})
+            form_data.update({'plan_type': plan_key, 'max_devices': device_count})
 
             try:
                 base_url = f"{config.LICENSE_SERVER_URL}/buy"
-                query_params = urlencode({k: v for k, v in form_data.items() if v is not None}) # Filter out None values
+                query_params = urlencode({k: v for k, v in form_data.items() if v is not None})
                 full_url = f"{base_url}?{query_params}"
                 webbrowser.open_new_tab(full_url)
-                purchase_window.destroy() # Close the window after opening the browser
+                purchase_window.destroy()
             except Exception as e:
                 messagebox.showerror("Error", f"Could not open payment page: {e}", parent=purchase_window)
             finally:
@@ -757,10 +780,7 @@ class NregaBotApp(ctk.CTk):
             return
 
         about_tab.update_button.configure(state="disabled")
-        # --- FIX: Use grid instead of pack ---
         about_tab.update_progress.grid(row=4, column=0, pady=(10, 10), padx=20, sticky='ew')
-        # --- END FIX ---
-
 
         def _download_worker():
             try:
@@ -801,9 +821,7 @@ class NregaBotApp(ctk.CTk):
                 self.after(0, messagebox.showerror, "Update Failed", f"Could not download or run the update.\\n\\nError: {e}")
                 if about_tab.winfo_exists():
                     self.after(0, lambda: about_tab.update_button.configure(state="normal", text=f"Download & Install v{version}"))
-                    # --- FIX: Use grid_forget instead of pack_forget ---
                     self.after(0, about_tab.update_progress.grid_forget)
-                    # --- END FIX ---
                     self.after(0, about_tab.update_progress.set, 0)
         
         threading.Thread(target=_download_worker, daemon=True).start()

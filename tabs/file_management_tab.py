@@ -6,28 +6,61 @@ import requests
 import os
 import threading
 from datetime import datetime
-import humanize  # You will need to add this library: pip install humanize
+import humanize
 from pathlib import Path
+from tkinterdnd2 import DND_FILES
+from requests_toolbelt.multipart.encoder import MultipartEncoder, MultipartEncoderMonitor
+import webbrowser
 
 import config
 
+class DragDropMixin:
+    def __init__(self, *args, **kwargs):
+        self.master_tab = kwargs.pop('master_tab', None)
+        super().__init__(*args, **kwargs)
+        self.drop_target_register(DND_FILES)
+        self.dnd_bind('<<Drop>>', self.on_drop)
+
+    def on_drop(self, event):
+        if self.master_tab and hasattr(self.master_tab, '_start_upload_session'):
+            filepaths = self.tk.splitlist(event.data)
+            items_to_upload = []
+            is_folder_upload = False
+            for path in filepaths:
+                if os.path.isdir(path):
+                    base_folder_name = os.path.basename(path)
+                    for root, _, files in os.walk(path):
+                        for filename in files:
+                            local_path = os.path.join(root, filename)
+                            relative_path = os.path.join(base_folder_name, os.path.relpath(local_path, path))
+                            items_to_upload.append({'local_path': local_path, 'relative_path': str(Path(relative_path))})
+                    is_folder_upload = True
+                else:
+                    items_to_upload.append(path)
+            
+            self.master_tab._start_upload_session(items_to_upload, is_folder=is_folder_upload)
+
+class DraggableTreeview(DragDropMixin, ttk.Treeview):
+    pass
+
+
 class FileManagementTab(ctk.CTkFrame):
-    """A tab for users to upload, download, and manage their cloud files and folders."""
     def __init__(self, parent, app_instance):
         super().__init__(parent, fg_color="transparent")
         self.app = app_instance
         self.current_folder_id = None
-        self.current_path_breadcrumbs = []
-        self.item_map = {} # To store full item details by ID
+        self.item_map = {} 
+        
+        self.history = []
+        self.history_index = -1
 
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(2, weight=1) # Adjusted for breadcrumbs
+        self.grid_rowconfigure(3, weight=1) 
 
         self._create_widgets()
         self.refresh_files()
 
     def _create_widgets(self):
-        # --- Header with Title and Storage Info ---
         header_frame = ctk.CTkFrame(self)
         header_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
         header_frame.grid_columnconfigure(0, weight=1)
@@ -41,16 +74,23 @@ class FileManagementTab(ctk.CTkFrame):
         self.storage_progress = ctk.CTkProgressBar(storage_frame, width=150)
         self.storage_progress.set(0)
         self.storage_progress.pack(anchor="e", pady=(5,0))
+        
+        self.upgrade_storage_button = ctk.CTkButton(storage_frame, text="Upgrade Storage", height=24, command=self.open_upgrade_page)
+        self.upgrade_storage_button.pack(anchor="e", pady=(5,0))
 
-        # --- Breadcrumb and Controls Frame ---
+
         nav_frame = ctk.CTkFrame(self)
         nav_frame.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="ew")
         nav_frame.grid_columnconfigure(1, weight=1)
 
-        # Action Buttons
         controls_frame = ctk.CTkFrame(nav_frame, fg_color="transparent")
-        controls_frame.grid(row=0, column=0, padx=10, pady=5, sticky="w")
+        controls_frame.grid(row=0, column=0, columnspan=2, padx=10, pady=5, sticky="ew")
         
+        self.back_button = ctk.CTkButton(controls_frame, text="⬅", width=30, command=self.go_back, state="disabled")
+        self.back_button.pack(side="left", padx=(0, 5))
+        self.forward_button = ctk.CTkButton(controls_frame, text="➡", width=30, command=self.go_forward, state="disabled")
+        self.forward_button.pack(side="left", padx=(0, 10))
+
         self.upload_file_button = ctk.CTkButton(controls_frame, text="Upload File(s)", width=120, command=self.upload_files)
         self.upload_file_button.pack(side="left", padx=(0, 5))
         
@@ -60,26 +100,39 @@ class FileManagementTab(ctk.CTkFrame):
         self.new_folder_button = ctk.CTkButton(controls_frame, text="New Folder", width=110, command=self.create_new_folder)
         self.new_folder_button.pack(side="left", padx=5)
 
-        self.refresh_button = ctk.CTkButton(controls_frame, text="Refresh", width=90, command=lambda: self.refresh_files(self.current_folder_id))
+        self.refresh_button = ctk.CTkButton(controls_frame, text="Refresh", width=90, command=lambda: self.refresh_files(self.current_folder_id, add_to_history=False))
         self.refresh_button.pack(side="left", padx=5)
         
-        # Breadcrumbs
-        self.breadcrumb_frame = ctk.CTkFrame(nav_frame, fg_color="transparent")
-        self.breadcrumb_frame.grid(row=0, column=1, padx=10, pady=5, sticky="e")
+        progress_breadcrumb_frame = ctk.CTkFrame(self)
+        progress_breadcrumb_frame.grid(row=2, column=0, padx=10, pady=0, sticky="ew")
+        progress_breadcrumb_frame.grid_columnconfigure(0, weight=1)
 
-        # --- Treeview for file list ---
+        self.breadcrumb_frame = ctk.CTkFrame(progress_breadcrumb_frame, fg_color="transparent")
+        self.breadcrumb_frame.grid(row=0, column=0, padx=10, pady=5, sticky="w")
+        
+        self.op_progress_label = ctk.CTkLabel(progress_breadcrumb_frame, text="", text_color="gray50")
+        self.op_progress_label.grid(row=1, column=0, padx=10, pady=(0,5), sticky="w")
+        self.op_progress = ctk.CTkProgressBar(progress_breadcrumb_frame)
+        self.op_progress.grid(row=2, column=0, padx=10, pady=(0, 10), sticky="ew")
+        self.op_progress.set(0)
+        self.op_progress.grid_remove() 
+        self.op_progress_label.grid_remove()
+
         main_frame = ctk.CTkFrame(self)
-        main_frame.grid(row=2, column=0, padx=10, pady=0, sticky="nsew")
+        main_frame.grid(row=3, column=0, padx=10, pady=0, sticky="nsew")
         main_frame.grid_columnconfigure(0, weight=1)
         main_frame.grid_rowconfigure(0, weight=1)
 
         cols = ("Name", "Size", "Date Modified")
-        self.files_tree = ttk.Treeview(main_frame, columns=cols, show='headings')
+        self.files_tree = DraggableTreeview(main_frame, columns=cols, show='headings', master_tab=self)
         for col in cols: self.files_tree.heading(col, text=col)
         self.files_tree.column("Name", width=400, anchor="w")
         self.files_tree.column("Size", width=100, anchor="e")
         self.files_tree.column("Date Modified", width=150, anchor="center")
         self.files_tree.grid(row=0, column=0, sticky='nsew')
+        
+        self.drag_drop_label = ctk.CTkLabel(self.files_tree, text="Drag and drop files here to upload", font=ctk.CTkFont(size=14, slant="italic"), text_color="gray")
+        self.drag_drop_label.place(relx=0.5, rely=0.5, anchor="center")
         
         scrollbar = ctk.CTkScrollbar(main_frame, command=self.files_tree.yview)
         self.files_tree.configure(yscroll=scrollbar.set)
@@ -89,31 +142,25 @@ class FileManagementTab(ctk.CTkFrame):
         self.files_tree.bind("<<TreeviewSelect>>", self.on_item_select)
         self.files_tree.bind("<Double-1>", self.on_item_double_click)
 
-        # --- Action buttons for selected items ---
         action_bar = ctk.CTkFrame(self, fg_color="transparent")
-        action_bar.grid(row=3, column=0, padx=10, pady=10, sticky="ew")
+        action_bar.grid(row=4, column=0, padx=10, pady=10, sticky="ew")
         self.download_button = ctk.CTkButton(action_bar, text="Download", command=self.download_selected_item, state="disabled")
         self.download_button.pack(side="left", padx=(0, 5))
         self.delete_button = ctk.CTkButton(action_bar, text="Delete", command=self.delete_selected_item, state="disabled", fg_color="#D32F2F", hover_color="#B71C1C")
         self.delete_button.pack(side="left", padx=5)
 
-        # --- Progress bar for multi-file operations ---
-        self.op_progress_label = ctk.CTkLabel(self, text="", text_color="gray50")
-        self.op_progress_label.grid(row=4, column=0, padx=10, pady=(0,5), sticky="w")
-        self.op_progress = ctk.CTkProgressBar(self)
-        self.op_progress.grid(row=5, column=0, padx=10, pady=(0, 10), sticky="ew")
-        self.op_progress.set(0)
-        self.op_progress.grid_remove() # Hide initially
-        self.op_progress_label.grid_remove()
-
     def style_treeview(self, treeview_widget: ttk.Treeview):
-        # (Same as your existing style_treeview method)
         style = ttk.Style()
-        bg_color = self.app._apply_appearance_mode(ctk.ThemeManager.theme["CTkFrame"]["fg_color"])
-        text_color = self.app._apply_appearance_mode(ctk.ThemeManager.theme["CTkLabel"]["text_color"])
-        header_bg = self.app._apply_appearance_mode(ctk.ThemeManager.theme["CTkButton"]["fg_color"])
-        selected_color = self.app._apply_appearance_mode(ctk.ThemeManager.theme["CTkButton"]["hover_color"])
         style.theme_use("clam")
+        
+        current_appearance = ctk.get_appearance_mode().lower()
+        theme_data = ctk.ThemeManager.theme
+        
+        bg_color = theme_data["CTkFrame"]["fg_color"][0] if current_appearance == "light" else theme_data["CTkFrame"]["fg_color"][1]
+        text_color = theme_data["CTkLabel"]["text_color"][0] if current_appearance == "light" else theme_data["CTkLabel"]["text_color"][1]
+        header_bg = theme_data["CTkButton"]["fg_color"][0] if current_appearance == "light" else theme_data["CTkButton"]["fg_color"][1]
+        selected_color = theme_data["CTkButton"]["hover_color"][0] if current_appearance == "light" else theme_data["CTkButton"]["hover_color"][1]
+        
         style.configure("Treeview", background=bg_color, foreground=text_color, fieldbackground=bg_color, borderwidth=0, rowheight=25)
         style.map('Treeview', background=[('selected', selected_color)])
         style.configure("Treeview.Heading", background=header_bg, foreground=text_color, relief="flat", font=('sans-serif', 10, 'bold'))
@@ -139,10 +186,19 @@ class FileManagementTab(ctk.CTkFrame):
             return None
         return {'Authorization': f"Bearer {self.app.license_info['key']}"}
 
-    def refresh_files(self, folder_id=None):
+    def refresh_files(self, folder_id=None, add_to_history=True):
         self.files_tree.delete(*self.files_tree.get_children())
         self.on_item_select()
         
+        if add_to_history:
+            if self.history_index < len(self.history) - 1:
+                self.history = self.history[:self.history_index + 1]
+            if not self.history or self.history[-1] != folder_id:
+                self.history.append(folder_id)
+            self.history_index = len(self.history) - 1
+        
+        self.update_nav_buttons()
+
         headers = self.get_auth_headers()
         if not headers: return
 
@@ -164,15 +220,39 @@ class FileManagementTab(ctk.CTkFrame):
                 self.app.after(0, messagebox.showerror, "Connection Error", f"Could not connect to the server: {e}")
         
         threading.Thread(target=_fetch, daemon=True).start()
+    
+    def go_back(self):
+        if self.history_index > 0:
+            self.history_index -= 1
+            self.refresh_files(self.history[self.history_index], add_to_history=False)
+
+    def go_forward(self):
+        if self.history_index < len(self.history) - 1:
+            self.history_index += 1
+            self.refresh_files(self.history[self.history_index], add_to_history=False)
+
+    def update_nav_buttons(self):
+        self.back_button.configure(state="normal" if self.history_index > 0 else "disabled")
+        self.forward_button.configure(state="normal" if self.history_index < len(self.history) - 1 else "disabled")
 
     def update_ui_with_data(self, data):
+        # This method now only updates the file list and breadcrumbs for this tab
         self.update_file_list(data.get('files', []))
-        self.update_storage_info(data.get('total_usage', 0), data.get('storage_limit', 1))
         self.update_breadcrumbs(data.get('path', []))
+
+        # We also use the usage data from this API call to keep the progress bar accurate
+        # The storage LIMIT is now set by the main_app, not this function
+        current_limit = self.app.license_info.get('max_storage')
+        self.update_storage_info(data.get('total_usage', 0), current_limit)
 
     def update_file_list(self, files):
         self.files_tree.delete(*self.files_tree.get_children())
         self.item_map.clear()
+        if files:
+            self.drag_drop_label.place_forget()
+        else:
+            self.drag_drop_label.place(relx=0.5, rely=0.5, anchor="center")
+
         for item in files:
             self.item_map[item['id']] = item
             try:
@@ -191,24 +271,40 @@ class FileManagementTab(ctk.CTkFrame):
         try:
             numeric_usage = int(total_usage)
             numeric_limit = int(storage_limit) if storage_limit else 1
-            usage_percent = numeric_usage / numeric_limit
+            
+            # Use humanize for both values for consistent formatting
             self.storage_label.configure(text=f"Storage: {humanize.naturalsize(numeric_usage)} / {humanize.naturalsize(numeric_limit)}")
+            
+            usage_percent = numeric_usage / numeric_limit if numeric_limit > 0 else 0
             self.storage_progress.set(usage_percent)
+            
+            if usage_percent < 0.3:
+                color = "#22c55e" # Green
+            elif 0.3 <= usage_percent < 0.6:
+                color = "#3b82f6" # Blue
+            elif 0.6 <= usage_percent < 0.8:
+                color = "#f59e0b" # Yellow
+            else:
+                color = "#ef4444" # Red
+                
+            self.storage_progress.configure(progress_color=color)
+            self.upgrade_storage_button.configure(fg_color=color, hover_color=color)
+
         except (ValueError, TypeError):
             self.storage_label.configure(text="Storage: Error")
             self.storage_progress.set(0)
+
 
     def update_breadcrumbs(self, path):
         for widget in self.breadcrumb_frame.winfo_children():
             widget.destroy()
         
-        home_btn = ctk.CTkButton(self.breadcrumb_frame, text="Home", command=lambda: self.refresh_files(None), width=50)
+        home_btn = ctk.CTkButton(self.breadcrumb_frame, text="Home", command=lambda: self.refresh_files(None), width=50, height=24)
         home_btn.pack(side="left")
         
-        self.current_path_breadcrumbs = path
         for folder in path:
             ctk.CTkLabel(self.breadcrumb_frame, text="/").pack(side="left", padx=2)
-            btn = ctk.CTkButton(self.breadcrumb_frame, text=folder['filename'], command=lambda f_id=folder['id']: self.refresh_files(f_id))
+            btn = ctk.CTkButton(self.breadcrumb_frame, text=folder['filename'], command=lambda f_id=folder['id']: self.refresh_files(f_id), height=24)
             btn.pack(side="left")
 
     def upload_files(self):
@@ -225,7 +321,6 @@ class FileManagementTab(ctk.CTkFrame):
         for root, _, files in os.walk(folder_path):
             for filename in files:
                 local_path = os.path.join(root, filename)
-                # Create a relative path for the server
                 relative_path = os.path.join(base_folder_name, os.path.relpath(local_path, folder_path))
                 files_to_upload.append({'local_path': local_path, 'relative_path': str(Path(relative_path))})
         
@@ -246,40 +341,53 @@ class FileManagementTab(ctk.CTkFrame):
         def _upload_worker():
             total_items = len(items)
             for i, item in enumerate(items):
-                if is_folder:
-                    local_path = item['local_path']
-                    relative_path = item['relative_path']
-                else:
-                    local_path = item
-                    relative_path = ''
+                local_path = item['local_path'] if is_folder else item
+                relative_path = item['relative_path'] if is_folder else ''
                 
                 filename = os.path.basename(local_path)
-                self.app.after(0, self.op_progress_label.configure, {"text": f"Uploading ({i+1}/{total_items}): {filename}"})
                 
-                success = self._perform_upload(local_path, relative_path, headers)
+                def create_callback(encoder):
+                    total_size = encoder.len
+                    def callback(monitor):
+                        progress = (i + (monitor.bytes_read / total_size)) / total_items
+                        self.app.after(0, self.op_progress.set, progress)
+                        self.app.after(0, self.op_progress_label.configure, {"text": f"Uploading ({i+1}/{total_items}): {filename} ({int(progress*100)}%)"})
+                    return callback
+
+                success = self._perform_upload(local_path, relative_path, headers, create_callback)
                 if not success:
-                    # Ask user if they want to continue on failure
                     if not messagebox.askyesno("Upload Failed", f"Failed to upload {filename}. Continue with remaining files?"):
                         break
-                
-                self.app.after(0, self.op_progress.set, (i + 1) / total_items)
-
-            self.app.after(0, self.op_progress.grid_remove)
-            self.app.after(0, self.op_progress_label.grid_remove)
-            self.app.after(100, self.refresh_files, self.current_folder_id)
+            
+            self.app.after(0, self.op_progress_label.configure, {"text": "Upload Complete!"})
+            self.app.after(5000, lambda: self.op_progress.grid_remove())
+            self.app.after(5000, lambda: self.op_progress_label.grid_remove())
+            self.app.after(100, lambda: self.refresh_files(self.current_folder_id, add_to_history=False))
 
         threading.Thread(target=_upload_worker, daemon=True).start()
 
-    def _perform_upload(self, filepath, relative_path, headers):
+    def _perform_upload(self, filepath, relative_path, headers, create_callback):
         try:
-            with open(filepath, 'rb') as f:
-                files = {'file': (os.path.basename(filepath), f)}
-                data = {'parent_id': self.current_folder_id or '', 'relative_path': relative_path}
-                response = requests.post(f"{config.LICENSE_SERVER_URL}/files/api/upload", headers=headers, files=files, data=data, timeout=300)
+            fields = {
+                'parent_id': str(self.current_folder_id or ''),
+                'relative_path': relative_path,
+                'file': (os.path.basename(filepath), open(filepath, 'rb'), 'application/octet-stream')
+            }
+            encoder = MultipartEncoder(fields=fields)
+            monitor = MultipartEncoderMonitor(encoder, create_callback(encoder))
+            
+            response = requests.post(
+                f"{config.LICENSE_SERVER_URL}/files/api/upload",
+                headers={**headers, 'Content-Type': monitor.content_type},
+                data=monitor,
+                timeout=300
+            )
             return response.status_code == 201
-        except requests.exceptions.RequestException:
+        except requests.exceptions.RequestException as e:
+            print(f"Upload error: {e}")
             return False
-        except Exception:
+        except Exception as e:
+            print(f"Generic upload error: {e}")
             return False
 
     def create_new_folder(self):
@@ -294,16 +402,19 @@ class FileManagementTab(ctk.CTkFrame):
 
         def _create():
             try:
-                # Note: This requires a new API endpoint. Assuming it's `/api/create-folder`
                 response = requests.post(f"{config.LICENSE_SERVER_URL}/files/api/create-folder", headers=headers, json=data, timeout=30)
                 if response.status_code == 201:
-                    self.app.after(0, self.refresh_files, self.current_folder_id)
+                    self.app.after(0, lambda: self.refresh_files(self.current_folder_id, add_to_history=False))
                 else:
-                    self.app.after(0, messagebox.showerror, "Creation Failed", response.json().get('reason', 'Server error'))
+                    try:
+                        # Try to get a specific reason from the server's JSON response
+                        reason = response.json().get('reason', 'An unknown server error occurred.')
+                    except requests.exceptions.JSONDecodeError:
+                        # If the response isn't JSON, show the raw text (e.g., "404 Not Found")
+                        reason = f"Server returned a non-JSON response (Status: {response.status_code})."
+                    self.app.after(0, messagebox.showerror, "Creation Failed", reason)
             except requests.exceptions.RequestException as e:
                 self.app.after(0, messagebox.showerror, "Connection Error", str(e))
-        
-        threading.Thread(target=_create, daemon=True).start()
 
     def download_selected_item(self):
         selected_iid = self.files_tree.selection()
@@ -326,26 +437,31 @@ class FileManagementTab(ctk.CTkFrame):
         
         self.op_progress.grid()
         self.op_progress_label.grid()
-        self.op_progress_label.configure(text=f"Downloading: {item_data['filename']}")
-        self.op_progress.configure(mode="indeterminate")
-        self.op_progress.start()
-
+        
         def _download():
             try:
                 with requests.get(f"{config.LICENSE_SERVER_URL}/files/api/download/{item_data['id']}", headers=headers, stream=True, timeout=300) as r:
                     r.raise_for_status()
+                    total_size = int(r.headers.get('content-length', 0))
+                    bytes_downloaded = 0
                     with open(save_path, 'wb') as f:
                         for chunk in r.iter_content(chunk_size=8192):
                             f.write(chunk)
+                            bytes_downloaded += len(chunk)
+                            if total_size > 0:
+                                progress = bytes_downloaded / total_size
+                                self.app.after(0, self.op_progress.set, progress)
+                                self.app.after(0, self.op_progress_label.configure, {"text": f"Downloading: {item_data['filename']} ({int(progress*100)}%)"})
+
                 self.app.after(0, messagebox.showinfo, "Download Complete", f"Successfully downloaded '{item_data['filename']}'")
             except requests.exceptions.RequestException as e:
                 self.app.after(0, messagebox.showerror, "Download Failed", str(e))
             finally:
-                self.app.after(0, self.op_progress.stop)
-                self.app.after(0, self.op_progress.grid_remove)
-                self.app.after(0, self.op_progress_label.grid_remove)
+                self.app.after(0, lambda: self.op_progress.grid_remove())
+                self.app.after(0, lambda: self.op_progress_label.grid_remove())
 
         threading.Thread(target=_download, daemon=True).start()
+
 
     def download_folder(self, folder_data):
         save_location = filedialog.askdirectory(title=f"Select where to save the '{folder_data['filename']}' folder")
@@ -360,7 +476,6 @@ class FileManagementTab(ctk.CTkFrame):
         def _download_worker():
             files_to_download = []
             
-            # Recursively get file list
             def get_all_files(folder_id, current_path):
                 url = f"{config.LICENSE_SERVER_URL}/files/api/list/{folder_id}"
                 try:
@@ -372,7 +487,7 @@ class FileManagementTab(ctk.CTkFrame):
                         if item['is_folder']:
                             get_all_files(item['id'], new_path)
                         else:
-                            files_to_download.append({'id': item['id'], 'path': new_path})
+                            files_to_download.append({'id': item['id'], 'path': new_path, 'size': item['filesize']})
                 except requests.exceptions.RequestException:
                     self.app.after(0, messagebox.showerror, "Error", "Could not fetch folder contents.")
                     return
@@ -386,6 +501,7 @@ class FileManagementTab(ctk.CTkFrame):
                 return
 
             for i, file_info in enumerate(files_to_download):
+                self.app.after(0, self.op_progress.set, (i / total_files))
                 self.app.after(0, self.op_progress_label.configure, {"text": f"Downloading ({i+1}/{total_files}): {os.path.basename(file_info['path'])}"})
                 
                 local_path = os.path.join(save_location, file_info['path'])
@@ -399,12 +515,11 @@ class FileManagementTab(ctk.CTkFrame):
                 except requests.exceptions.RequestException:
                     if not messagebox.askyesno("Download Failed", f"Failed to download {os.path.basename(file_info['path'])}. Continue?"):
                         break
-                
-                self.app.after(0, self.op_progress.set, (i + 1) / total_files)
-
+            
+            self.app.after(0, self.op_progress.set, 1.0)
             self.app.after(0, messagebox.showinfo, "Download Complete", f"Finished downloading folder '{folder_data['filename']}'.")
-            self.app.after(0, self.op_progress.grid_remove)
-            self.app.after(0, self.op_progress_label.grid_remove)
+            self.app.after(5000, lambda: self.op_progress.grid_remove())
+            self.app.after(5000, lambda: self.op_progress_label.grid_remove())
 
         threading.Thread(target=_download_worker, daemon=True).start()
 
@@ -425,10 +540,18 @@ class FileManagementTab(ctk.CTkFrame):
             try:
                 response = requests.delete(f"{config.LICENSE_SERVER_URL}/files/api/delete/{item_data['id']}", headers=headers, timeout=30)
                 if response.status_code == 200:
-                    self.app.after(0, self.refresh_files, self.current_folder_id)
+                    self.app.after(0, lambda: self.refresh_files(self.current_folder_id, add_to_history=False))
                 else:
                     self.app.after(0, messagebox.showerror, "Deletion Failed", response.json().get('reason', 'Server error'))
             except requests.exceptions.RequestException as e:
                 self.app.after(0, messagebox.showerror, "Deletion Failed", str(e))
         
         threading.Thread(target=_delete, daemon=True).start()
+        
+    def open_upgrade_page(self):
+        if not self.app.license_info.get('key'):
+            messagebox.showerror("Error", "No license key found to authenticate.")
+            return
+        
+        auth_url = f"{config.LICENSE_SERVER_URL}/authenticate-from-app/{self.app.license_info['key']}"
+        webbrowser.open_new_tab(auth_url)

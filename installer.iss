@@ -1,7 +1,7 @@
 ; NREGA Bot Inno Setup Script
-; Version 2.6.1 (Bitmap Fix)
+; Version 2.6.2 (Bitmap Fix)
 
-#define AppVersion "2.6.1"  ; Add this line
+#define AppVersion "2.6.2"  ; Add this line
 #define AppName "NREGA Bot"
 #define AppPublisher "PoddarSolutions"
 #define AppURL "https://nregabot.com"

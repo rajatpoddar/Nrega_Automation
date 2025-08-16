@@ -17,6 +17,8 @@
     
     <style>
         body { font-family: 'Inter', sans-serif; }
+        .version-entry { display: none; }
+        .version-entry.active { display: block; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 antialiased dark:bg-gray-900 dark:text-gray-200">
@@ -39,9 +41,25 @@
                     <p class="text-lg text-gray-600 dark:text-gray-400 mt-4 max-w-3xl mx-auto">Access the latest and previous releases of NREGA Bot.</p>
                 </div>
 
-                <div class="max-w-4xl mx-auto space-y-8">
+                <div id="version-list" class="max-w-4xl mx-auto space-y-8">
 
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border-2 border-blue-500 dark:border-blue-500 shadow-lg">
+                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border-2 border-blue-500 dark:border-blue-500 shadow-lg">
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.6.2 (NREGA Bot)</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: August 16, 2025</p>
+                        <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
+                            <li>✨ **Major Feature:** Complete File Manager overhaul with drag & drop uploads, folder creation, and an enhanced, more reliable UI.</li>
+                            <li>✨ **Feature:** Added new Quarterly and Half-Yearly subscription plans for greater user flexibility.</li>
+                            <li>✨ **Feature:** Users can now upgrade their cloud storage capacity directly from their web account page.</li>
+                            <li>🛠️ **Improvement:** The 'About' tab in the desktop app now correctly displays the user's email and real-time cloud storage usage.</li>
+                            <li>🐞 **Critical Bug Fix:** Resolved numerous startup and data synchronization bugs, leading to a much smoother and more reliable user experience.</li>
+                        </ul>
+                        <div class="mt-6 flex flex-col sm:flex-row gap-4">
+                            <a href="https://nregabot.com/updates/NREGABot-v2.6.2-Setup.exe" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download for Windows</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.6.2-macOS.dmg" class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download for macOS</a>
+                        </div>
+                    </div>
+
+                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.6.1 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: August 10, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
@@ -57,7 +75,7 @@
                         </div>
                     </div>
 
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.6.0 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: August 9, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
@@ -77,7 +95,7 @@
                         </div>
                     </div>
 
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.5.5 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: August 6, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
@@ -101,7 +119,7 @@
                         </div>
                     </div>
 
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.5.4 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: August 5, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
@@ -119,7 +137,7 @@
                         </div>
                     </div>
 
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.5.3 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: August 2, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
@@ -138,7 +156,7 @@
                         </div>
                     </div>
                     
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.5.2 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: July 29, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
@@ -156,7 +174,7 @@
                         </div>
                     </div>
                     
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.5.1 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: July 29, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
@@ -173,7 +191,7 @@
                             <a href="https://nregabot.com/updates/NREGABot-v2.5.1-macOS.dmg" class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download for macOS</a>
                         </div>
                     </div>
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.5.0 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: July 26, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
@@ -189,7 +207,7 @@
                         </div>
                     </div>
 
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.4.4 (NREGA Dashboard)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: July 24, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
@@ -203,7 +221,7 @@
                         </div>
                     </div>
 
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.4.3 (NREGA Dashboard)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: July 23, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
@@ -217,7 +235,7 @@
                         </div>
                     </div>
 
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.4.2 (NREGA Dashboard)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: July 15, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
@@ -231,7 +249,7 @@
                         </div>
                     </div>
 
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.4.1 (NREGA Dashboard)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: July 8, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
@@ -245,7 +263,7 @@
                         </div>
                     </div>
 
-                     <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                     <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.4.0 (NREGA Dashboard)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: July 1, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
@@ -260,6 +278,8 @@
                     </div>
 
                 </div>
+                 <div id="pagination-controls" class="flex justify-center items-center mt-12 space-x-2">
+                    </div>
             </div>
         </section>
     </main>
@@ -269,5 +289,67 @@
             <p>&copy; 2025 NREGA Bot by Rajat Poddar. All rights reserved.</p>
         </div>
     </footer>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const itemsPerPage = 5;
+            const versionList = document.getElementById('version-list');
+            const versionEntries = Array.from(versionList.getElementsByClassName('version-entry'));
+            const paginationControls = document.getElementById('pagination-controls');
+            const totalPages = Math.ceil(versionEntries.length / itemsPerPage);
+            let currentPage = 1;
+
+            function showPage(page) {
+                currentPage = page;
+                const startIndex = (page - 1) * itemsPerPage;
+                const endIndex = startIndex + itemsPerPage;
+
+                versionEntries.forEach((entry, index) => {
+                    if (index >= startIndex && index < endIndex) {
+                        entry.classList.add('active');
+                    } else {
+                        entry.classList.remove('active');
+                    }
+                });
+                renderControls();
+            }
+
+            function renderControls() {
+                paginationControls.innerHTML = '';
+
+                // Previous Button
+                const prevButton = document.createElement('button');
+                prevButton.innerHTML = '&laquo; Previous';
+                prevButton.className = 'px-4 py-2 text-sm font-medium text-gray-700 bg-white rounded-md border border-gray-300 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 disabled:opacity-50';
+                prevButton.disabled = currentPage === 1;
+                prevButton.addEventListener('click', () => showPage(currentPage - 1));
+                paginationControls.appendChild(prevButton);
+                
+                // Page Numbers
+                for (let i = 1; i <= totalPages; i++) {
+                    const pageButton = document.createElement('button');
+                    pageButton.textContent = i;
+                    pageButton.className = 'px-4 py-2 text-sm font-medium rounded-md border';
+                    if (i === currentPage) {
+                        pageButton.className += ' bg-blue-600 text-white border-blue-600';
+                    } else {
+                        pageButton.className += ' text-gray-700 bg-white border-gray-300 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700';
+                    }
+                    pageButton.addEventListener('click', () => showPage(i));
+                    paginationControls.appendChild(pageButton);
+                }
+
+                // Next Button
+                const nextButton = document.createElement('button');
+                nextButton.innerHTML = 'Next &raquo;';
+                nextButton.className = 'px-4 py-2 text-sm font-medium text-gray-700 bg-white rounded-md border border-gray-300 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 disabled:opacity-50';
+                nextButton.disabled = currentPage === totalPages;
+                nextButton.addEventListener('click', () => showPage(currentPage + 1));
+                paginationControls.appendChild(nextButton);
+            }
+            
+            showPage(1);
+        });
+    </script>
 </body>
 </html>

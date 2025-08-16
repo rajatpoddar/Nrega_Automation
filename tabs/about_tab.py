@@ -7,6 +7,7 @@ import config
 import os
 import sys
 import json
+import humanize
 from PIL import Image
 from datetime import datetime
 from urllib.parse import urlencode
@@ -71,24 +72,36 @@ class AboutTab(ctk.CTkFrame):
         self.plan_type_label = ctk.CTkLabel(details_frame, text="N/A", font=ctk.CTkFont(weight="bold"))
         self.plan_type_label.grid(row=0, column=1, sticky="w", padx=10)
 
-        ctk.CTkLabel(details_frame, text="License Key:", text_color="gray50").grid(row=1, column=0, sticky="w", pady=(5,0))
+        # --- ADDED: User Email Display ---
+        ctk.CTkLabel(details_frame, text="Email:", text_color="gray50").grid(row=1, column=0, sticky="w", pady=(5,0))
+        self.email_label = ctk.CTkLabel(details_frame, text="N/A", font=ctk.CTkFont(weight="bold"))
+        self.email_label.grid(row=1, column=1, sticky="w", padx=10, pady=(5,0))
+        # --- END ADDED ---
+
+        ctk.CTkLabel(details_frame, text="License Key:", text_color="gray50").grid(row=2, column=0, sticky="w", pady=(5,0))
         key_frame = ctk.CTkFrame(details_frame, fg_color="transparent")
-        key_frame.grid(row=1, column=1, sticky="ew", padx=10, pady=(5,0))
+        key_frame.grid(row=2, column=1, sticky="ew", padx=10, pady=(5,0))
         self.key_label = ctk.CTkLabel(key_frame, text="N/A", font=ctk.CTkFont(family="monospace"))
         self.key_label.pack(side="left")
         ctk.CTkButton(key_frame, text="Copy", width=50, command=self._copy_key).pack(side="left", padx=(10, 0))
 
-        ctk.CTkLabel(details_frame, text="Expires On:", text_color="gray50").grid(row=2, column=0, sticky="w", pady=(5,0))
+        ctk.CTkLabel(details_frame, text="Expires On:", text_color="gray50").grid(row=3, column=0, sticky="w", pady=(5,0))
         self.expires_on_value_label = ctk.CTkLabel(details_frame, text="N/A", font=ctk.CTkFont(weight="bold"))
-        self.expires_on_value_label.grid(row=2, column=1, sticky="w", padx=10, pady=(5,0))
+        self.expires_on_value_label.grid(row=3, column=1, sticky="w", padx=10, pady=(5,0))
         
-        ctk.CTkLabel(details_frame, text="Devices Used:", text_color="gray50").grid(row=3, column=0, sticky="w", pady=(5,0))
+        ctk.CTkLabel(details_frame, text="Devices Used:", text_color="gray50").grid(row=4, column=0, sticky="w", pady=(5,0))
         self.devices_used_label = ctk.CTkLabel(details_frame, text="N/A", font=ctk.CTkFont(weight="bold"))
-        self.devices_used_label.grid(row=3, column=1, sticky="w", padx=10, pady=(5,0))
+        self.devices_used_label.grid(row=4, column=1, sticky="w", padx=10, pady=(5,0))
 
-        ctk.CTkLabel(details_frame, text="Machine ID:", text_color="gray50").grid(row=4, column=0, sticky="w", pady=(5,0))
+        # ADD THIS NEW BLOCK FOR STORAGE
+        ctk.CTkLabel(details_frame, text="Storage Used:", text_color="gray50").grid(row=5, column=0, sticky="w", pady=(5,0))
+        self.storage_label = ctk.CTkLabel(details_frame, text="N/A", font=ctk.CTkFont(weight="bold"))
+        self.storage_label.grid(row=5, column=1, sticky="w", padx=10, pady=(5,0))
+        # END OF NEW BLOCK
+
+        ctk.CTkLabel(details_frame, text="Machine ID:", text_color="gray50").grid(row=6, column=0, sticky="w", pady=(5,0)) # <-- CHANGE THIS
         machine_id_frame = ctk.CTkFrame(details_frame, fg_color="transparent")
-        machine_id_frame.grid(row=4, column=1, sticky="ew", padx=10, pady=(5,0))
+        machine_id_frame.grid(row=6, column=1, sticky="ew", padx=10, pady=(5,0))
         self.machine_id_label = ctk.CTkLabel(machine_id_frame, text="N/A", font=ctk.CTkFont(family="monospace"))
         self.machine_id_label.pack(side="left")
         ctk.CTkButton(machine_id_frame, text="Copy", width=50, command=self._copy_machine_id).pack(side="left", padx=(10,0))
@@ -185,6 +198,17 @@ class AboutTab(ctk.CTkFrame):
         for widget in self.action_panel_container.winfo_children():
             widget.destroy()
 
+        # Helper function to create the direct login button
+        def create_manage_button(parent):
+            def open_manage_url():
+                if self.license_info.get('key'):
+                    auth_url = f"{config.LICENSE_SERVER_URL}/authenticate-from-app/{self.license_info['key']}"
+                    webbrowser.open_new_tab(auth_url)
+                else:
+                    messagebox.showerror("Error", "License key not found.")
+            
+            return ctk.CTkButton(parent, text="Manage on Website", fg_color="transparent", border_width=1, text_color=("gray10", "#DCE4EE"), command=open_manage_url)
+
         if key_type == 'trial':
             panel = ctk.CTkFrame(self.action_panel_container, border_color="#3B82F6", border_width=2)
             panel.grid(row=0, column=0, sticky="nsew")
@@ -192,6 +216,14 @@ class AboutTab(ctk.CTkFrame):
             ctk.CTkLabel(panel, text="Trial Version Active", font=ctk.CTkFont(size=16, weight="bold"), text_color="#3B82F6").pack(pady=(20,10), padx=20)
             ctk.CTkLabel(panel, text="Upgrade to a full license to unlock all features permanently and remove limitations.", wraplength=300, justify="center").pack(pady=5, padx=20)
             ctk.CTkButton(panel, text="Upgrade to Full License", command=lambda: self.app.show_purchase_window(context='upgrade')).pack(pady=20, ipady=5)
+            
+            # Add Manage button for trial users
+            button_container = ctk.CTkFrame(panel, fg_color="transparent")
+            button_container.pack(fill='x', padx=10, pady=(0, 15))
+            button_container.grid_columnconfigure(0, weight=1)
+            create_manage_button(button_container).grid(row=0, column=0, sticky="ew")
+            
+            # ADD THIS LINE TO SHOW THE DISCLAIMER
             self._create_disclaimer_frame(panel).pack(side='bottom', fill='x', pady=15, padx=10)
             return
 
@@ -212,6 +244,7 @@ class AboutTab(ctk.CTkFrame):
         
         ctk.CTkLabel(panel, text="Account Management", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(20,10), padx=20)
         
+        # ... (The existing device list code remains unchanged here) ...
         devices_frame = ctk.CTkFrame(panel, fg_color="transparent")
         devices_frame.pack(expand=True, fill="both", padx=15, pady=(0, 10))
         
@@ -253,9 +286,18 @@ class AboutTab(ctk.CTkFrame):
         button_container.pack(fill='x', padx=10, pady=(10, 15))
         button_container.grid_columnconfigure((0, 1), weight=1)
 
-        manage_url = f"{config.LICENSE_SERVER_URL}/account"
-        ctk.CTkButton(button_container, text="Manage on Website", fg_color="transparent", border_width=1, text_color=("gray10", "#DCE4EE"), command=lambda: webbrowser.open(manage_url)).grid(row=0, column=0, sticky="ew", padx=(0, 5))
+        create_manage_button(button_container).grid(row=0, column=0, sticky="ew", padx=(0, 5))
         ctk.CTkButton(button_container, text="Contact Support", fg_color="transparent", border_width=1, text_color=("gray10", "#DCE4EE"), command=self.contact_support_email).grid(row=0, column=1, sticky="ew", padx=(5, 0))
+
+
+    def update_storage_display(self, usage, limit):
+        """Updates the storage usage label, called from other tabs."""
+        if usage is not None and limit is not None:
+            usage_str = humanize.naturalsize(usage)
+            limit_str = humanize.naturalsize(limit)
+            self.storage_label.configure(text=f"{usage_str} of {limit_str}")
+        else:
+            self.storage_label.configure(text="N/A")
         
     def request_single_device_deactivation(self, machine_id_to_deactivate):
         user_name = self.license_info.get('user_name', 'N/A')
@@ -324,7 +366,7 @@ class AboutTab(ctk.CTkFrame):
         
         key_type = license_info.get('key_type', 'N/A')
         self.plan_type_label.configure(text=f"{str(key_type).capitalize()} Plan")
-
+        self.email_label.configure(text=license_info.get('user_email', 'N/A'))
         self.key_label.configure(text=license_info.get('key', 'N/A'))
         self.expires_on_value_label.configure(text=expires_at_str.split('T')[0] if expires_at_str else 'N/A')
         
@@ -332,6 +374,12 @@ class AboutTab(ctk.CTkFrame):
         activated_machines_str = license_info.get('activated_machines', '')
         activated_count = len(activated_machines_str.split(',')) if activated_machines_str else 0
         self.devices_used_label.configure(text=f"{activated_count} of {max_devices} used")
+
+        # Call the storage update method with the new data from the server
+        self.update_storage_display(
+            license_info.get('total_usage'), 
+            license_info.get('max_storage')
+        )
 
         self._update_action_panel(status, key_type)
 
