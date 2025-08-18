@@ -135,12 +135,14 @@ class DelWorkAllocTab(BaseAutomationTab):
             self.app.clear_log(self.log_display)
             self.update_status("Ready", 0.0)
             self.app.log_message(self.log_display, "Form has been reset.")
+            self.app.after(0, self.app.set_status, "Ready")
 
     def run_automation_logic(self, panchayat, jobcard_list):
         """The core logic for the web automation task."""
         self.app.after(0, self.set_ui_state, True)
         self.app.clear_log(self.log_display)
         self.app.log_message(self.log_display, f"Starting Delete Work Allocation for Panchayat: {panchayat}")
+        self.app.after(0, self.app.set_status, "Running Delete Work Allocation...")
 
         try:
             driver = self.app.get_driver()
@@ -194,6 +196,7 @@ class DelWorkAllocTab(BaseAutomationTab):
             messagebox.showerror("Automation Error", f"An error occurred:\n\n{e}")
         finally:
             self.app.after(0, self.set_ui_state, False)
+            self.app.after(0, self.app.set_status, "Automation Finished")
 
     def _process_single_id(self, driver, wait, panchayat, item_id, is_auto_mode):
         """Processes a single Jobcard or Registration ID."""

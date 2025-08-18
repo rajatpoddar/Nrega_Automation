@@ -122,6 +122,8 @@ class MbEntryTab(BaseAutomationTab):
             self.app.clear_log(self.log_display)
             self.update_status("Ready", 0.0)
             self.app.log_message(self.log_display, "Form has been reset.")
+            self.app.after(0, self.app.set_status, "Ready")
+
     def start_automation(self):
         cfg = {key: var.get().strip() for key, var in self.config_vars.items()}
         if any(not value for value in cfg.values()): messagebox.showwarning("Input Error", "All configuration fields are required."); return
@@ -148,6 +150,7 @@ class MbEntryTab(BaseAutomationTab):
         self.app.clear_log(self.log_display)
         self.app.after(0, lambda: [self.results_tree.delete(item) for item in self.results_tree.get_children()])
         self.app.log_message(self.log_display, "Starting MB Entry automation...")
+        self.app.after(0, self.app.set_status, "Running eMB Entry...")
         try:
             driver = self.app.get_driver()
             if not driver: return
@@ -177,6 +180,7 @@ class MbEntryTab(BaseAutomationTab):
             messagebox.showerror("Automation Error", f"An error occurred:\n\n{e}")
         finally:
             self.app.after(0, self.set_ui_state, False)
+            self.app.after(0, self.app.set_status, "Automation Finished")
 
     def _log_result(self, work_code, status, details):
         timestamp = datetime.now().strftime("%H:%M:%S")

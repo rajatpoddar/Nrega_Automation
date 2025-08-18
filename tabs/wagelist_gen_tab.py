@@ -70,6 +70,7 @@ class WagelistGenTab(BaseAutomationTab):
             self.app.clear_log(self.log_display)
             self.update_status("Ready", 0.0)
             self.app.log_message(self.log_display, "Form has been reset.")
+            self.app.after(0, self.app.set_status, "Ready")
 
     def start_automation(self):
         agency_name_part = self.agency_entry.get().strip()
@@ -82,6 +83,7 @@ class WagelistGenTab(BaseAutomationTab):
         self.app.clear_log(self.log_display)
         self.app.after(0, lambda: [self.results_tree.delete(item) for item in self.results_tree.get_children()])
         self.app.log_message(self.log_display, f"Starting wagelist generation for: {agency_name_part}")
+        self.app.after(0, self.app.set_status, "Running Wagelist Generation...")
         try:
             driver = self.app.get_driver()
             if not driver: return
@@ -136,6 +138,7 @@ class WagelistGenTab(BaseAutomationTab):
         finally:
             self.app.after(0, self.set_ui_state, False)
             self.app.after(0, self.update_status, "Automation Finished.")
+            self.app.after(0, self.app.set_status, "Automation Finished")
 
     def _log_result(self, work_code, status, job_card, applicant_name):
         timestamp = datetime.now().strftime("%H:%M:%S")

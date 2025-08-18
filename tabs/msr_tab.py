@@ -93,11 +93,13 @@ class MsrTab(BaseAutomationTab):
             self.app.clear_log(self.log_display)
             self.update_status("Ready", 0)
             self.app.log_message(self.log_display, "Form has been reset.")
+            self.app.after(0, self.app.set_status, "Ready")
     def run_automation_logic(self):
         self.app.after(0, self.set_ui_state, True)
         self.app.after(0, lambda: [self.results_tree.delete(item) for item in self.results_tree.get_children()])
         self.app.clear_log(self.log_display)
         self.app.log_message(self.log_display, "Starting MSR processing...")
+        self.app.after(0, self.app.set_status, "Running MSR Payment...")
         panchayat_name = self.panchayat_entry.get().strip()
         if not panchayat_name: messagebox.showerror("Input Error", "Please enter a Panchayat name."); self.app.after(0, self.set_ui_state, False); return
         work_keys = [line.strip() for line in self.work_key_text.get("1.0", tkinter.END).strip().splitlines() if line.strip()]
@@ -129,6 +131,7 @@ class MsrTab(BaseAutomationTab):
         finally:
             self.app.after(0, self.set_ui_state, False)
             self.app.after(0, self.update_status, "Automation Finished.", 1.0)
+            self.app.after(0, self.app.set_status, "Automation Finished")
             
     def export_to_pdf(self):
         data = [self.results_tree.item(item_id)['values'] for item_id in self.results_tree.get_children()]

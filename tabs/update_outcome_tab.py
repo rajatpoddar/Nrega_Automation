@@ -111,6 +111,7 @@ class UpdateOutcomeTab(BaseAutomationTab):
         for item in self.results_tree.get_children(): self.results_tree.delete(item)
 
         self.app.log_message(self.log_display, "--- Starting Estimated Outcome Update ---")
+        self.app.after(0, self.app.set_status, "Running Update Outcome...")
         
         driver = self.app.get_driver()
         if not driver:
@@ -140,6 +141,7 @@ class UpdateOutcomeTab(BaseAutomationTab):
         self.update_status("Automation Finished", 1.0)
         self.app.log_message(self.log_display, "\n--- Automation Finished ---")
         messagebox.showinfo("Complete", "Outcome update process has finished.")
+        self.app.after(0, self.app.set_status, "Automation Finished")
 
     def _process_single_work_code(self, driver, work_code, estimated_outcome):
         wait = WebDriverWait(driver, 20)
@@ -211,3 +213,4 @@ class UpdateOutcomeTab(BaseAutomationTab):
             self.update_status("Ready", 0)
             for item in self.results_tree.get_children():
                 self.results_tree.delete(item)
+            self.app.after(0, self.app.set_status, "Ready")

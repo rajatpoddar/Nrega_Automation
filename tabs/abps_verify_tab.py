@@ -93,6 +93,7 @@ class AbpsVerifyTab(BaseAutomationTab):
             self.app.clear_log(self.log_display)
             self.update_status("Ready", 0.0)
             self.app.log_message(self.log_display, "Form has been reset.")
+            self.app.after(0, self.app.set_status, "Ready")
 
 
     def run_automation_logic(self, panchayat, village):
@@ -100,6 +101,7 @@ class AbpsVerifyTab(BaseAutomationTab):
         self.app.clear_log(self.log_display)
         self.app.after(0, lambda: [self.results_tree.delete(item) for item in self.results_tree.get_children()])
         self.app.log_message(self.log_display, "Starting ABPS Verification...")
+        self.app.after(0, self.app.set_status, "Running ABPS Verification...")
 
         session_processed_jobcards = set()
 
@@ -228,6 +230,7 @@ class AbpsVerifyTab(BaseAutomationTab):
             messagebox.showerror("Automation Error", f"An error occurred:\n\n{e}")
         finally:
             self.app.after(0, self.set_ui_state, False)
+            self.app.after(0, self.app.set_status, "Automation Finished")
 
     def _log_result(self, job_card, app_name, status):
         timestamp = datetime.now().strftime("%H:%M:%S")

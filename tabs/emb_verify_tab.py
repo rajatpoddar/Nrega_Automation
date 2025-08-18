@@ -110,6 +110,7 @@ class EmbVerifyTab(BaseAutomationTab):
             self.app.clear_log(self.log_display)
             self.update_status("Ready", 0.0)
             self.app.log_message(self.log_display, "Form has been reset.")
+            self.app.after(0, self.app.set_status, "Ready")
 
     def start_automation(self):
         """Validates inputs and starts the automation thread."""
@@ -139,6 +140,7 @@ class EmbVerifyTab(BaseAutomationTab):
         self.app.clear_log(self.log_display)
         self.app.after(0, lambda: [self.results_tree.delete(item) for item in self.results_tree.get_children()])
         self.app.log_message(self.log_display, f"Starting eMB Verification for Panchayat: {panchayat}")
+        self.app.after(0, self.app.set_status, "Running eMB Verification...")
 
         try:
             driver = self.app.get_driver()
@@ -198,6 +200,7 @@ class EmbVerifyTab(BaseAutomationTab):
             messagebox.showerror("Automation Error", f"An unexpected error occurred:\n\n{e}")
         finally:
             self.app.after(0, self.set_ui_state, False)
+            self.app.after(0, self.app.set_status, "Automation Finished")
 
     def _process_single_work_code(self, driver, wait, work_code, use_search, verify_amount):
         """Handles the logic for a single work code verification."""

@@ -180,6 +180,7 @@ class MusterrollGenTab(BaseAutomationTab):
             self.update_status("Ready", 0.0)
             self.success_label.configure(text="Success: 0"); self.skipped_label.configure(text="Skipped/Failed: 0")
             self.app.log_message(self.log_display, "Form has been reset.")
+            self.app.after(0, self.app.set_status, "Ready")
             
     def save_inputs(self, inputs):
         try:
@@ -224,6 +225,7 @@ class MusterrollGenTab(BaseAutomationTab):
         self.app.after(0, self.set_ui_state, True)
         self.app.clear_log(self.log_display)
         self.app.log_message(self.log_display, f"Starting MR generation for: {inputs['panchayat']}")
+        self.app.after(0, self.app.set_status, "Running MR Generation...")
         
         output_dir = None
         try:
@@ -265,6 +267,7 @@ class MusterrollGenTab(BaseAutomationTab):
             self.app.after(0, self.set_ui_state, False)
             self.app.after(0, self.update_status, "Automation Finished.", 1.0)
             self.app.after(100, self._show_completion_dialog, output_dir)
+            self.app.after(0, self.app.set_status, "Automation Finished")
 
     def _show_completion_dialog(self, output_dir):
         summary = f"Automation complete.\n\nSuccess: {self.success_count}\nSkipped/Failed: {self.skipped_count}"

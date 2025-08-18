@@ -58,6 +58,7 @@ class FtoGenerationTab(BaseAutomationTab):
             for item in self.results_tree.get_children(): self.results_tree.delete(item)
             self.update_status("Ready", 0)
             self.app.log_message(self.log_display, "UI has been reset.")
+            self.app.after(0, self.app.set_status, "Ready")
 
     def start_automation(self):
         self.app.start_automation_thread(self.automation_key, self.run_automation_logic)
@@ -110,6 +111,7 @@ class FtoGenerationTab(BaseAutomationTab):
         self.app.clear_log(self.log_display)
         self.app.after(0, lambda: [self.results_tree.delete(item) for item in self.results_tree.get_children()])
         self.update_status("Starting...", 0)
+        self.app.after(0, self.app.set_status, "Running FTO Generation...")
         try:
             driver = self.app.get_driver()
             if not driver: return
@@ -141,3 +143,4 @@ class FtoGenerationTab(BaseAutomationTab):
         finally:
             self.app.after(0, self.set_ui_state, False)
             self.app.after(0, self.update_status, "Finished.", 1.0)
+            self.app.after(0, self.app.set_status, "Automation Finished")

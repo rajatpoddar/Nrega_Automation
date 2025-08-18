@@ -144,6 +144,7 @@ class DuplicateMrTab(BaseAutomationTab):
         for item in self.results_tree.get_children(): self.results_tree.delete(item)
 
         self.app.log_message(self.log_display, "--- Starting Duplicate MR Printing ---")
+        self.app.after(0, self.app.set_status, "Running Duplicate MR Print...")
         self.current_panchayat = panchayat
         
         driver = self.app.get_driver()
@@ -167,6 +168,7 @@ class DuplicateMrTab(BaseAutomationTab):
             self.app.after(0, self.set_ui_state, False)
             self.app.log_message(self.log_display, "\n--- Automation Finished ---")
             self.app.after(100, self._show_completion_dialog)
+            self.app.after(0, self.app.set_status, "Automation Finished")
 
     def _show_completion_dialog(self):
         final_message = "Duplicate MR process has finished."
@@ -344,3 +346,4 @@ class DuplicateMrTab(BaseAutomationTab):
             self.orientation_var.set("Landscape")
             self.scale_slider.set(75)
             self.scale_label.configure(text="75%")
+            self.app.after(0, self.app.set_status, "Ready")

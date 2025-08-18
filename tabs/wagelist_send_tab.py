@@ -104,6 +104,7 @@ class WagelistSendTab(BaseAutomationTab):
             self.app.clear_log(self.log_display)
             self.update_status("Ready", 0.0)
             self.app.log_message(self.log_display, "Form has been reset.")
+            self.app.after(0, self.app.set_status, "Ready")
 
     def start_automation(self):
         try:
@@ -125,6 +126,7 @@ class WagelistSendTab(BaseAutomationTab):
         self.app.after(0, lambda: [self.results_tree.delete(item) for item in self.results_tree.get_children()])
         self.app.clear_log(self.log_display)
         self.app.log_message(self.log_display, "Starting automation...")
+        self.app.after(0, self.app.set_status, "Running Wagelist Send...")
         
         try:
             driver = self.app.get_driver()
@@ -169,6 +171,7 @@ class WagelistSendTab(BaseAutomationTab):
             self.app.after(0, self.set_ui_state, False)
             if not stopped:
                 self.app.after(0, lambda: messagebox.showinfo("Automation Complete", "Wagelist sending process finished."))
+                self.app.after(0, self.app.set_status, "Automation Finished")
 
     def _process_single_wagelist(self, driver, wait, wagelist, start_row, end_row):
         for attempt in range(2):

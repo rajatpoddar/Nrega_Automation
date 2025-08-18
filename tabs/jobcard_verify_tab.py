@@ -80,6 +80,7 @@ class JobcardVerifyTab(BaseAutomationTab):
             self.photo_path_label.configure(text=f"No folder selected (will use default '{config.JOBCARD_VERIFY_CONFIG['default_photo']}')")
             self.app.clear_log(self.log_display)
             self.update_status("Ready")
+            self.app.after(0, self.app.set_status, "Ready")
 
     def start_automation(self):
         if not self.panchayat_entry.get() or not self.village_entry.get():
@@ -103,10 +104,13 @@ class JobcardVerifyTab(BaseAutomationTab):
         except Exception as e:
             self.app.log_message(self.log_display, f"Error finding photo for {jobcard_no}: {e}", "error"); return None
 
+    # tabs/jobcard_verify_tab.py
+
     def run_automation_logic(self):
         self.app.after(0, self.set_ui_state, True)
         self.app.clear_log(self.log_display)
         self.app.log_message(self.log_display, "Starting Jobcard Verification...")
+        self.app.after(0, self.app.set_status, "Running Jobcard Verification...")
         
         panchayat_name = self.panchayat_entry.get()
         village_name = self.village_entry.get()
@@ -134,8 +138,6 @@ class JobcardVerifyTab(BaseAutomationTab):
 
                 self.app.log_message(self.log_display, f"Selected Panchayat: {panchayat_name}, Village: {village_name}")
                 
-                # --- CORRECTED PLACEMENT ---
-                # Save successful inputs to history only after they have been successfully selected.
                 self.app.update_history("panchayat_name", panchayat_name)
                 self.app.update_history("village_name", village_name)
                 
@@ -144,19 +146,39 @@ class JobcardVerifyTab(BaseAutomationTab):
                     self.app.log_message(self.log_display, f"--- Found Jobcard #{jobcard_count}: {jobcard_no} ---")
                 except TimeoutException:
                     self.app.log_message(self.log_display, "No more jobcards found.", "success"); break
+                
                 photo_to_upload = self._get_photo_for_jobcard(jobcard_no)
+                
                 try:
                     upload_link = driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_grdData_ctl02_link_img_F")
                     if photo_to_upload:
-                        upload_link.click(); wait.until(EC.number_of_windows_to_be(2))
+                        upload_link.click()
+                        time.sleep(1)
+                        
+                        WebDriverWait(driver, 10).until(EC.number_of_windows_to_be(2))
                         popup_handle = [h for h in driver.window_handles if h != main_window_handle][0]
                         driver.switch_to.window(popup_handle)
-                        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'input[type="file"]'))).send_keys(photo_to_upload)
-                        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'input[type="submit"]'))).click()
-                        wait.until(EC.alert_is_present()).accept(); driver.close(); driver.switch_to.window(main_window_handle)
+                        
+                        # --- FINAL FIX: Using the exact IDs from your HTML file ---
+                        file_input_id = "ContentPlaceHolder1_FileUpload_JC"
+                        submit_button_id = "ContentPlaceHolder1_upload_photo"
+                        
+                        file_input = wait.until(EC.presence_of_element_located((By.ID, file_input_id)))
+                        self.app.log_message(self.log_display, f"   - Sending photo path: {photo_to_upload}")
+                        file_input.send_keys(photo_to_upload)
+                        
+                        submit_button = wait.until(EC.element_to_be_clickable((By.ID, submit_button_id)))
+                        submit_button.click()
+                        
+                        wait.until(EC.alert_is_present()).accept()
+                        driver.close()
+                        driver.switch_to.window(main_window_handle)
                         self.app.log_message(self.log_display, "Photo uploaded successfully.", "success")
-                    else: self.app.log_message(self.log_display, "Skipping photo upload, no image found.", "warning")
-                except NoSuchElementException: self.app.log_message(self.log_display, "Photo already uploaded, skipping.")
+                    else: 
+                        self.app.log_message(self.log_display, "Skipping photo upload, no image found.", "warning")
+                except NoSuchElementException: 
+                    self.app.log_message(self.log_display, "Photo already uploaded, skipping.")
+                
                 wait.until(EC.element_to_be_clickable((By.ID, "ctl00_ContentPlaceHolder1_grdData_ctl02_rblDmd_0"))).click()
                 html_element = driver.find_element(By.TAG_NAME, "html")
                 wait.until(EC.element_to_be_clickable((By.ID, "ctl00_ContentPlaceHolder1_grdData_ctl02_rblJCVer_0"))).click()
@@ -166,9 +188,11 @@ class JobcardVerifyTab(BaseAutomationTab):
                 final_alert = wait.until(EC.alert_is_present())
                 self.app.log_message(self.log_display, f"Saved successfully for {jobcard_no}: {final_alert.text}", "success"); final_alert.accept()
                 jobcard_count += 1; time.sleep(2)
+                
             if not self.app.stop_events[self.automation_key].is_set():
                 messagebox.showinfo("Success", "Jobcard verification complete.")
         except Exception as e:
             error_msg = f"{type(e).__name__}: {str(e).splitlines()[0]}"; self.app.log_message(self.log_display, f"Error: {error_msg}", "error"); messagebox.showerror("Automation Error", f"An error occurred: {error_msg}")
         finally:
             self.app.after(0, self.update_status, "Finished"); self.app.after(0, self.set_ui_state, False)
+            self.app.after(0, self.app.set_status, "Automation Finished")

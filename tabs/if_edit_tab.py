@@ -332,6 +332,7 @@ class IfEditTab(BaseAutomationTab):
             self._populate_defaults()
             for item in self.results_tree.get_children(): self.results_tree.delete(item)
             self.app.clear_log(self.log_display)
+            self.app.after(0, self.app.set_status, "Ready")
 
     def select_csv_file(self):
         path = filedialog.askopenfilename(title="Select CSV", filetypes=[("CSV files", "*.csv")])
@@ -358,6 +359,7 @@ class IfEditTab(BaseAutomationTab):
         self.app.after(0, self.set_ui_state, True)
         self.app.clear_log(self.log_display)
         for item in self.results_tree.get_children(): self.results_tree.delete(item)
+        self.app.after(0, self.app.set_status, "Running IF Editor...")
         try:
             driver = self.app.get_driver();
             if not driver: return
@@ -378,6 +380,7 @@ class IfEditTab(BaseAutomationTab):
             self.app.after(0, self.app.log_message, self.log_display, "--- Automation Finished ---")
             self.app.after(0, self.set_ui_state, False)
             self.app.after(100, lambda: messagebox.showinfo("Complete", "IF Editor process has finished."))
+            self.app.after(0, self.app.set_status, "Automation Finished")
 
     def _log_result(self, work_code, job_card, status, details):
         self.app.after(0, lambda: self.results_tree.insert("", "end", values=(work_code, job_card, status, details)))

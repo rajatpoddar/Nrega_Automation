@@ -487,6 +487,7 @@ class WcGenTab(BaseAutomationTab):
         for item in self.results_tree.get_children():
             self.results_tree.delete(item)
         self.app.log_message(self.log_display, "--- Starting Workcode Generation ---")
+        self.app.after(0, self.app.set_status, "Running Workcode Generation...")
         try:
             driver = self.app.get_driver()
             if not driver:
@@ -514,6 +515,7 @@ class WcGenTab(BaseAutomationTab):
             self.app.after(0, self.set_ui_state, False)
             self.app.log_message(self.log_display, "\n--- Automation Finished ---")
             messagebox.showinfo("Complete", "Workcode generation process has finished.")
+            self.app.after(0, self.app.set_status, "Automation Finished")
             
     def select_csv_file(self):
         path = filedialog.askopenfilename(title="Select your CSV data file", filetypes=[("CSV files", "*.csv")])
@@ -566,3 +568,4 @@ class WcGenTab(BaseAutomationTab):
 
             self._populate_defaults()
             self.app.log_message(self.log_display, "Form has been reset.")
+            self.app.after(0, self.app.set_status, "Ready")
