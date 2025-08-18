@@ -183,6 +183,9 @@ class SchemeClosingTab(BaseAutomationTab):
         self.app.after(0, self.set_ui_state, True)
         self.app.clear_log(self.log_display)
         for item in self.results_tree.get_children(): self.results_tree.delete(item)
+        
+        # --- NEW: Update footer status on start ---
+        self.app.after(0, self.app.set_status, "Running Scheme Closing...")
 
         self.app.log_message(self.log_display, "--- Starting Scheme Closing ---")
         
@@ -215,7 +218,6 @@ class SchemeClosingTab(BaseAutomationTab):
                 else:
                     fail_count += 1
 
-            # --- ENHANCEMENT: Final completion alert ---
             completion_message = f"Automation Finished!\n\nSuccessful: {success_count}\nFailed/Cancelled: {fail_count}"
             messagebox.showinfo("Task Complete", completion_message)
 
@@ -226,6 +228,9 @@ class SchemeClosingTab(BaseAutomationTab):
             self.app.after(0, self.set_ui_state, False)
             self.update_status("Automation Finished", 1.0)
             self.app.log_message(self.log_display, "\n--- Automation Finished ---")
+            
+            # --- NEW: Update footer status on finish ---
+            self.app.after(0, self.app.set_status, "Automation Finished")
 
     def _log_result(self, work_code, status, details):
         timestamp = time.strftime("%H:%M:%S")
@@ -270,7 +275,6 @@ class SchemeClosingTab(BaseAutomationTab):
             work_name_full = wait.until(EC.presence_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_Pnl_lblworkcode"))).text
             
             area_input = wait.until(EC.element_to_be_clickable((By.ID, "ctl00_ContentPlaceHolder1_Txtactualbenarea")))
-            # --- FIX: Check if area is already filled ---
             if not area_input.get_attribute("value"):
                 area_input.send_keys(inputs["area"])
             else:
@@ -303,21 +307,36 @@ class SchemeClosingTab(BaseAutomationTab):
 
             driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_btSave").click()
             
-            time.sleep(2)
-            page_source = driver.page_source
-            if "Work has been Completed Successfully" in page_source:
-                return "Success", "Work completed successfully."
-            else:
-                try:
-                    error_label = driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_lblmsg")
-                    if error_label.text: return "Failed", error_label.text
-                except NoSuchElementException: pass
-                return "Failed", "Unknown error after saving."
+            try:
+                alert_wait = WebDriverWait(driver, 5)
+                alert = alert_wait.until(EC.alert_is_present())
+                
+                alert_text = alert.text
+                alert.accept()
+                
+                if "Multiple Asset Detail Successfully Save" in alert_text:
+                    return "Success", "Scheme closed successfully (alert)."
+                else:
+                    return "Failed", f"Unexpected alert: {alert_text}"
+
+            except TimeoutException:
+                self.app.log_message(self.log_display, "   - No success alert detected, checking page for status...")
+                page_source = driver.page_source
+                if "Work has been Completed Successfully" in page_source:
+                    return "Success", "Work completed successfully (page)."
+                else:
+                    try:
+                        error_label = driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_lblmsg")
+                        if error_label.text: return "Failed", error_label.text
+                    except NoSuchElementException: pass
+                    return "Failed", "Unknown error after saving (no alert or message found)."
 
         except (TimeoutException, NoSuchElementException) as e:
-            return "Failed", f"Error: {str(e).splitlines()[0]}"
+            error_message = str(e).splitlines()[0] if str(e) else "No error message"
+            return "Failed", f"Error: {error_message}"
         except Exception as e:
-            return "Failed", f"An unexpected error occurred: {e}"
+            error_message = str(e).splitlines()[0] if str(e) else "No error message"
+            return "Failed", f"An unexpected error occurred: {error_message}"
 
     def reset_ui(self):
         if messagebox.askokcancel("Reset Form?", "Are you sure? This will clear all inputs."):
@@ -333,6 +352,9 @@ class SchemeClosingTab(BaseAutomationTab):
                 self.results_tree.delete(item)
             self.app.clear_log(self.log_display)
             self.update_status("Ready", 0)
+            
+            # --- NEW: Reset footer status ---
+            self.app.after(0, self.app.set_status, "Ready")
 
     def set_ui_state(self, running: bool):
         self.set_common_ui_state(running)

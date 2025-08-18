@@ -130,13 +130,30 @@ class NregaBotApp(TkinterDnD.Tk):
         self.stop_events = {}; self.nav_buttons = {}; self.content_frames = {}; self.tab_instances = {}
         self.button_to_category_frame = {}
 
+        self.status_label = None
+        self.server_status_indicator = None
+
         self._load_icon("chrome", "assets/icons/chrome.png")
         self._load_icon("firefox", "assets/icons/firefox.png")
         self._load_icon("nrega", "assets/icons/nrega.png")
         self. _load_icon("whatsapp", "assets/icons/whatsapp.png")
+        self._load_icon("feedback", "assets/icons/feedback.png")
 
         self.bind("<FocusIn>", self._on_window_focus)
         self.after(0, self.start_app)
+
+    def set_status(self, message, color=None):
+        """Updates the status label in the footer."""
+        if self.status_label:
+            self.status_label.configure(text=f"Status: {message}")
+            if color:
+                self.status_label.configure(text_color=color)
+
+    def set_server_status(self, is_connected: bool):
+        """Updates the server connection status indicator in the footer."""
+        if self.server_status_indicator:
+            color = "green" if is_connected else "red"
+            self.server_status_indicator.configure(fg_color=color)
         
     def start_app(self):
         self.splash = self._create_splash_screen()
@@ -150,6 +167,47 @@ class NregaBotApp(TkinterDnD.Tk):
 
         if self.splash: self.splash.destroy(); self.splash = None
         self.perform_license_check_flow()
+        
+        # --- NEW: Run onboarding guide ---
+        self.after(500, self.run_onboarding_if_needed)
+
+    # --- NEW: Onboarding guide method ---
+    def run_onboarding_if_needed(self):
+        """Checks if this is the first time the app is run and shows a welcome guide."""
+        first_run_flag_path = get_data_path('.first_run_complete')
+        if not os.path.exists(first_run_flag_path):
+            self.show_onboarding_guide()
+            try:
+                # Create the flag file to prevent the guide from showing again
+                with open(first_run_flag_path, 'w') as f:
+                    f.write(datetime.now().isoformat())
+            except Exception as e:
+                print(f"Could not write first run flag file: {e}")
+
+    def show_onboarding_guide(self):
+        """A series of message boxes to guide the new user."""
+        messagebox.showinfo(
+            "Welcome to NREGA Bot!",
+            "Welcome! This quick guide will show you how to get started."
+        )
+        messagebox.showinfo(
+            "Step 1: Launch a Browser",
+            "First, click one of the 'Launch' buttons at the top right to open a special browser window.\n\n"
+            "We recommend using Chrome for the best experience."
+        )
+        messagebox.showinfo(
+            "Step 2: Log In to the Portal",
+            "In the new browser window that opens, log in to the NREGA portal with your credentials, just like you normally would."
+        )
+        messagebox.showinfo(
+            "Step 3: Choose Your Task",
+            "Once you are logged in, come back to this app and select the task you want to automate from the list on the left."
+        )
+        messagebox.showinfo(
+            "You're All Set!",
+            "Now you can fill in the required details for your chosen task and click 'Start Automation'. Enjoy the magic!\n\n"
+            "For more detailed instructions, please visit our website from the link in the footer."
+        )
 
     def _create_splash_screen(self):
         splash = ctk.CTkToplevel(self)
@@ -196,10 +254,15 @@ class NregaBotApp(TkinterDnD.Tk):
                 self.destroy()
 
     def _ping_server_in_background(self):
-        if not self.license_info.get('key'): return
+        if not self.license_info.get('key'):
+            self.after(0, self.set_server_status, False)
+            return
         def ping():
-            try: requests.post(f"{config.LICENSE_SERVER_URL}/validate", json={"key": self.license_info['key'], "machine_id": self.machine_id}, timeout=10)
-            except requests.exceptions.RequestException: pass
+            try:
+                requests.post(f"{config.LICENSE_SERVER_URL}/validate", json={"key": self.license_info['key'], "machine_id": self.machine_id}, timeout=10)
+                self.after(0, self.set_server_status, True)
+            except requests.exceptions.RequestException:
+                self.after(0, self.set_server_status, False)
         threading.Thread(target=ping, daemon=True).start()
 
     def _on_window_focus(self, event=None):
@@ -431,14 +494,35 @@ class NregaBotApp(TkinterDnD.Tk):
     
     def _create_footer(self):
         footer = ctk.CTkFrame(self, height=40, corner_radius=0)
-        footer.grid(row=2, column=0, sticky="ew", padx=20, pady=(10,15))
-        ctk.CTkLabel(footer, text="© 2025 Made with ❤️ by Rajat Poddar.", text_color="gray50").pack(side="left", padx=15)
+        footer.grid(row=2, column=0, sticky="ew", padx=20, pady=(10, 15))
+        footer.grid_columnconfigure(1, weight=1)
+
+        # Left side: Copyright and Status
+        left_frame = ctk.CTkFrame(footer, fg_color="transparent")
+        left_frame.grid(row=0, column=0, sticky="w", padx=15)
+        ctk.CTkLabel(left_frame, text="© 2025 NREGA Bot", text_color="gray50").pack(side="left")
+        
+        self.status_label = ctk.CTkLabel(footer, text="Status: Ready", text_color="gray50", anchor="w")
+        self.status_label.grid(row=0, column=1, sticky="ew", padx=20)
+
+        # Right side: Buttons and Server Status
         button_container = ctk.CTkFrame(footer, fg_color="transparent")
-        button_container.pack(side="right", padx=15)
-        whatsapp_btn = ctk.CTkButton(button_container, text="Join WhatsApp Group", image=self.icon_images.get("whatsapp"), command=lambda: webbrowser.open_new_tab("https://chat.whatsapp.com/Bup3hDCH3wn2shbUryv8wn?mode=r_c"), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
-        whatsapp_btn.pack(side="right", padx=(10, 0))
+        button_container.grid(row=0, column=2, sticky="e", padx=15)
+
         nrega_btn = ctk.CTkButton(button_container, text="NREGA Bot Website ↗", image=self.icon_images.get("nrega"), command=lambda: webbrowser.open_new_tab(config.MAIN_WEBSITE_URL), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
-        nrega_btn.pack(side="right")
+        nrega_btn.pack(side="left")
+
+        whatsapp_btn = ctk.CTkButton(button_container, text="Join WhatsApp Group", image=self.icon_images.get("whatsapp"), command=lambda: webbrowser.open_new_tab("https://chat.whatsapp.com/Bup3hDCH3wn2shbUryv8wn?mode=r_c"), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
+        whatsapp_btn.pack(side="left", padx=(10, 0))
+
+        # --- NEW: Contact Support Button ---
+        support_btn = ctk.CTkButton(button_container, text="Contact Support", image=self.icon_images.get("feedback"), command=lambda: self.show_frame("Feedback"), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
+        support_btn.pack(side="left", padx=(10, 0))
+
+        # --- NEW: Server Status Indicator ---
+        self.server_status_indicator = ctk.CTkFrame(button_container, width=12, height=12, corner_radius=6, fg_color="gray")
+        self.server_status_indicator.pack(side="left", padx=(10, 5))
+        ctk.CTkLabel(button_container, text="Server").pack(side="left")
 
     def save_demo_csv(self, file_type: str):
         try:
@@ -481,6 +565,7 @@ class NregaBotApp(TkinterDnD.Tk):
     def validate_on_server(self, key, is_startup_check=False):
         try:
             response = requests.post(f"{config.LICENSE_SERVER_URL}/api/validate", json={"key": key, "machine_id": self.machine_id}, timeout=10)
+            self.after(0, self.set_server_status, True)
             data = response.json()
             if response.status_code == 200 and data.get("status") == "valid":
                 self.license_info = data
@@ -492,11 +577,13 @@ class NregaBotApp(TkinterDnD.Tk):
                 if not is_startup_check: messagebox.showerror("Validation Failed", data.get('reason', 'Unknown error.'))
                 return False
         except requests.exceptions.RequestException as e:
+            self.after(0, self.set_server_status, False)
             if not is_startup_check: messagebox.showerror("Connection Error", f"Could not connect to license server: {e}")
             return False
         except json.JSONDecodeError:
-             if not is_startup_check: messagebox.showerror("Connection Error", f"Could not connect to the license server: Expecting value: line 1 column 1 (char 0)")
-             return False
+            self.after(0, self.set_server_status, False)
+            if not is_startup_check: messagebox.showerror("Connection Error", f"Could not connect to the license server: Expecting value: line 1 column 1 (char 0)")
+            return False
 
 
     def show_activation_window(self):
@@ -740,8 +827,15 @@ class NregaBotApp(TkinterDnD.Tk):
                 if self.sleep_prevention_process: self.sleep_prevention_process.terminate(); self.sleep_prevention_process = None
 
     def on_automation_finished(self, key):
-        if key in self.active_automations: self.active_automations.remove(key)
-        if not self.active_automations: self.allow_sleep()
+        if key in self.active_automations:
+            self.active_automations.remove(key)
+        
+        # Set footer status to finished, then schedule it to reset to Ready
+        self.set_status("Automation Finished")
+        self.after(5000, lambda: self.set_status("Ready"))
+
+        if not self.active_automations:
+            self.allow_sleep()
 
     def check_for_updates_background(self):
         def _check():

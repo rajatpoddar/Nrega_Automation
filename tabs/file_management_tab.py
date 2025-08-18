@@ -146,6 +146,8 @@ class FileManagementTab(ctk.CTkFrame):
         action_bar.grid(row=4, column=0, padx=10, pady=10, sticky="ew")
         self.download_button = ctk.CTkButton(action_bar, text="Download", command=self.download_selected_item, state="disabled")
         self.download_button.pack(side="left", padx=(0, 5))
+        self.share_button = ctk.CTkButton(action_bar, text="Share", command=self.share_selected_item, state="disabled")
+        self.share_button.pack(side="left", padx=5)
         self.delete_button = ctk.CTkButton(action_bar, text="Delete", command=self.delete_selected_item, state="disabled", fg_color="#D32F2F", hover_color="#B71C1C")
         self.delete_button.pack(side="left", padx=5)
 
@@ -167,10 +169,21 @@ class FileManagementTab(ctk.CTkFrame):
         style.map("Treeview.Heading", background=[('active', selected_color)])
 
     def on_item_select(self, event=None):
-        is_selected = bool(self.files_tree.selection())
+        selected_items = self.files_tree.selection()
+        is_selected = bool(selected_items)
         state = "normal" if is_selected else "disabled"
         self.download_button.configure(state=state)
         self.delete_button.configure(state=state)
+        
+        # Share button logic
+        if len(selected_items) == 1:
+            item_data = self.item_map.get(int(selected_items[0]))
+            if item_data and item_data['is_folder']:
+                self.share_button.configure(state="normal")
+            else:
+                self.share_button.configure(state="disabled")
+        else:
+            self.share_button.configure(state="disabled")
 
     def on_item_double_click(self, event=None):
         selected_iid = self.files_tree.focus()
@@ -418,6 +431,51 @@ class FileManagementTab(ctk.CTkFrame):
                 self.app.after(0, messagebox.showerror, "Connection Error", str(e))
 
         threading.Thread(target=_create, daemon=True).start()
+        
+    # tabs/file_management_tab.py
+
+    def share_selected_item(self):
+        selected_iid = self.files_tree.selection()
+        if not selected_iid: return
+        
+        item_data = self.item_map.get(int(selected_iid[0]))
+        if not item_data or not item_data['is_folder']:
+            messagebox.showwarning("Invalid Selection", "Please select a folder to share.")
+            return
+
+        headers = self.get_auth_headers()
+        if not headers: return
+        
+        self.share_button.configure(state="disabled", text="Sharing...")
+
+        def _share():
+            try:
+                response = requests.post(f"{config.LICENSE_SERVER_URL}/files/api/share-folder/{item_data['id']}", headers=headers, timeout=15)
+                
+                if response.status_code == 200:
+                    try:
+                        data = response.json()
+                        share_link = data.get('share_link')
+                        self.app.clipboard_clear()
+                        self.app.clipboard_append(share_link)
+                        self.app.after(0, messagebox.showinfo, "Share Link Created", f"The share link for '{item_data['filename']}' has been copied to your clipboard.")
+                    except ValueError:
+                        self.app.after(0, messagebox.showerror, "Share Failed", "Received an invalid response from the server.")
+                else:
+                    try:
+                        reason = response.json().get('reason', f"Server returned status code {response.status_code}")
+                        self.app.after(0, messagebox.showerror, "Share Failed", reason)
+                    except ValueError:
+                        self.app.after(0, messagebox.showerror, "Share Failed", "Received an invalid error response from the server.")
+
+            except requests.exceptions.RequestException as e:
+                self.app.after(0, messagebox.showerror, "Share Failed", str(e))
+            finally:
+                # FIX: This ensures the button is always reset
+                if self.share_button.winfo_exists():
+                    self.app.after(0, self.share_button.configure, {"state": "normal", "text": "Share"})
+        
+        threading.Thread(target=_share, daemon=True).start()
 
     def download_selected_item(self):
         selected_iid = self.files_tree.selection()
