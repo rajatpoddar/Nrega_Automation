@@ -5,7 +5,7 @@
 # <div align="center">NREGA Bot</div>
 
 <p align="center">
-  <b>Version 2.6.2 | The ultimate tool to automate your repetitive NREGA portal tasks.</b><br />
+  <b>Version 2.6.3 | The ultimate tool to automate your repetitive NREGA portal tasks.</b><br />
   <a href="https://nregabot.com/#downloads"><strong>Download Now »</strong></a><br /><br />
   <a href="https://nregabot.com/how-to-use.html">View Instructions</a> ·
   <a href="https://nregabot.com/contact.html">Report Bug</a> ·
@@ -26,13 +26,14 @@ The application works by securely controlling a web browser on your computer, al
 
 An intuitive, tab-based interface for every automation task:
 
+- ✨ **Resend Rejected Wagelist** - A brand new automation to reprocess wagelist payments that have been rejected by the bank.
 - ✨ **Duplicate MR Print** – Find, save as PDF, and print all Muster Rolls for one or more work codes in a single batch operation.
 - ✨ **Update Estimated Outcome** – Quickly update the 'Estimated Outcome' for a list of work codes without manual entry.
 - 🗂️ **Muster Roll (MR) Generator** – Automatically generate and download Muster Roll PDFs for specified work codes.
 - ⚙️ **MSR Processor** – Process and save Muster Rolls from the MSR Payment page for a list of work codes.
 - 📤 **FTO Generation** – Automates the login and two-step verification process to generate and capture FTO numbers.
 - 📋 **Wagelist Automation** – Generate new wagelists and send them for e-FMS payment processing with a single click.
-- ✅ **Jobcard Verification & Photo Upload** – Verify job cards for an entire village and automatically upload the correct family photo for each card.
+- ✅ **Jobcard Verification & Photo Upload** – Verify job cards for an entire village (or all villages in a panchayat) and automatically upload the correct family photo for each card.
 - ✏️ **eMB Entry** – Automate filling the Measurement Book (MB) entry page for multiple work codes.
 - 🔍 **eMB Verify** – Quickly verify Measurement Book (MB) entries in bulk.
 - 🏗️ **Workcode Generator (Dynamic)** – Create new work codes in bulk by loading categories from the website and reading data from a simple CSV file.
@@ -42,8 +43,8 @@ An intuitive, tab-based interface for every automation task:
 - ✂️ **Workcode Extractor** – A handy utility to parse and extract clean lists of work codes from any block of text.
 - 🗑️ **Delete Work Allocation** - Remove work allocations for specified job cards in bulk.
 - 🏁 **Scheme Closing** - Automate the process of closing schemes for completed work.
-- 📁 **File Manager** - A built-in cloud file manager to save and organize your important documents like Muster Roll PDFs.
-- 🎨 **Dark/Light Theme** – A modern interface that respects your system's theme for comfortable viewing.
+- 📁 **File Manager with Sharing** - A built-in cloud file manager to save, organize, and share your important documents like Muster Roll PDFs.
+- 🎨 **Dynamic UI** – A modern interface with a dynamic footer, Dark/Light theme support, and real-time status updates.
 
 ---
 
@@ -60,15 +61,15 @@ You only need to have a supported web browser installed on your system:
 
 ### 1️⃣ Download the Application
 
-Download the latest version from the official website or GitHub Releases:
+Download the latest version from the official website:
 
 - Website: [nregabot.com/#downloads](https://nregabot.com/#downloads)
-- **For Windows**: `NREGABot-v2.6.2-Setup.exe`
-- **For macOS**: `NREGABot-v2.6.2-macOS.dmg`
+- **For Windows**: `NREGABot-v2.6.3-Setup.exe`
+- **For macOS**: `NREGABot-v2.6.3-macOS.dmg`
 
 ### 2️⃣ First-Time Launch & Trial
 
-A 30-day free trial starts automatically when you first launch the application.  
+A 30-day free trial starts automatically when you first launch the application.
 No license key or registration is required to start the trial.
 
 ---
@@ -102,9 +103,9 @@ No license key or registration is required to start the trial.
 - **Trial**: This software comes with a 30-day fully-functional free trial.
 - **License**: After the trial period, a license key is required to continue using the automation features.
 
-Affordable Monthly and Yearly license plans are available. Please visit our website to purchase a key.
+Affordable Monthly, Quarterly, Half-Yearly, and Yearly license plans are available. Please visit our website to purchase a key.
 
-👉 **[Get Your License Key](https://nregabot.com/#pricing)**
+👉 **[Get Your License Key](https://license.nregabot.com/buy)**
 
 ---
 
@@ -127,5 +128,5 @@ This tool automates interactions with a live government website. The author is n
 
 ## 🧑‍💻 Author
 
-**Rajat Poddar**  
+**Rajat Poddar**
 🔗 [GitHub Profile](https://github.com/rajatpoddar)

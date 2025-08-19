@@ -1,4 +1,11 @@
 {
+  "2.6.3": [
+      "✨ Feature: Added new 'Resend Rejected Wagelist' automation to reprocess payments for bank-rejected transactions.",
+      "✨ Feature: Added a folder share option in the File Manager.",
+      "✨ Improvement: Overhauled 'Jobcard Verification' with a 'Process all villages' option and fixed all critical photo upload bugs.",
+      "✨ Improvement: The footer status bar is now dynamic, showing real-time automation progress and server connectivity.",
+      "✨ Improvement: Updated the layout of the 'Delete Work Allocation' tab for a better user experience."
+    ],
   "2.6.2": [
       "✨ Feature: Major File Manager overhaul with drag & drop uploads, folder creation, and enhanced UI.",
       "✨ Feature: Added new Quarterly and Half-Yearly subscription plans for more flexibility.",

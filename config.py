@@ -8,7 +8,7 @@ APP_TAGLINE = "Your NREGA Task Management Companion"
 APP_DESCRIPTION = "A comprehensive tool for managing NREGA tasks efficiently."
 APP_AUTHOR = "Rajat Poddar"
 APP_AUTHOR_EMAIL = "Rajatpoddar@outlook.com"
-APP_VERSION = "2.6.2" # Cloud storage, new plans, and major bug fixes
+APP_VERSION = "2.6.3" # Cloud storage, new plans, and major bug fixes
 LICENSE_SERVER_URL = "https://license.nregabot.com"
 MAIN_WEBSITE_URL = "https://nregabot.com"
 SUPPORT_EMAIL = "nregabot@gmail.com"
@@ -23,7 +23,7 @@ ICONS = {
     "Gen Wagelist": "📋", "Send Wagelist": "➡️", "Verify Jobcard": "✅",
     "eMB Entry": "✏️", "eMB Verify": "🔍", "WC Gen (Abua)": "🏗️", "IF Editor (Abua)": "🔧",
     "Add Activity": "🪄","Verify ABPS": "💳",  "Workcode Extractor": "✂️", "Scheme Closing": "🏁",
-    "Update Outcome": "📊", "Duplicate MR Print": "📠", "Feedback": "💬","File Manager": "📁",
+    "Update Outcome": "📊", "Duplicate MR Print": "📠", "Feedback": "💬","File Manager": "📁", "Resend Rejected WG": "🔁", # <-- ADD THIS LINE
     "About": "ℹ️", "Theme": {"light": "🌙", "dark": "☀️"}
 }
 
@@ -147,4 +147,7 @@ DUPLICATE_MR_CONFIG = {
 # --- NEW: eMB Verify Configuration ---
 EMB_VERIFY_CONFIG = {
     "url": "https://nregade4.nic.in/Netnrega/mbookverify.aspx"
+}
+REJECTED_WL_CONFIG = {
+    "RESEND_REJECTED_WG": "https://nregade4.nic.in/Netnrega/view_wagelist_rejected.aspx"
 }

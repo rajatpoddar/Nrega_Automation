@@ -64,7 +64,7 @@ class SchemeClosingTab(BaseAutomationTab):
         ctk.CTkLabel(input_frame, text="Measured by (Designation):").grid(row=3, column=0, padx=15, pady=5, sticky="w")
         designation_options = [
             "Account Assistant(BP)", "Acrited Engineer(AE)(GP)", "Assistant Engineer(BP)", "Block Development Officer(BP)",
-            "Gram Rozgar Sahayak(GP)", "Junior Engineer(BP)", "Junior Engineer(GP)", "Panchayat Sachiv(GP)",
+            "Gram Rozgar Sewak(GP)", "Junior Engineer(BP)", "Junior Engineer(GP)", "Panchayat Sachiv(GP)",
             "Programme Officer(BP)", "Technical Assistant(BP)", "Technical Assistant(GP)"
         ]
         self.measured_by_var = ctk.StringVar(value="Junior Engineer(BP)") # Default selection

@@ -22,23 +22,18 @@ class DelWorkAllocTab(BaseAutomationTab):
         super().__init__(parent, app_instance, automation_key="del_work_alloc")
         
         self.grid_columnconfigure(0, weight=1)
-        # --- MODIFIED: Configure rows for new layout ---
-        self.grid_rowconfigure(0, weight=0) # Settings row
-        self.grid_rowconfigure(1, weight=0) # Action buttons row
-        self.grid_rowconfigure(2, weight=1) # Results/Logs row (will expand)
+        # --- REVISED: Configure rows for the new 3-section layout ---
+        self.grid_rowconfigure(0, weight=0) # All Controls
+        self.grid_rowconfigure(1, weight=0) # Action Buttons
+        self.grid_rowconfigure(2, weight=1) # Results/Logs (Expanding)
         
         self._create_widgets()
 
     def _create_widgets(self):
         """Creates the UI elements for the tab."""
-        # --- NEW: Main container for all settings, made scrollable ---
-        settings_container = ctk.CTkScrollableFrame(self, label_text="Settings")
-        settings_container.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
-        settings_container.grid_columnconfigure(0, weight=1)
-
-        # Frame for input controls
-        controls_frame = ctk.CTkFrame(settings_container)
-        controls_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
+        # --- Section 1: A single frame for all input controls ---
+        controls_frame = ctk.CTkFrame(self)
+        controls_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
         controls_frame.grid_columnconfigure(1, weight=1)
 
         # Panchayat Name Input
@@ -46,23 +41,18 @@ class DelWorkAllocTab(BaseAutomationTab):
         self.panchayat_entry = AutocompleteEntry(controls_frame, suggestions_list=self.app.history_manager.get_suggestions("panchayat_name"))
         self.panchayat_entry.grid(row=0, column=1, sticky='ew', padx=15, pady=10)
 
-        # --- Jobcards Input Frame (MOVED from notebook) ---
-        jobcards_frame = ctk.CTkFrame(settings_container)
-        jobcards_frame.grid(row=1, column=0, sticky="ew", padx=5, pady=5)
-        jobcards_frame.grid_columnconfigure(0, weight=1)
-        jobcards_frame.grid_rowconfigure(1, weight=1)
+        # Jobcards Input (Now inside the same controls_frame)
+        ctk.CTkLabel(controls_frame, text="Jobcard / Registration IDs (one per line)", font=ctk.CTkFont(weight="bold")).grid(row=1, column=0, columnspan=2, sticky='w', padx=15, pady=(10,0))
+        ctk.CTkLabel(controls_frame, text="If left empty, the bot will process all Registration IDs for the selected Panchayat.", wraplength=600, justify="left").grid(row=2, column=0, columnspan=2, sticky='w', padx=15, pady=5)
         
-        ctk.CTkLabel(jobcards_frame, text="Jobcard / Registration IDs (one per line)", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, sticky='w', padx=15, pady=(10,0))
-        ctk.CTkLabel(jobcards_frame, text="If left empty, the bot will process all Registration IDs for the selected Panchayat.", wraplength=600, justify="left").grid(row=1, column=0, sticky='w', padx=15, pady=5)
-        
-        self.jobcards_text = ctk.CTkTextbox(jobcards_frame, height=150)
-        self.jobcards_text.grid(row=2, column=0, sticky='nsew', padx=15, pady=(5,15))
+        self.jobcards_text = ctk.CTkTextbox(controls_frame, height=150)
+        self.jobcards_text.grid(row=3, column=0, columnspan=2, sticky='nsew', padx=15, pady=(5,15))
 
-        # --- Action buttons (MOVED) ---
+        # --- Section 2: Action buttons ---
         action_frame = self._create_action_buttons(parent_frame=self)
         action_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=(0,10))
 
-        # --- Tab view for Results and Logs (MOVED) ---
+        # --- Section 3: Results and Logs Tabs ---
         data_notebook = ctk.CTkTabview(self)
         data_notebook.grid(row=2, column=0, sticky="nsew", padx=10, pady=(0,10))
         
@@ -110,7 +100,6 @@ class DelWorkAllocTab(BaseAutomationTab):
             messagebox.showwarning("Input Error", "Panchayat Name is required.")
             return
 
-        # Clear previous results
         for item in self.results_tree.get_children():
             self.results_tree.delete(item)
 
@@ -118,7 +107,6 @@ class DelWorkAllocTab(BaseAutomationTab):
         
         self.app.update_history("panchayat_name", panchayat)
         
-        # Start the automation logic in a separate thread
         self.app.start_automation_thread(
             self.automation_key, 
             self.run_automation_logic, 
@@ -149,11 +137,9 @@ class DelWorkAllocTab(BaseAutomationTab):
             if not driver:
                 return
 
-            # Determine the mode of operation
             auto_mode = not bool(jobcard_list)
             items_to_process = []
 
-            # Navigate and select Panchayat
             driver.get(config.DEL_WORK_ALLOC_CONFIG["url"])
             wait = WebDriverWait(driver, 20)
             
@@ -161,9 +147,8 @@ class DelWorkAllocTab(BaseAutomationTab):
             panchayat_dropdown = Select(wait.until(EC.presence_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_ddlpanchayat_code"))))
             panchayat_dropdown.select_by_visible_text(panchayat)
             
-            # Wait for the registration dropdown to be populated, which indicates the page has reloaded.
             wait.until(EC.element_to_be_clickable((By.ID, "ctl00_ContentPlaceHolder1_ddlRegistration")))
-            time.sleep(1) # Add a small buffer for safety
+            time.sleep(1) 
             self.app.log_message(self.log_display, "Panchayat selected successfully.", "success")
 
             if auto_mode:
@@ -201,55 +186,45 @@ class DelWorkAllocTab(BaseAutomationTab):
     def _process_single_id(self, driver, wait, panchayat, item_id, is_auto_mode):
         """Processes a single Jobcard or Registration ID."""
         try:
-            # If not in auto mode, search for the jobcard first
             if not is_auto_mode:
                 self.app.log_message(self.log_display, f"Searching for Jobcard/RegID: {item_id}")
                 search_box = wait.until(EC.presence_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_txtRegSearch")))
                 search_box.clear()
                 search_box.send_keys(item_id)
                 search_box.send_keys(Keys.TAB)
-                # Wait for the postback to complete by checking if the dropdown is populated
                 wait.until(lambda d: len(Select(d.find_element(By.ID, "ctl00_ContentPlaceHolder1_ddlRegistration")).options) > 1)
-                time.sleep(1) # Extra buffer
+                time.sleep(1)
 
-            # Now, select the Registration ID from the dropdown
             reg_id_dropdown_element = wait.until(EC.element_to_be_clickable((By.ID, "ctl00_ContentPlaceHolder1_ddlRegistration")))
             reg_id_dropdown = Select(reg_id_dropdown_element)
 
             if is_auto_mode:
                 reg_id_dropdown.select_by_value(item_id)
             else: 
-                # After searching, the correct ID should be the first selectable option
                 if len(reg_id_dropdown.options) > 1:
                     reg_id_dropdown.select_by_index(1)
                 else:
                     raise ValueError("Jobcard search returned no results.")
 
-            # Wait for the grid to appear/reload after selecting the registration ID
             grid_view = wait.until(EC.presence_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_GridView1")))
             self.app.log_message(self.log_display, f"Details loaded for {item_id}.")
             
-            # Check if there's anything to delete
             try:
                 select_all_checkbox = driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_GridView1_ctl01_chkHAllocate")
             except NoSuchElementException:
                 self._log_result(panchayat, item_id, "Skipped", "No work allocations found to delete.")
                 return
 
-            # Proceed with deletion
             select_all_checkbox.click()
-            time.sleep(0.5) # Small delay for safety
+            time.sleep(0.5)
             
             proceed_button = driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_cmdUpdate")
             proceed_button.click()
             
-            # --- REVISED SUCCESS/FAILURE LOGIC ---
             try:
-                # A successful deletion reloads the page, making the old grid element stale.
                 wait.until(EC.staleness_of(grid_view))
                 self._log_result(panchayat, item_id, "Success", "Work allocation deleted.")
             except TimeoutException:
-                # If the page doesn't reload, check for an explicit error message.
                 try:
                     error_element = driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_lblMsg")
                     error_text = error_element.text.strip()
@@ -257,19 +232,16 @@ class DelWorkAllocTab(BaseAutomationTab):
                 except NoSuchElementException:
                     self._log_result(panchayat, item_id, "Failed", "Page did not reload and no error message found.")
 
-
         except (TimeoutException, NoSuchElementException, StaleElementReferenceException, ValueError) as e:
             error_msg = str(e).split('\n')[0]
             self.app.log_message(self.log_display, f"Failed to process {item_id}: {error_msg}", "error")
             self._log_result(panchayat, item_id, "Failed", error_msg)
-            # Attempt to recover by going back to the page for the next item
             try:
                 driver.get(config.DEL_WORK_ALLOC_CONFIG["url"])
                 Select(wait.until(EC.presence_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_ddlpanchayat_code")))).select_by_visible_text(panchayat)
                 wait.until(EC.element_to_be_clickable((By.ID, "ctl00_ContentPlaceHolder1_ddlRegistration")))
             except Exception as recovery_e:
                 self.app.log_message(self.log_display, f"Recovery failed: {recovery_e}", "error")
-
 
     def _log_result(self, panchayat, item_id, status, details):
         """Logs the outcome of an operation to the results Treeview."""

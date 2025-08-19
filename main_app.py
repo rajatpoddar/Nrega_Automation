@@ -21,9 +21,6 @@ from webdriver_manager.firefox import GeckoDriverManager
 
 from tabs.history_manager import HistoryManager
 
-# --- ADDED: Import for Drag and Drop Root Window ---
-from tkinterdnd2 import TkinterDnD
-
 import config
 # --- TAB CLASS IMPORTS ---
 from tabs.msr_tab import MsrTab
@@ -46,6 +43,7 @@ from tabs.feedback_tab import FeedbackTab
 from tabs.file_management_tab import FileManagementTab
 from tabs.scheme_closing_tab import SchemeClosingTab
 from tabs.emb_verify_tab import EmbVerifyTab
+from tabs.resend_rejected_wg_tab import ResendRejectedWgTab
 
 
 if config.OS_SYSTEM == "Windows":
@@ -79,8 +77,10 @@ if SENTRY_DSN:
         traces_sample_rate=1.0,
     )
 
-ctk.set_appearance_mode("System")
+# --- FIX: Load the custom theme BEFORE setting the appearance mode ---
 ctk.set_default_color_theme(resource_path("theme.json"))
+ctk.set_appearance_mode("System")
+
 
 class CollapsibleFrame(ctk.CTkFrame):
     def __init__(self, parent, title="", initially_expanded=False):
@@ -114,8 +114,8 @@ class CollapsibleFrame(ctk.CTkFrame):
         widget.pack(in_=self.content_frame, **pack_options); return widget
 
 
-# --- MODIFIED: Main application class now inherits from TkinterDnD.Tk ---
-class NregaBotApp(TkinterDnD.Tk):
+# --- FIX: Inherit from ctk.CTk to ensure themes work correctly ---
+class NregaBotApp(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.attributes("-alpha", 0.0)
@@ -143,14 +143,12 @@ class NregaBotApp(TkinterDnD.Tk):
         self.after(0, self.start_app)
 
     def set_status(self, message, color=None):
-        """Updates the status label in the footer."""
         if self.status_label:
             self.status_label.configure(text=f"Status: {message}")
             if color:
                 self.status_label.configure(text_color=color)
 
     def set_server_status(self, is_connected: bool):
-        """Updates the server connection status indicator in the footer."""
         if self.server_status_indicator:
             color = "green" if is_connected else "red"
             self.server_status_indicator.configure(fg_color=color)
@@ -168,24 +166,19 @@ class NregaBotApp(TkinterDnD.Tk):
         if self.splash: self.splash.destroy(); self.splash = None
         self.perform_license_check_flow()
         
-        # --- NEW: Run onboarding guide ---
         self.after(500, self.run_onboarding_if_needed)
 
-    # --- NEW: Onboarding guide method ---
     def run_onboarding_if_needed(self):
-        """Checks if this is the first time the app is run and shows a welcome guide."""
         first_run_flag_path = get_data_path('.first_run_complete')
         if not os.path.exists(first_run_flag_path):
             self.show_onboarding_guide()
             try:
-                # Create the flag file to prevent the guide from showing again
                 with open(first_run_flag_path, 'w') as f:
                     f.write(datetime.now().isoformat())
             except Exception as e:
                 print(f"Could not write first run flag file: {e}")
 
     def show_onboarding_guide(self):
-        """A series of message boxes to guide the new user."""
         messagebox.showinfo(
             "Welcome to NREGA Bot!",
             "Welcome! This quick guide will show you how to get started."
@@ -272,17 +265,13 @@ class NregaBotApp(TkinterDnD.Tk):
     def _validate_in_background(self):
         try:
             self.is_validating_license = True
-            # This fetches the full, updated license data from the server, including usage and limit
             is_valid = self.validate_on_server(self.license_info['key'], is_startup_check=True)
             if is_valid:
-                # If validation is successful, update the UI across the app
                 self.after(0, self._update_about_tab_info)
                 
                 file_manager_tab = self.tab_instances.get("File Manager")
                 if file_manager_tab:
-                    # Explicitly update the file manager's storage display with the new, correct data
                     self.after(0, lambda: file_manager_tab.update_storage_info(self.license_info.get('total_usage'), self.license_info.get('max_storage')))
-                    # Then, refresh just the file list
                     self.after(0, lambda: file_manager_tab.refresh_files(file_manager_tab.current_folder_id, add_to_history=False))
         finally:
             self.is_validating_license = False
@@ -476,6 +465,7 @@ class NregaBotApp(TkinterDnD.Tk):
                 "Verify Jobcard": {"creation_func": JobcardVerifyTab, "icon": config.ICONS["Verify Jobcard"]},
                 "Verify ABPS": {"creation_func": AbpsVerifyTab, "icon": config.ICONS["Verify ABPS"]},
                 "Workcode Extractor": {"creation_func": WorkcodeExtractorTab, "icon": config.ICONS["Workcode Extractor"]},
+                "Resend Rejected WG": {"creation_func": ResendRejectedWgTab, "icon": config.ICONS["Resend Rejected WG"]},
                 "Update Outcome": {"creation_func": UpdateOutcomeTab, "icon": config.ICONS["Update Outcome"]},
                 "File Manager": {"creation_func": FileManagementTab, "icon": config.ICONS["File Manager"]},
             },
@@ -497,7 +487,6 @@ class NregaBotApp(TkinterDnD.Tk):
         footer.grid(row=2, column=0, sticky="ew", padx=20, pady=(10, 15))
         footer.grid_columnconfigure(1, weight=1)
 
-        # Left side: Copyright and Status
         left_frame = ctk.CTkFrame(footer, fg_color="transparent")
         left_frame.grid(row=0, column=0, sticky="w", padx=15)
         ctk.CTkLabel(left_frame, text="© 2025 NREGA Bot", text_color="gray50").pack(side="left")
@@ -505,7 +494,6 @@ class NregaBotApp(TkinterDnD.Tk):
         self.status_label = ctk.CTkLabel(footer, text="Status: Ready", text_color="gray50", anchor="w")
         self.status_label.grid(row=0, column=1, sticky="ew", padx=20)
 
-        # Right side: Buttons and Server Status
         button_container = ctk.CTkFrame(footer, fg_color="transparent")
         button_container.grid(row=0, column=2, sticky="e", padx=15)
 
@@ -515,11 +503,9 @@ class NregaBotApp(TkinterDnD.Tk):
         whatsapp_btn = ctk.CTkButton(button_container, text="Join WhatsApp Group", image=self.icon_images.get("whatsapp"), command=lambda: webbrowser.open_new_tab("https://chat.whatsapp.com/Bup3hDCH3wn2shbUryv8wn?mode=r_c"), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
         whatsapp_btn.pack(side="left", padx=(10, 0))
 
-        # --- NEW: Contact Support Button ---
         support_btn = ctk.CTkButton(button_container, text="Contact Support", image=self.icon_images.get("feedback"), command=lambda: self.show_frame("Feedback"), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
         support_btn.pack(side="left", padx=(10, 0))
 
-        # --- NEW: Server Status Indicator ---
         self.server_status_indicator = ctk.CTkFrame(button_container, width=12, height=12, corner_radius=6, fg_color="gray")
         self.server_status_indicator.pack(side="left", padx=(10, 5))
         ctk.CTkLabel(button_container, text="Server").pack(side="left")
@@ -698,7 +684,6 @@ class NregaBotApp(TkinterDnD.Tk):
         ctk.CTkLabel(main_frame, text=title, font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(0, 15))
         ctk.CTkLabel(main_frame, text="1. Choose Your Plan", font=ctk.CTkFont(size=14, weight="bold"), anchor="w").pack(fill="x", padx=10, pady=(10,5))
         
-        # Updated plan list
         plan_options = [
             "Monthly Plan (₹99 / device)",
             "Quarterly Plan (₹289 / device)",
@@ -713,14 +698,13 @@ class NregaBotApp(TkinterDnD.Tk):
         devices_input.set(str(self.license_info.get('max_devices', 1)))
         devices_input.pack(fill="x", padx=10)
 
-        # Updated prices dictionary
         prices = {"monthly": 99, "quarterly": 289, "half_yearly": 569, "yearly": 999}
         total_price_label = ctk.CTkLabel(main_frame, text="Total: ₹99", font=ctk.CTkFont(size=18, weight="bold"))
         total_price_label.pack(pady=25)
         
         def update_price(*args):
             plan_selection = plan_menu.get().lower()
-            plan_key = "monthly" # Default
+            plan_key = "monthly" 
             if "yearly" in plan_selection: plan_key = "yearly"
             if "half yearly" in plan_selection: plan_key = "half_yearly"
             if "quarterly" in plan_selection: plan_key = "quarterly"
@@ -748,7 +732,7 @@ class NregaBotApp(TkinterDnD.Tk):
                 submit_btn.configure(state="normal", text="Proceed to Payment"); return
             
             plan_selection = plan_menu.get().lower()
-            plan_key = "monthly" # Default
+            plan_key = "monthly" 
             if "yearly" in plan_selection: plan_key = "yearly"
             if "half yearly" in plan_selection: plan_key = "half_yearly"
             if "quarterly" in plan_selection: plan_key = "quarterly"
@@ -830,7 +814,6 @@ class NregaBotApp(TkinterDnD.Tk):
         if key in self.active_automations:
             self.active_automations.remove(key)
         
-        # Set footer status to finished, then schedule it to reset to Ready
         self.set_status("Automation Finished")
         self.after(5000, lambda: self.set_status("Ready"))
 
@@ -897,7 +880,7 @@ class NregaBotApp(TkinterDnD.Tk):
                 
                 self.after(0, lambda: about_tab.update_button.configure(text="Download Complete. Installing..."))
                 
-                if sys.platform == "win32": # Windows
+                if sys.platform == "win32": 
                     messagebox.showinfo(
                         "Ready to Update",
                         "The update has been downloaded. The application will now close to run the installer.",
@@ -906,7 +889,7 @@ class NregaBotApp(TkinterDnD.Tk):
                     os.startfile(download_path)
                     self.after(200, os._exit, 0)
 
-                elif sys.platform == "darwin": # macOS
+                elif sys.platform == "darwin": 
                     subprocess.call(["open", download_path])
                     self.after(0, messagebox.showinfo, "Installation Instructions", f"The installer '{filename}' has been downloaded and opened.\nPlease drag the NREGA Bot icon into your Applications folder.\n\nThe application will now close.")
                     self.after(3000, self.on_closing, True)

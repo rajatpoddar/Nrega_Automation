@@ -1,14 +1,14 @@
 {
-  "latest_version": "2.6.2",
-  "download_url_windows": "https://nregabot.com/updates/NREGABot-v2.6.2-Setup.exe",
-  "download_url_macos": "https://nregabot.com/updates/NREGABot-v2.6.2-macOS.dmg",
+  "latest_version": "2.6.3",
+  "download_url_windows": "https://nregabot.com/updates/NREGABot-v2.6.3-Setup.exe",
+  "download_url_macos": "https://nregabot.com/updates/NREGABot-v2.6.3-macOS.dmg",
   "changelog": {
-    "2.6.2": [
-      "✨ Feature: Major File Manager overhaul with drag & drop uploads, folder creation, and enhanced UI.",
-      "✨ Feature: Added new Quarterly and Half-Yearly subscription plans for more flexibility.",
-      "✨ Feature: Users can now upgrade their cloud storage capacity directly from their web account page.",
-      "✨ Improvement: The 'About' tab now displays the user's email and current cloud storage usage.",
-      "🐞 Bug Fix: Resolved critical bugs related to application startup, data synchronization, and UI stability for a much smoother experience."
+    "2.6.3": [
+      "✨ Feature: Added new 'Resend Rejected Wagelist' automation to reprocess payments for bank-rejected transactions.",
+      "✨ Feature: Added a folder share option in the File Manager.",
+      "✨ Improvement: Overhauled 'Jobcard Verification' with a 'Process all villages' option and fixed all critical photo upload bugs.",
+      "✨ Improvement: The footer status bar is now dynamic, showing real-time automation progress and server connectivity.",
+      "✨ Improvement: Updated the layout of the 'Delete Work Allocation' tab for a better user experience."
     ]
   }
 }
