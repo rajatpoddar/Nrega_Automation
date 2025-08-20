@@ -65,3 +65,4 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChang
 ; This section ensures a clean uninstall.
 Type: filesandordirs; Name: "{localappdata}\PoddarSolutions\NREGABot"
 
+
