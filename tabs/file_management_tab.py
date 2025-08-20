@@ -244,30 +244,36 @@ class FileManagementTab(ctk.CTkFrame):
 
     def update_storage_info(self, total_usage, storage_limit):
         try:
-            numeric_usage = int(total_usage)
-            numeric_limit = int(storage_limit) if storage_limit else 1
+            # For Windows
+            import shutil
+            total, used, free = shutil.disk_usage("/")
+            storage_text = f"Storage: {humanize.naturalsize(used)} / {humanize.naturalsize(total)}"
+            usage_percent = used / total if total > 0 else 0
+        except (ImportError, AttributeError, NameError):
+            # Fallback for other OS or if shutil fails
+            try:
+                numeric_usage = int(total_usage)
+                numeric_limit = int(storage_limit) if storage_limit else 1
+                storage_text = f"Storage: {humanize.naturalsize(numeric_usage)} / {humanize.naturalsize(numeric_limit)}"
+                usage_percent = numeric_usage / numeric_limit if numeric_limit > 0 else 0
+            except (ValueError, TypeError):
+                storage_text = "Storage: Error"
+                usage_percent = 0
+        
+        self.storage_label.configure(text=storage_text)
+        self.storage_progress.set(usage_percent)
 
-            # Use humanize for both values for consistent formatting
-            self.storage_label.configure(text=f"Storage: {humanize.naturalsize(numeric_usage)} / {humanize.naturalsize(numeric_limit)}")
+        if usage_percent < 0.3:
+            color = "#22c55e" # Green
+        elif 0.3 <= usage_percent < 0.6:
+            color = "#3b82f6" # Blue
+        elif 0.6 <= usage_percent < 0.8:
+            color = "#f59e0b" # Yellow
+        else:
+            color = "#ef4444" # Red
 
-            usage_percent = numeric_usage / numeric_limit if numeric_limit > 0 else 0
-            self.storage_progress.set(usage_percent)
-
-            if usage_percent < 0.3:
-                color = "#22c55e" # Green
-            elif 0.3 <= usage_percent < 0.6:
-                color = "#3b82f6" # Blue
-            elif 0.6 <= usage_percent < 0.8:
-                color = "#f59e0b" # Yellow
-            else:
-                color = "#ef4444" # Red
-
-            self.storage_progress.configure(progress_color=color)
-            self.upgrade_storage_button.configure(fg_color=color, hover_color=color)
-
-        except (ValueError, TypeError):
-            self.storage_label.configure(text="Storage: Error")
-            self.storage_progress.set(0)
+        self.storage_progress.configure(progress_color=color)
+        self.upgrade_storage_button.configure(fg_color=color, hover_color=color)
 
 
     def update_breadcrumbs(self, path):
