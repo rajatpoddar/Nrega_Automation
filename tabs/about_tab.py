@@ -95,7 +95,7 @@ class AboutTab(ctk.CTkFrame):
 
         # ADD THIS NEW BLOCK FOR STORAGE
         ctk.CTkLabel(details_frame, text="Storage Used:", text_color="gray50").grid(row=5, column=0, sticky="w", pady=(5,0))
-        self.storage_label = ctk.CTkLabel(details_frame, text="N/A", font=ctk.CTkFont(weight="bold"))
+        self.storage_label = ctk.CTkLabel(details_frame, text=get_storage_used(), font=ctk.CTkFont(weight="bold"))
         self.storage_label.grid(row=5, column=1, sticky="w", padx=10, pady=(5,0))
         # END OF NEW BLOCK
 
@@ -298,6 +298,24 @@ class AboutTab(ctk.CTkFrame):
             self.storage_label.configure(text=f"{usage_str} of {limit_str}")
         else:
             self.storage_label.configure(text="N/A")
+
+    def get_storage_used():
+    try:
+        # For Unix-based systems (Linux, macOS)
+        stat = os.statvfs(os.path.expanduser("~"))
+        used_gb = (stat.f_blocks - stat.f_bfree) * stat.f_frsize / (1024 ** 3)
+        return f"{used_gb:.2f} GB"
+    except AttributeError:
+        # For Windows
+        try:
+            import shutil
+            total, used, free = shutil.disk_usage("/")
+            used_gb = used // (2**30)
+            return f"{used_gb} GB"
+        except Exception:
+            return "N/A"
+    except Exception:
+        return "N/A"
         
     def request_single_device_deactivation(self, machine_id_to_deactivate):
         user_name = self.license_info.get('user_name', 'N/A')
