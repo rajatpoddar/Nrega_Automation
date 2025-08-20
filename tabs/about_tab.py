@@ -95,10 +95,10 @@ class AboutTab(ctk.CTkFrame):
 
         # ADD THIS NEW BLOCK FOR STORAGE
         ctk.CTkLabel(details_frame, text="Storage Used:", text_color="gray50").grid(row=5, column=0, sticky="w", pady=(5,0))
-        self.storage_label = ctk.CTkLabel(details_frame, text="N/A", font=ctk.CTkFont(weight="bold"))
+        self.storage_label = ctk.CTkLabel(details_frame, text=get_storage_used(), font=ctk.CTkFont(weight="bold"))
         self.storage_label.grid(row=5, column=1, sticky="w", padx=10, pady=(5,0))
         # END OF NEW BLOCK
-
+        
         ctk.CTkLabel(details_frame, text="Machine ID:", text_color="gray50").grid(row=6, column=0, sticky="w", pady=(5,0)) # <-- CHANGE THIS
         machine_id_frame = ctk.CTkFrame(details_frame, fg_color="transparent")
         machine_id_frame.grid(row=6, column=1, sticky="ew", padx=10, pady=(5,0))
