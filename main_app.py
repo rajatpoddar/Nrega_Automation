@@ -132,21 +132,60 @@ class NregaBotApp(ctk.CTk):
 
         self.status_label = None
         self.server_status_indicator = None
+        self.loading_animation_label = None
+        self.is_animating = False
+
+        # --- MODIFIED: Renamed for clarity and added new labels ---
+        self.header_welcome_prefix_label = None
+        self.header_welcome_name_label = None
+        self.header_welcome_suffix_label = None
 
         self._load_icon("chrome", "assets/icons/chrome.png")
         self._load_icon("firefox", "assets/icons/firefox.png")
         self._load_icon("nrega", "assets/icons/nrega.png")
         self. _load_icon("whatsapp", "assets/icons/whatsapp.png")
         self._load_icon("feedback", "assets/icons/feedback.png")
+        self._load_icon("wc_extractor", "assets/icons/extractor.png")
 
         self.bind("<FocusIn>", self._on_window_focus)
         self.after(0, self.start_app)
 
     def set_status(self, message, color=None):
         if self.status_label:
-            self.status_label.configure(text=f"Status: {message}")
-            if color:
-                self.status_label.configure(text_color=color)
+            if color is None:
+                message_lower = message.lower()
+                if "running" in message_lower:
+                    color = "#E53E3E"  # Red
+                elif "finished" in message_lower:
+                    color = "#3B82F6"  # Blue
+                elif "ready" in message_lower:
+                    color = "#38A169"  # Green
+                else:
+                    color = "gray50"
+            
+            self.status_label.configure(text=f"Status: {message}", text_color=color)
+
+            # --- Animation Control Logic ---
+            if "running" in message.lower():
+                if not self.is_animating:
+                    self.is_animating = True
+                    self._animate_loading_icon()
+            else:
+                self.is_animating = False
+
+    def _animate_loading_icon(self, frame_index=0):
+        if not self.is_animating:
+            if self.loading_animation_label:
+                self.loading_animation_label.configure(text="")
+            return
+
+        # Braille characters create a smooth spinning animation
+        frames = ["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"]
+        if self.loading_animation_label:
+            self.loading_animation_label.configure(text=frames[frame_index])
+
+        next_frame_index = (frame_index + 1) % len(frames)
+        self.after(80, self._animate_loading_icon, next_frame_index)
 
     def set_server_status(self, is_connected: bool):
         if self.server_status_indicator:
@@ -381,17 +420,67 @@ class NregaBotApp(ctk.CTk):
             logo = ctk.CTkImage(Image.open(resource_path("logo.png")), size=(50, 50))
             ctk.CTkLabel(header, image=logo, text="").pack(side="left", padx=(0, 15))
         except Exception: pass
+        
         title_frame = ctk.CTkFrame(header, fg_color="transparent"); title_frame.pack(side="left", fill="x", expand=True)
         ctk.CTkLabel(title_frame, text=config.APP_NAME, font=ctk.CTkFont(size=22, weight="bold")).pack(anchor="w")
-        ctk.CTkLabel(title_frame, text=f"v{config.APP_VERSION} | Log in, then select a task.", anchor="w").pack(anchor="w")
+        
+        # --- MODIFIED: Create a frame for the multi-part welcome message ---
+        welcome_frame = ctk.CTkFrame(title_frame, fg_color="transparent")
+        welcome_frame.pack(anchor="w")
+
+        self.header_welcome_prefix_label = ctk.CTkLabel(welcome_frame, text=f"v{config.APP_VERSION} | Log in, then select a task.", anchor="w")
+        self.header_welcome_prefix_label.pack(side="left")
+
+        self.header_welcome_name_label = ctk.CTkLabel(welcome_frame, text="", anchor="w")
+        self.header_welcome_name_label.pack(side="left")
+
+        self.header_welcome_suffix_label = ctk.CTkLabel(welcome_frame, text="", anchor="w")
+        self.header_welcome_suffix_label.pack(side="left")
+        
         controls = ctk.CTkFrame(header, fg_color="transparent"); controls.pack(side="right")
+        
+        self.extractor_btn = ctk.CTkButton(controls, text="Workcode Extractor", image=self.icon_images.get("wc_extractor"), command=lambda: self.show_frame("Workcode Extractor"), width=160)
+        self.extractor_btn.pack(side="left", padx=(0,10))
+
         self.launch_chrome_btn = ctk.CTkButton(controls, text="Launch Chrome", image=self.icon_images.get("chrome"), command=self.launch_chrome_detached, width=140)
         self.launch_chrome_btn.pack(side="left", padx=(0,5))
         self.launch_firefox_btn = ctk.CTkButton(controls, text="Launch Firefox", image=self.icon_images.get("firefox"), command=self.launch_firefox_managed, width=140)
         self.launch_firefox_btn.pack(side="left", padx=(0,10))
+        
         theme_frame = ctk.CTkFrame(controls, fg_color="transparent"); theme_frame.pack(side="left", padx=10, fill="y")
         ctk.CTkLabel(theme_frame, text="Theme:").pack(side="left", padx=(0, 5))
         self.theme_combo = ctk.CTkOptionMenu(theme_frame, values=["System", "Light", "Dark"], command=self.on_theme_change); self.theme_combo.pack(side="left")
+
+    def _update_header_welcome_message(self):
+        if not self.header_welcome_prefix_label: return
+
+        user_name = self.license_info.get('user_name')
+        key_type = self.license_info.get('key_type')
+
+        if user_name:
+            self.header_welcome_prefix_label.configure(text=f"v{config.APP_VERSION} | Welcome, ")
+            self.header_welcome_name_label.configure(text=user_name)
+            self.header_welcome_suffix_label.configure(text="!")
+
+            # Apply special styling for paid users
+            if key_type != 'trial':
+                self.header_welcome_name_label.configure(
+                    text_color=("gold4", "#FFD700"), 
+                    font=ctk.CTkFont(size=13, weight="bold")
+                )
+            else:
+                # Revert to default style for trial users
+                default_color = ctk.ThemeManager.theme["CTkLabel"]["text_color"]
+                self.header_welcome_name_label.configure(
+                    text_color=default_color, 
+                    font=ctk.CTkFont(size=13, weight="normal")
+                )
+        else:
+            # Fallback if no user is logged in
+            self.header_welcome_prefix_label.configure(text=f"v{config.APP_VERSION} | Log in, then select a task.")
+            self.header_welcome_name_label.configure(text="")
+            self.header_welcome_suffix_label.configure(text="")
+
 
     def _create_main_layout(self, for_activation=False):
         self.main_layout_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
@@ -409,27 +498,58 @@ class NregaBotApp(ctk.CTk):
     def _create_nav_buttons(self, parent):
         self.nav_buttons = {}
         self.button_to_category_frame = {}
-        first_category_name = list(self.get_tabs_definition().keys())[0]
+        
+        all_tabs_by_key = {
+            data["key"]: {"name": name, **data}
+            for category, tabs in self.get_tabs_definition().items()
+            for name, data in tabs.items() if "key" in data
+        }
+
+        # --- NEW: Create "Most Used" category ---
+        most_used_keys = self.history_manager.get_most_used_keys()
+        if most_used_keys:
+            most_used_frame = CollapsibleFrame(parent, title="Most Used", initially_expanded=True)
+            most_used_frame.pack(fill="x", pady=0, padx=0)
+            for key in most_used_keys:
+                if key in all_tabs_by_key:
+                    tab_data = all_tabs_by_key[key]
+                    name = tab_data["name"]
+                    btn = ctk.CTkButton(
+                        most_used_frame.content_frame, text=f" {tab_data['icon']}  {name}",
+                        command=lambda n=name: self.show_frame(n), anchor="w",
+                        font=ctk.CTkFont(size=13), height=32, corner_radius=6,
+                        fg_color="transparent", text_color=("gray10", "gray90"),
+                        hover_color=("gray75", "gray25")
+                    )
+                    btn.pack(fill="x", padx=5, pady=2)
+                    self.nav_buttons[name] = btn
+                    self.button_to_category_frame[name] = most_used_frame
+
+        # --- Create all other categories ---
+        is_first_category = True
         for category, tabs in self.get_tabs_definition().items():
-            is_first = (category == first_category_name)
-            category_frame = CollapsibleFrame(parent, title=category, initially_expanded=is_first)
+            # Don't expand the first regular category if "Most Used" exists
+            should_expand = is_first_category and not most_used_keys
+            
+            category_frame = CollapsibleFrame(parent, title=category, initially_expanded=should_expand)
             category_frame.pack(fill="x", pady=0, padx=0)
+            
             for name, data in tabs.items():
-                btn = ctk.CTkButton(
-                    category_frame.content_frame, 
-                    text=f" {data['icon']}  {name}", 
-                    command=lambda n=name: self.show_frame(n), 
-                    anchor="w", 
-                    font=ctk.CTkFont(size=13),
-                    height=32,
-                    corner_radius=6, 
-                    fg_color="transparent", 
-                    text_color=("gray10", "gray90"), 
-                    hover_color=("gray75", "gray25")
-                )
-                btn.pack(fill="x", padx=5, pady=2)
-                self.nav_buttons[name] = btn
+                # Avoid duplicating buttons that are already in "Most Used"
+                if name not in self.nav_buttons:
+                    btn = ctk.CTkButton(
+                        category_frame.content_frame, text=f" {data['icon']}  {name}",
+                        command=lambda n=name: self.show_frame(n), anchor="w",
+                        font=ctk.CTkFont(size=13), height=32, corner_radius=6,
+                        fg_color="transparent", text_color=("gray10", "gray90"),
+                        hover_color=("gray75", "gray25")
+                    )
+                    btn.pack(fill="x", padx=5, pady=2)
+                    self.nav_buttons[name] = btn
+                
+                # Still map it to its original category for expansion logic
                 self.button_to_category_frame[name] = category_frame
+            is_first_category = False
 
     def _create_content_frames(self, for_activation=False):
         self.content_frames = {}
@@ -445,29 +565,29 @@ class NregaBotApp(ctk.CTk):
     def get_tabs_definition(self):
         return {
             "Core NREGA Tasks": {
-                "MR Gen": {"creation_func": MusterrollGenTab, "icon": config.ICONS["MR Gen"]},
-                "MR Payment": {"creation_func": MsrTab, "icon": config.ICONS["MR Payment"]},
-                "Gen Wagelist": {"creation_func": WagelistGenTab, "icon": config.ICONS["Gen Wagelist"]},
-                "Send Wagelist": {"creation_func": WagelistSendTab, "icon": config.ICONS["Send Wagelist"]},
-                "FTO Generation": {"creation_func": FtoGenerationTab, "icon": config.ICONS["FTO Generation"]},
-                "eMB Entry⚠️": {"creation_func": MbEntryTab, "icon": config.ICONS["eMB Entry"]},
-                "eMB Verify": {"creation_func": EmbVerifyTab, "icon": config.ICONS["eMB Verify"]},
-                "Scheme Closing": {"creation_func": SchemeClosingTab, "icon": "🏁"},
-                "Del Work Alloc": {"creation_func": DelWorkAllocTab, "icon": "🗑️"},
-                "Duplicate MR Print": {"creation_func": DuplicateMrTab, "icon": config.ICONS["Duplicate MR Print"]},
+                "MR Gen": {"creation_func": MusterrollGenTab, "icon": config.ICONS["MR Gen"], "key": "muster"},
+                "MR Payment": {"creation_func": MsrTab, "icon": config.ICONS["MR Payment"], "key": "msr"},
+                "Gen Wagelist": {"creation_func": WagelistGenTab, "icon": config.ICONS["Gen Wagelist"], "key": "gen"},
+                "Send Wagelist": {"creation_func": WagelistSendTab, "icon": config.ICONS["Send Wagelist"], "key": "send"},
+                "FTO Generation": {"creation_func": FtoGenerationTab, "icon": config.ICONS["FTO Generation"], "key": "fto_gen"},
+                "eMB Entry⚠️": {"creation_func": MbEntryTab, "icon": config.ICONS["eMB Entry"], "key": "mb_entry"},
+                "eMB Verify": {"creation_func": EmbVerifyTab, "icon": config.ICONS["eMB Verify"], "key": "emb_verify"},
+                "Scheme Closing": {"creation_func": SchemeClosingTab, "icon": "🏁", "key": "scheme_close"},
+                "Del Work Alloc": {"creation_func": DelWorkAllocTab, "icon": "🗑️", "key": "del_work_alloc"},
+                "Duplicate MR Print": {"creation_func": DuplicateMrTab, "icon": config.ICONS["Duplicate MR Print"], "key": "dup_mr"},
             },
             "Records & Workcode": {
-                "WC Gen": {"creation_func": WcGenTab, "icon": config.ICONS["WC Gen (Abua)"]},
-                "IF Editor": {"creation_func": IfEditTab, "icon": config.ICONS["IF Editor (Abua)"]},
-                "Add Activity": {"creation_func": AddActivityTab, "icon": config.ICONS["Add Activity"]},
+                "WC Gen": {"creation_func": WcGenTab, "icon": config.ICONS["WC Gen (Abua)"], "key": "wc_gen"},
+                "IF Editor": {"creation_func": IfEditTab, "icon": config.ICONS["IF Editor (Abua)"], "key": "if_edit"},
+                "Add Activity": {"creation_func": AddActivityTab, "icon": config.ICONS["Add Activity"], "key": "add_activity"},
             },
             "Utilities & Verification": {
-                "Verify Jobcard": {"creation_func": JobcardVerifyTab, "icon": config.ICONS["Verify Jobcard"]},
-                "Verify ABPS": {"creation_func": AbpsVerifyTab, "icon": config.ICONS["Verify ABPS"]},
-                "Workcode Extractor": {"creation_func": WorkcodeExtractorTab, "icon": config.ICONS["Workcode Extractor"]},
-                "Resend Rejected WG": {"creation_func": ResendRejectedWgTab, "icon": config.ICONS["Resend Rejected WG"]},
-                "Update Outcome": {"creation_func": UpdateOutcomeTab, "icon": config.ICONS["Update Outcome"]},
-                "File Manager": {"creation_func": FileManagementTab, "icon": config.ICONS["File Manager"]},
+                "Verify Jobcard": {"creation_func": JobcardVerifyTab, "icon": config.ICONS["Verify Jobcard"], "key": "jc_verify"},
+                "Verify ABPS": {"creation_func": AbpsVerifyTab, "icon": config.ICONS["Verify ABPS"], "key": "abps_verify"},
+                "Workcode Extractor": {"creation_func": WorkcodeExtractorTab, "icon": config.ICONS["Workcode Extractor"], "key": "wc_extract"},
+                "Resend Rejected WG": {"creation_func": ResendRejectedWgTab, "icon": config.ICONS["Resend Rejected WG"], "key": "resend_wg"},
+                "Update Outcome": {"creation_func": UpdateOutcomeTab, "icon": config.ICONS["Update Outcome"], "key": "update_outcome"},
+                "File Manager": {"creation_func": FileManagementTab, "icon": config.ICONS["File Manager"], "key": "file_manager"},
             },
             "Application": {
                  "Feedback": {"creation_func": FeedbackTab, "icon": config.ICONS["Feedback"]},
@@ -485,23 +605,33 @@ class NregaBotApp(ctk.CTk):
     def _create_footer(self):
         footer = ctk.CTkFrame(self, height=40, corner_radius=0)
         footer.grid(row=2, column=0, sticky="ew", padx=20, pady=(10, 15))
-        footer.grid_columnconfigure(1, weight=1)
+        footer.grid_columnconfigure(0, weight=0)
+        footer.grid_columnconfigure(1, weight=0)
+        footer.grid_columnconfigure(2, weight=1)
+        footer.grid_columnconfigure(3, weight=0)
 
         left_frame = ctk.CTkFrame(footer, fg_color="transparent")
         left_frame.grid(row=0, column=0, sticky="w", padx=15)
         ctk.CTkLabel(left_frame, text="© 2025 NREGA Bot", text_color="gray50").pack(side="left")
         
-        self.status_label = ctk.CTkLabel(footer, text="Status: Ready", text_color="gray50", anchor="w")
-        self.status_label.grid(row=0, column=1, sticky="ew", padx=20)
+        status_frame = ctk.CTkFrame(footer, fg_color="transparent")
+        status_frame.grid(row=0, column=1, columnspan=2, sticky="ew", padx=20)
+        
+        self.loading_animation_label = ctk.CTkLabel(status_frame, text="", width=20, font=ctk.CTkFont(size=14))
+        self.loading_animation_label.pack(side="left")
+        
+        self.status_label = ctk.CTkLabel(status_frame, text="Status: Ready", text_color="gray50", anchor="w")
+        self.status_label.pack(side="left")
 
         button_container = ctk.CTkFrame(footer, fg_color="transparent")
-        button_container.grid(row=0, column=2, sticky="e", padx=15)
+        button_container.grid(row=0, column=3, sticky="e", padx=15)
 
         nrega_btn = ctk.CTkButton(button_container, text="NREGA Bot Website ↗", image=self.icon_images.get("nrega"), command=lambda: webbrowser.open_new_tab(config.MAIN_WEBSITE_URL), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
         nrega_btn.pack(side="left")
 
-        whatsapp_btn = ctk.CTkButton(button_container, text="Join WhatsApp Group", image=self.icon_images.get("whatsapp"), command=lambda: webbrowser.open_new_tab("https://chat.whatsapp.com/Bup3hDCH3wn2shbUryv8wn?mode=r_c"), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
-        whatsapp_btn.pack(side="left", padx=(10, 0))
+        # --- MODIFIED: WhatsApp button changed to Community button ---
+        community_btn = ctk.CTkButton(button_container, text="Community", image=self.icon_images.get("whatsapp"), command=lambda: webbrowser.open_new_tab("https://chat.whatsapp.com/Bup3hDCH3wn2shbUryv8wn"), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
+        community_btn.pack(side="left", padx=(10, 0))
 
         support_btn = ctk.CTkButton(button_container, text="Contact Support", image=self.icon_images.get("feedback"), command=lambda: self.show_frame("Feedback"), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
         support_btn.pack(side="left", padx=(10, 0))
@@ -509,6 +639,8 @@ class NregaBotApp(ctk.CTk):
         self.server_status_indicator = ctk.CTkFrame(button_container, width=12, height=12, corner_radius=6, fg_color="gray")
         self.server_status_indicator.pack(side="left", padx=(10, 5))
         ctk.CTkLabel(button_container, text="Server").pack(side="left")
+
+        self.set_status("Ready")
 
     def save_demo_csv(self, file_type: str):
         try:
@@ -530,6 +662,7 @@ class NregaBotApp(ctk.CTk):
             if hasattr(tab, 'style_treeview') and hasattr(tab, 'files_tree'): tab.style_treeview(tab.files_tree)
     
     def _update_about_tab_info(self):
+        self._update_header_welcome_message()
         try:
             about_tab = self.tab_instances.get("About")
             if about_tab:
@@ -770,12 +903,25 @@ class NregaBotApp(ctk.CTk):
         return False
         
     def start_automation_thread(self, key, target_func, args=()):
-        if self.automation_threads.get(key) and self.automation_threads[key].is_alive(): messagebox.showwarning("In Progress", f"The '{key}' task is already running."); return
-        self.prevent_sleep(); self.active_automations.add(key); self.stop_events[key] = threading.Event()
+        if self.automation_threads.get(key) and self.automation_threads[key].is_alive():
+            messagebox.showwarning("In Progress", f"The task is already running."); return
+        
+        # --- NEW: Increment usage count for this tool ---
+        self.history_manager.increment_usage(key)
+
+        self.prevent_sleep()
+        self.active_automations.add(key)
+        self.stop_events[key] = threading.Event()
+        
         def thread_wrapper():
-            try: target_func(*args)
-            finally: self.after(0, self.on_automation_finished, key)
-        thread = threading.Thread(target=thread_wrapper, daemon=True); self.automation_threads[key] = thread; thread.start()
+            try:
+                target_func(*args)
+            finally:
+                self.after(0, self.on_automation_finished, key)
+
+        thread = threading.Thread(target=thread_wrapper, daemon=True)
+        self.automation_threads[key] = thread
+        thread.start()
 
     def log_message(self, log_widget, message, level="info"):
         log_widget.configure(state="normal"); log_widget.insert(tkinter.END, f"[{time.strftime('%H:%M:%S')}] {message}\n"); log_widget.configure(state="disabled"); log_widget.see(tkinter.END)

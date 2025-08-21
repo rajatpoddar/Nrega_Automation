@@ -57,7 +57,7 @@ class WcGenTab(BaseAutomationTab):
         step1_frame.grid(row=0, column=0, sticky='ew', pady=(0, 10))
         step1_frame.grid_columnconfigure(0, weight=1)
         ctk.CTkLabel(step1_frame, text="Step 1: Load Panchayat & Profile", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, columnspan=2, padx=15, pady=(10, 5), sticky="w")
-        # ... (Profile and Panchayat widgets remain the same, just parented to step1_frame)
+        
         profile_frame = ctk.CTkFrame(step1_frame, fg_color="transparent")
         profile_frame.grid(row=1, column=0, columnspan=2, sticky='ew', padx=10)
         profile_frame.grid_columnconfigure(1, weight=1)
@@ -72,6 +72,7 @@ class WcGenTab(BaseAutomationTab):
         self.save_profile_button.pack(side="left", padx=(0, 5))
         self.delete_profile_button = ctk.CTkButton(profile_actions, text="Delete", width=70, fg_color="transparent", border_width=1, text_color=("gray10", "#DCE4EE"), command=self._delete_profile)
         self.delete_profile_button.pack(side="left")
+        
         panchayat_frame = ctk.CTkFrame(step1_frame, fg_color="transparent")
         panchayat_frame.grid(row=2, column=0, columnspan=2, sticky='ew', padx=10, pady=(0,10))
         panchayat_frame.grid_columnconfigure(1, weight=1)
@@ -81,12 +82,15 @@ class WcGenTab(BaseAutomationTab):
         self.load_button = ctk.CTkButton(panchayat_frame, text="Load Categories from Website", command=self._start_category_loading_thread)
         self.load_button.grid(row=1, column=0, columnspan=2, padx=5, pady=(5,10), sticky="ew")
 
+        # --- MODIFIED: Action Buttons moved here ---
+        action_frame = self._create_action_buttons(parent_frame=settings_container)
+        action_frame.grid(row=1, column=0, sticky="ew", padx=0, pady=10)
+
         # STEP 2: Configuration Frame
         self.step2_frame = ctk.CTkFrame(settings_container)
-        self.step2_frame.grid(row=1, column=0, sticky='ew', pady=(0, 10))
+        self.step2_frame.grid(row=2, column=0, sticky='ew', pady=(0, 10))
         self.step2_frame.grid_columnconfigure(1, weight=1)
         ctk.CTkLabel(self.step2_frame, text="Step 2: Configure Work Details", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, columnspan=2, padx=15, pady=(10, 5), sticky="w")
-        # ... (Dropdowns and other fields remain the same, parented to step2_frame)
         self._create_field(self.step2_frame, "master_category", "Master Category", 1, is_dropdown=True)
         self._create_field(self.step2_frame, "work_category", "Work Category", 2, is_dropdown=True)
         self._create_field(self.step2_frame, "beneficiary_type", "Beneficiary Type", 3, is_dropdown=True)
@@ -103,31 +107,24 @@ class WcGenTab(BaseAutomationTab):
         self._create_field(self.step2_frame, "est_labour_cost", "Est. Labour Cost (Lakhs)", 10)
         self._create_field(self.step2_frame, "est_material_cost", "Est. Material Cost (Lakhs)", 11)
 
-         # --- STEP 3: Data Input Frame (inside scrollable container) ---
+         # --- STEP 3: Data Input Frame ---
         step3_frame = ctk.CTkFrame(settings_container)
-        step3_frame.grid(row=2, column=0, sticky='ew')
+        step3_frame.grid(row=3, column=0, sticky='ew', pady=(0, 10))
         step3_frame.grid_columnconfigure(1, weight=1)
         ctk.CTkLabel(step3_frame, text="Step 3: Select Data File", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, columnspan=3, padx=15, pady=(10, 5), sticky="w")
         
-        # --- MODIFIED: Create a frame to hold the buttons ---
         file_buttons_frame = ctk.CTkFrame(step3_frame, fg_color="transparent")
         file_buttons_frame.grid(row=1, column=0, columnspan=2, sticky="w", padx=15, pady=10)
 
         self.select_button = ctk.CTkButton(file_buttons_frame, text="Select workcode_data.csv", command=self.select_csv_file)
         self.select_button.pack(side="left", padx=(0, 10))
 
-        # --- MODIFIED: Changed button color for visibility ---
         self.demo_csv_button = ctk.CTkButton(file_buttons_frame, text="Download Demo CSV", command=lambda: self.app.save_demo_csv("wc_gen"), fg_color="#2E8B57", hover_color="#257247")
         self.demo_csv_button.pack(side="left")
         
         self.file_label = ctk.CTkLabel(step3_frame, text="No file selected", text_color="gray")
         self.file_label.grid(row=2, column=0, columnspan=2, sticky="w", padx=15, pady=(0, 10))
         
-        # Action Buttons
-        action_frame = self._create_action_buttons(parent_frame=settings_container)
-        action_frame.grid(row=3, column=0, sticky="ew", padx=0, pady=(20, 10))
-        
-        # Initially disable Step 2
         for child in self.step2_frame.winfo_children():
             if isinstance(child, (ctk.CTkEntry, ctk.CTkComboBox, DateEntry)):
                 child.configure(state="disabled")
@@ -149,7 +146,6 @@ class WcGenTab(BaseAutomationTab):
         
         # --- 3. Create the "Logs & Status" Tab using the helper ---
         self._create_log_and_status_area(notebook)
-
 
     def _log_result(self, work_code):
         timestamp = datetime.now().strftime("%H:%M:%S")

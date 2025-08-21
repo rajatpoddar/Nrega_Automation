@@ -1,4 +1,14 @@
 {
+  "2.6.4": [
+      "✨ Feature: 'Send Wagelist' tab now supports processing a specific range of wagelists.",
+      "✨ Improvement: 'MR Payment' automation now supports both Block and GP logins and provides more precise approval status results (JE vs. AE).",
+      "✨ Improvement: 'Send Wagelist' automation is now significantly faster, selecting all EFMS options instantly.",
+      "✨ Improvement: The main header now displays a personalized welcome message (with special styling for licensed users) and a quick-access button for the 'Workcode Extractor'.",
+      "✨ Improvement: The footer now includes an animated icon and color-coded text to better indicate the app's status (Ready, Running, Finished).",
+      "✨ Improvement: Enhanced the 'WC Gen' tab with Panchayat autocomplete, automatic profile saving, and a results summary.",
+      "🐞 Bug Fix: Fixed a critical timing issue in the 'IF Edit' tab that could cause the first work code to be skipped.",
+      "🐞 Bug Fix: Reorganized the layouts of the 'IF Edit' and 'WC Gen' tabs for a more intuitive workflow."
+    ],
   "2.6.3": [
       "✨ Feature: Added new 'Resend Rejected Wagelist' automation to reprocess payments for bank-rejected transactions.",
       "✨ Feature: Added a folder share option in the File Manager.",

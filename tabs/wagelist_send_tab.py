@@ -16,51 +16,43 @@ class WagelistSendTab(BaseAutomationTab):
         super().__init__(parent, app_instance, automation_key="send")
         
         self.grid_columnconfigure(0, weight=1)
-        # --- MODIFIED: Configure rows for new layout ---
-        self.grid_rowconfigure(0, weight=0) # Settings row
-        self.grid_rowconfigure(1, weight=0) # Action buttons row
-        self.grid_rowconfigure(2, weight=1) # Results/Logs row (will expand)
+        self.grid_rowconfigure(2, weight=1) 
         
         self._create_widgets()
 
     def _create_widgets(self):
-        # --- NEW: Main container for all settings, made scrollable ---
-        settings_container = ctk.CTkScrollableFrame(self, label_text="Settings")
-        settings_container.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
-        settings_container.grid_columnconfigure(0, weight=1)
+        settings_container = ctk.CTkFrame(self)
+        settings_container.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
+        settings_container.grid_columnconfigure(1, weight=1)
 
-        # --- Controls Frame (inside scrollable frame) ---
-        controls_frame = ctk.CTkFrame(settings_container)
-        controls_frame.grid(row=0, column=0, sticky='ew', padx=5, pady=5)
-        controls_frame.grid_columnconfigure(1, weight=1)
-
-        # --- Financial Year Selection ---
-        ctk.CTkLabel(controls_frame, text="Financial Year:").grid(row=0, column=0, padx=(15, 5), pady=10, sticky="w")
+        # Financial Year Selection
+        ctk.CTkLabel(settings_container, text="Financial Year:").grid(row=0, column=0, padx=(15, 5), pady=10, sticky="w")
         
         current_year = datetime.now().year
         year_options = [f"{year}-{year+1}" for year in range(current_year + 1, current_year - 10, -1)]
         
-        self.fin_year_combobox = ctk.CTkComboBox(controls_frame, values=year_options)
+        self.fin_year_combobox = ctk.CTkComboBox(settings_container, values=year_options)
         default_year = f"{current_year}-{current_year+1}" if datetime.now().month >= 4 else f"{current_year-1}-{current_year}"
         self.fin_year_combobox.set(default_year)
-        self.fin_year_combobox.grid(row=0, column=1, columnspan=3, padx=(0, 15), pady=10, sticky="ew")
+        self.fin_year_combobox.grid(row=0, column=1, padx=(0, 15), pady=10, sticky="ew")
 
-        # --- Row Selection ---
-        ctk.CTkLabel(controls_frame, text="Start Row:").grid(row=1, column=0, padx=(15, 5), pady=(0, 15), sticky="w")
-        self.row_start_entry = ctk.CTkEntry(controls_frame)
-        self.row_start_entry.insert(0, config.WAGELIST_SEND_CONFIG["defaults"]["start_row"])
-        self.row_start_entry.grid(row=1, column=1, pady=(0, 15), sticky="w")
+        # --- NEW: Wagelist Range Selection ---
+        ctk.CTkLabel(settings_container, text="Start Wagelist (optional):").grid(row=1, column=0, padx=(15, 5), pady=5, sticky="w")
+        self.start_wagelist_entry = ctk.CTkEntry(settings_container, placeholder_text="e.g., 34...WL068545")
+        self.start_wagelist_entry.grid(row=1, column=1, padx=(0, 15), pady=5, sticky="ew")
 
-        ctk.CTkLabel(controls_frame, text="End Row:").grid(row=1, column=2, padx=(10, 5), pady=(0, 15), sticky="w")
-        self.row_end_entry = ctk.CTkEntry(controls_frame)
-        self.row_end_entry.insert(0, config.WAGELIST_SEND_CONFIG["defaults"]["end_row"])
-        self.row_end_entry.grid(row=1, column=3, padx=0, pady=(0, 15), sticky="w")
+        ctk.CTkLabel(settings_container, text="End Wagelist (optional):").grid(row=2, column=0, padx=(15, 5), pady=5, sticky="w")
+        self.end_wagelist_entry = ctk.CTkEntry(settings_container, placeholder_text="e.g., 34...WL068548")
+        self.end_wagelist_entry.grid(row=2, column=1, padx=(0, 15), pady=5, sticky="ew")
 
-        # --- Action Buttons (MOVED) ---
+        ctk.CTkLabel(settings_container, text="ℹ️ Leave both fields blank to process all wagelists for the selected year.", text_color="gray50").grid(row=3, column=0, columnspan=2, padx=15, pady=(5, 10))
+
+
+        # Action Buttons
         action_frame = self._create_action_buttons(parent_frame=self)
         action_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 10))
         
-        # --- Results and Logs (MOVED) ---
+        # Results and Logs
         data_notebook = ctk.CTkTabview(self)
         data_notebook.grid(row=2, column=0, sticky="nsew", padx=10, pady=(0,10))
         results_frame = data_notebook.add("Results")
@@ -90,15 +82,13 @@ class WagelistSendTab(BaseAutomationTab):
         self.set_common_ui_state(running)
         state = "disabled" if running else "normal"
         self.fin_year_combobox.configure(state=state)
-        self.row_start_entry.configure(state=state)
-        self.row_end_entry.configure(state=state)
+        self.start_wagelist_entry.configure(state=state)
+        self.end_wagelist_entry.configure(state=state)
 
     def reset_ui(self):
         if messagebox.askokcancel("Reset Form?", "Are you sure?"):
-            self.row_start_entry.delete(0, tkinter.END)
-            self.row_start_entry.insert(0, config.WAGELIST_SEND_CONFIG["defaults"]["start_row"])
-            self.row_end_entry.delete(0, tkinter.END)
-            self.row_end_entry.insert(0, config.WAGELIST_SEND_CONFIG["defaults"]["end_row"])
+            self.start_wagelist_entry.delete(0, tkinter.END)
+            self.end_wagelist_entry.delete(0, tkinter.END)
             for item in self.results_tree.get_children():
                 self.results_tree.delete(item)
             self.app.clear_log(self.log_display)
@@ -107,21 +97,17 @@ class WagelistSendTab(BaseAutomationTab):
             self.app.after(0, self.app.set_status, "Ready")
 
     def start_automation(self):
-        try:
-            start_row = int(self.row_start_entry.get())
-            end_row = int(self.row_end_entry.get())
-            fin_year = self.fin_year_combobox.get()
-        except ValueError:
-            messagebox.showerror("Input Error", "Row numbers must be integers.")
-            return
-        
+        fin_year = self.fin_year_combobox.get()
         if not fin_year:
             messagebox.showerror("Input Error", "Please select a Financial Year.")
             return
+            
+        start_wl = self.start_wagelist_entry.get().strip()
+        end_wl = self.end_wagelist_entry.get().strip()
 
-        self.app.start_automation_thread(self.automation_key, self.run_automation_logic, args=(fin_year, start_row, end_row))
+        self.app.start_automation_thread(self.automation_key, self.run_automation_logic, args=(fin_year, start_wl, end_wl))
 
-    def run_automation_logic(self, fin_year, start_row, end_row):
+    def run_automation_logic(self, fin_year, start_wl, end_wl):
         self.app.after(0, self.set_ui_state, True)
         self.app.after(0, lambda: [self.results_tree.delete(item) for item in self.results_tree.get_children()])
         self.app.clear_log(self.log_display)
@@ -133,12 +119,10 @@ class WagelistSendTab(BaseAutomationTab):
             if not driver: return
             wait = WebDriverWait(driver, 15)
 
-            self.app.log_message(self.log_display, f"Navigating to Send Wagelist page...")
             driver.get(config.WAGELIST_SEND_CONFIG["url"])
             
             self.app.log_message(self.log_display, f"Selecting Financial Year: {fin_year}")
-            fin_year_dropdown = Select(wait.until(EC.presence_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_ddlfin"))))
-            fin_year_dropdown.select_by_value(fin_year)
+            Select(wait.until(EC.presence_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_ddlfin")))).select_by_value(fin_year)
             
             self.app.log_message(self.log_display, "Waiting for wagelists to load...")
             wait.until(EC.element_to_be_clickable((By.XPATH, "//select[@id='ctl00_ContentPlaceHolder1_ddl_sel']/option[position()>1]")))
@@ -148,16 +132,32 @@ class WagelistSendTab(BaseAutomationTab):
             if not all_wagelists:
                 self.app.log_message(self.log_display, "No wagelists found for the selected year.", "warning")
                 messagebox.showwarning("No Wagelists", f"No wagelists were found for the financial year {fin_year}.")
-                self.app.after(0, self.set_ui_state, False)
                 return
-                
-            self.app.log_message(self.log_display, f"Found {len(all_wagelists)} wagelists.")
-            total = len(all_wagelists)
-            for idx, wagelist in enumerate(all_wagelists, 1):
+            
+            # --- NEW: Filter wagelists based on user-provided range ---
+            wagelists_to_process = all_wagelists
+            if start_wl or end_wl:
+                self.app.log_message(self.log_display, f"Filtering wagelists from '{start_wl or 'start'}' to '{end_wl or 'end'}'.")
+                try:
+                    start_index = all_wagelists.index(start_wl) if start_wl else 0
+                    end_index = all_wagelists.index(end_wl) if end_wl else len(all_wagelists) - 1
+
+                    if start_index > end_index:
+                        messagebox.showerror("Input Error", "Start Wagelist must appear before End Wagelist in the dropdown.")
+                        return
+                    
+                    wagelists_to_process = all_wagelists[start_index : end_index + 1]
+                except ValueError:
+                    messagebox.showerror("Input Error", "The specified Start or End Wagelist was not found in the list for this financial year.")
+                    return
+            
+            self.app.log_message(self.log_display, f"Found {len(wagelists_to_process)} wagelists to process.")
+            total = len(wagelists_to_process)
+            for idx, wagelist in enumerate(wagelists_to_process, 1):
                 if self.app.stop_events[self.automation_key].is_set():
                     break
                 self.app.after(0, self.update_status, f"Processing {idx}/{total}: {wagelist}", idx / total)
-                success = self._process_single_wagelist(driver, wait, wagelist, start_row, end_row)
+                success = self._process_single_wagelist(driver, wait, wagelist, fin_year)
                 self.app.after(0, lambda w=wagelist, s="Success" if success else "Failed", t=datetime.now().strftime("%H:%M:%S"): self.results_tree.insert("", tkinter.END, values=(w, s, t)))
                 time.sleep(1)
 
@@ -171,29 +171,31 @@ class WagelistSendTab(BaseAutomationTab):
             self.app.after(0, self.set_ui_state, False)
             if not stopped:
                 self.app.after(0, lambda: messagebox.showinfo("Automation Complete", "Wagelist sending process finished."))
-                self.app.after(0, self.app.set_status, "Automation Finished")
+            self.app.after(0, self.app.set_status, "Automation Finished")
 
-    def _process_single_wagelist(self, driver, wait, wagelist, start_row, end_row):
+    def _process_single_wagelist(self, driver, wait, wagelist, fin_year):
         for attempt in range(2):
-            if self.app.stop_events[self.automation_key].is_set():
-                return False
+            if self.app.stop_events[self.automation_key].is_set(): return False
             try:
                 Select(wait.until(EC.element_to_be_clickable((By.ID, "ctl00_ContentPlaceHolder1_ddl_sel")))).select_by_value(wagelist)
+                wait.until(EC.presence_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_GridView1")))
                 
-                start_row_radio_id = f"ctl00_ContentPlaceHolder1_GridView1_ctl{str(start_row).zfill(2)}_rdbPayment_2"
-                wait.until(EC.presence_of_element_located((By.ID, start_row_radio_id)))
+                self.app.log_message(self.log_display, f"Selecting all EFMS options for {wagelist}...")
+                js_script = """
+                    const radios = document.querySelectorAll("input[id$='_rdbPayment_2']");
+                    let clickedCount = 0;
+                    radios.forEach(radio => {
+                        if (!radio.disabled && !radio.checked) {
+                            radio.checked = true;
+                            clickedCount++;
+                        }
+                    });
+                    return clickedCount;
+                """
+                clicked_count = driver.execute_script(js_script)
+                self.app.log_message(self.log_display, f"   - Instantly selected {clicked_count} EFMS options.")
                 
-                for i in range(start_row, end_row + 1):
-                    if self.app.stop_events[self.automation_key].is_set():
-                        return False
-                    try:
-                        driver.find_element(By.ID, f"ctl00_ContentPlaceHolder1_GridView1_ctl{str(i).zfill(2)}_rdbPayment_2").click()
-                        time.sleep(0.1)
-                    except NoSuchElementException:
-                        break
-                
-                if self.app.stop_events[self.automation_key].is_set():
-                    return False
+                if self.app.stop_events[self.automation_key].is_set(): return False
                 
                 driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_btnsubmit").click()
                 WebDriverWait(driver, 5).until(EC.alert_is_present()).accept()
@@ -202,7 +204,11 @@ class WagelistSendTab(BaseAutomationTab):
                 return True
             except Exception as e:
                 self.app.log_message(self.log_display, f"[WARN] Attempt {attempt+1} failed for {wagelist}: {type(e).__name__}", "warning")
-                time.sleep(2)
-                driver.refresh()
-                wait.until(EC.element_to_be_clickable((By.ID, "ctl00_ContentPlaceHolder1_ddl_sel")))
+                if (attempt == 0):
+                    driver.refresh()
+                    wait.until(EC.element_to_be_clickable((By.ID, "ctl00_ContentPlaceHolder1_ddlfin")))
+                    Select(driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_ddlfin")).select_by_value(fin_year)
+                    wait.until(EC.element_to_be_clickable((By.ID, "ctl00_ContentPlaceHolder1_ddl_sel")))
+
+        self.app.log_message(self.log_display, f"❌ {wagelist} failed after multiple attempts.", "error")
         return False

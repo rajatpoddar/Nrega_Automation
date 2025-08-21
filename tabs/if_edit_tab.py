@@ -79,7 +79,6 @@ class IfEditTab(BaseAutomationTab):
         self.select_button = ctk.CTkButton(file_frame, text="Select CSV File", command=self.select_csv_file)
         self.select_button.pack(side="left", padx=(0, 10))
 
-        # --- MODIFIED: Changed button color for visibility ---
         self.demo_csv_button = ctk.CTkButton(file_frame, text="Download Demo CSV", command=lambda: self.app.save_demo_csv("if_edit"), fg_color="#2E8B57", hover_color="#257247")
         self.demo_csv_button.pack(side="left", padx=(0, 10))
         
@@ -93,9 +92,13 @@ class IfEditTab(BaseAutomationTab):
         self.convergence_switch.grid(row=0, column=0, padx=15, pady=10)
         self.ui_fields['run_convergence'] = self.convergence_switch
         
+        # --- MODIFIED: Action Buttons moved here ---
+        action_frame = self._create_action_buttons(parent_frame=settings_container)
+        action_frame.grid(row=3, column=0, sticky="ew", padx=5, pady=(10, 5))
+
         # Settings Notebook (for Page 1, 2, 3)
         self.settings_notebook = ctk.CTkTabview(settings_container)
-        self.settings_notebook.grid(row=3, column=0, sticky="ew", padx=5, pady=5)
+        self.settings_notebook.grid(row=4, column=0, sticky="ew", padx=5, pady=5)
         tab_p1 = self.settings_notebook.add("Page 1 Settings")
         tab_p2 = self.settings_notebook.add("Page 2 Settings")
         tab_p3 = self.settings_notebook.add("Page 3 Settings")
@@ -104,11 +107,6 @@ class IfEditTab(BaseAutomationTab):
         self._create_page2_widgets(tab_p2)
         self._create_page3_widgets(tab_p3)
         self._toggle_page_settings()
-
-        # Action Buttons
-        action_frame = self._create_action_buttons(parent_frame=settings_container)
-        action_frame.grid(row=4, column=0, sticky="ew", padx=5, pady=(20, 10))
-
 
         # --- 2. Populate the "Results" Tab ---
         results_action_frame = ctk.CTkFrame(results_tab, fg_color="transparent")
@@ -394,6 +392,8 @@ class IfEditTab(BaseAutomationTab):
         try:
             current_year = datetime.now().year; wait = WebDriverWait(driver, 20)
             driver.get(config.IF_EDIT_CONFIG["url"])
+
+            time.sleep(1)
 
             # --- Page 1 ---
             self.app.log_message(self.log_display, "Page 1: Entering work details...")

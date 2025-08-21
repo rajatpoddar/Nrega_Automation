@@ -65,15 +65,14 @@ class WorkcodeExtractorTab(ctk.CTkFrame):
         self.extract_button = ctk.CTkButton(action_frame, text="▶ Extract Codes", command=self._extract_codes)
         self.extract_button.grid(row=0, column=0, padx=15, pady=10)
         
-        # --- MODIFIED: Added a frame for checkboxes for better alignment ---
         checkbox_frame = ctk.CTkFrame(action_frame, fg_color="transparent")
         checkbox_frame.grid(row=0, column=1, padx=10, pady=10)
         
         self.remove_duplicates_checkbox = ctk.CTkCheckBox(checkbox_frame, text="Remove Duplicates")
         self.remove_duplicates_checkbox.pack(side="left", padx=(0, 15))
-        self.remove_duplicates_checkbox.select() # Checked by default
+        # --- MODIFIED: The line below is removed to make it unchecked by default ---
+        # self.remove_duplicates_checkbox.select()
 
-        # --- ADDED: Checkbox to extract full workcode ---
         self.extract_full_code_checkbox = ctk.CTkCheckBox(checkbox_frame, text="Extract Full Workcode")
         self.extract_full_code_checkbox.pack(side="left")
         
@@ -86,11 +85,9 @@ class WorkcodeExtractorTab(ctk.CTkFrame):
         if not input_content.strip():
             return
 
-        # Pattern to find the full work code like '3404004015/IF/1234567890/123456'
         work_code_pattern = re.compile(r'\b(34\d{8}(?:/\w+)+/\d+)\b')
         found_codes = work_code_pattern.findall(input_content)
         
-        # --- MODIFIED: Process codes based on checkbox state ---
         extracted_results = []
         extract_full_code = self.extract_full_code_checkbox.get()
 
@@ -98,7 +95,6 @@ class WorkcodeExtractorTab(ctk.CTkFrame):
             if extract_full_code:
                 extracted_results.append(code)
             else:
-                # Original logic to get the last part
                 last_part = code.split('/')[-1]
                 if len(last_part) > 7:
                     extracted_results.append(last_part[-6:])
@@ -110,7 +106,6 @@ class WorkcodeExtractorTab(ctk.CTkFrame):
         else:
             final_results = extracted_results
         
-        # Display the results
         self.output_text.configure(state="normal")
         self.output_text.delete("1.0", tkinter.END)
         if final_results:

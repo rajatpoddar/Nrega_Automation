@@ -1,15 +1,17 @@
-# tabs/wagelist_gen_tab.py (Refactored to use BaseAutomationTab)
+# tabs/wagelist_gen_tab.py
 import tkinter
 from tkinter import ttk, messagebox
 import customtkinter as ctk
 import time
 from datetime import datetime
+from urllib.parse import urlparse, parse_qs
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 import config
 from .base_tab import BaseAutomationTab
+from .autocomplete_widget import AutocompleteEntry
 
 class WagelistGenTab(BaseAutomationTab):
     def __init__(self, parent, app_instance):
@@ -26,7 +28,8 @@ class WagelistGenTab(BaseAutomationTab):
         controls_frame.grid_columnconfigure(1, weight=1)
         
         ctk.CTkLabel(controls_frame, text=f"Agency Name ({config.AGENCY_PREFIX}...):").grid(row=0, column=0, sticky='w', padx=15, pady=(15,0))
-        self.agency_entry = ctk.CTkEntry(controls_frame)
+        # --- FIX: Changed CTkEntry to AutocompleteEntry ---
+        self.agency_entry = AutocompleteEntry(controls_frame, suggestions_list=self.app.history_manager.get_suggestions("panchayat_name"))
         self.agency_entry.grid(row=0, column=1, sticky='ew', padx=15, pady=(15,0))
         ctk.CTkLabel(controls_frame, text="Enter only the Panchayat name (e.g., Palojori).", text_color="gray50").grid(row=1, column=1, sticky='w', padx=15)
 
@@ -40,18 +43,22 @@ class WagelistGenTab(BaseAutomationTab):
         self._create_log_and_status_area(parent_notebook=notebook)
 
         results_frame.grid_columnconfigure(0, weight=1)
-        results_frame.grid_rowconfigure(1, weight=1) # Make space for the button
+        results_frame.grid_rowconfigure(1, weight=1)
 
         results_action_frame = ctk.CTkFrame(results_frame, fg_color="transparent")
         results_action_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(5, 10), padx=5)
         self.export_csv_button = ctk.CTkButton(results_action_frame, text="Export to CSV", command=lambda: self.export_treeview_to_csv(self.results_tree, "wagelist_gen_results.csv"))
         self.export_csv_button.pack(side="left")
         
-        cols = ("Timestamp", "Work Code", "Status", "Job Card No.", "Applicant Name")
+        # --- ENHANCEMENT: Added 'Wagelist No.' column ---
+        cols = ("Timestamp", "Work Code", "Status", "Wagelist No.", "Job Card No.", "Applicant Name")
         self.results_tree = ttk.Treeview(results_frame, columns=cols, show='headings')
         for col in cols: self.results_tree.heading(col, text=col)
-        self.results_tree.column("Timestamp", width=80, anchor='center'); self.results_tree.column("Work Code", width=220)
-        self.results_tree.column("Status", width=150); self.results_tree.column("Job Card No.", width=200)
+        self.results_tree.column("Timestamp", width=80, anchor='center')
+        self.results_tree.column("Work Code", width=200)
+        self.results_tree.column("Status", width=150)
+        self.results_tree.column("Wagelist No.", width=180)
+        self.results_tree.column("Job Card No.", width=200)
         self.results_tree.column("Applicant Name", width=150)
         self.results_tree.grid(row=1, column=0, sticky='nsew')
         scrollbar = ctk.CTkScrollbar(results_frame, command=self.results_tree.yview)
@@ -76,6 +83,8 @@ class WagelistGenTab(BaseAutomationTab):
         agency_name_part = self.agency_entry.get().strip()
         if not agency_name_part:
             messagebox.showwarning("Input Error", "Please enter an Agency name."); return
+        # --- FIX: Save Panchayat name to history ---
+        self.app.update_history("panchayat_name", agency_name_part)
         self.app.start_automation_thread(self.automation_key, self.run_automation_logic, args=(agency_name_part,))
 
     def run_automation_logic(self, agency_name_part):
@@ -117,8 +126,13 @@ class WagelistGenTab(BaseAutomationTab):
                     if not checkbox.is_selected(): checkbox.click()
                     wait.until(EC.element_to_be_clickable((By.ID, 'ctl00_ContentPlaceHolder1_btn_go'))).click()
                     wait.until(EC.any_of(EC.url_changes(config.WAGELIST_GEN_CONFIG["base_url"]), EC.visibility_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_lblmsg"))))
-                    if driver.current_url != config.WAGELIST_GEN_CONFIG["base_url"]:
-                        self.app.log_message(self.log_display, f"SUCCESS: Wagelist generated for {work_code}.", "success"); self._log_result(work_code, "Success", "", "")
+                    if "view_wagelist.aspx" in driver.current_url:
+                        # --- ENHANCEMENT: Parse URL to get wagelist number ---
+                        parsed_url = urlparse(driver.current_url)
+                        query_params = parse_qs(parsed_url.query)
+                        wagelist_no = query_params.get('Wage_Listno', ['N/A'])[0]
+                        self.app.log_message(self.log_display, f"SUCCESS: Wagelist {wagelist_no} generated for {work_code}.", "success")
+                        self._log_result(work_code, "Success", wagelist_no, "", "")
                     else:
                         error_text = driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_lblmsg").text.strip()
                         self.app.log_message(self.log_display, f"ERROR on {work_code}: {error_text}", "error")
@@ -128,8 +142,8 @@ class WagelistGenTab(BaseAutomationTab):
                             for u_row in unfrozen_table.find_elements(By.XPATH, ".//tr[td]"):
                                 u_cells = u_row.find_elements(By.TAG_NAME, "td")
                                 job_cards.append(u_cells[1].text.strip()); applicant_names.append(u_cells[3].text.strip())
-                            self._log_result(work_code, "Unfrozen Account", ", ".join(job_cards), ", ".join(applicant_names))
-                        except NoSuchElementException: self._log_result(work_code, "Failed (Unknown Error)", "", "")
+                            self._log_result(work_code, "Unfrozen Account", "N/A", ", ".join(job_cards), ", ".join(applicant_names))
+                        except NoSuchElementException: self._log_result(work_code, "Failed (Unknown Error)", "N/A", "", "")
                         total_errors_to_skip += 1
                 except TimeoutException: self.app.log_message(self.log_display, "No wagelist table found. Assuming process complete.", "info"); break
                 if self.app.stop_events[self.automation_key].is_set(): self.app.log_message(self.log_display, "Stop signal received."); break
@@ -140,6 +154,6 @@ class WagelistGenTab(BaseAutomationTab):
             self.app.after(0, self.update_status, "Automation Finished.")
             self.app.after(0, self.app.set_status, "Automation Finished")
 
-    def _log_result(self, work_code, status, job_card, applicant_name):
+    def _log_result(self, work_code, status, wagelist_no, job_card, applicant_name):
         timestamp = datetime.now().strftime("%H:%M:%S")
-        self.app.after(0, lambda: self.results_tree.insert("", "end", values=(timestamp, work_code, status, job_card, applicant_name)))
+        self.app.after(0, lambda: self.results_tree.insert("", "end", values=(timestamp, work_code, status, wagelist_no, job_card, applicant_name)))

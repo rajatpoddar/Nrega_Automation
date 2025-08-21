@@ -54,8 +54,18 @@ class AboutTab(ctk.CTkFrame):
         sub_frame.grid(row=0, column=0, sticky="ew", pady=(0, 15))
         sub_frame.grid_columnconfigure(1, weight=1)
 
-        self.welcome_label = ctk.CTkLabel(sub_frame, text="Welcome!", font=ctk.CTkFont(size=18, weight="bold"))
-        self.welcome_label.grid(row=0, column=0, columnspan=2, padx=15, pady=(15, 10), sticky="w")
+        # --- MODIFIED: Welcome label is now a frame with multiple parts for styling ---
+        welcome_frame = ctk.CTkFrame(sub_frame, fg_color="transparent")
+        welcome_frame.grid(row=0, column=0, columnspan=2, padx=15, pady=(15, 10), sticky="w")
+
+        self.welcome_prefix_label = ctk.CTkLabel(welcome_frame, text="Welcome!", font=ctk.CTkFont(size=18, weight="bold"))
+        self.welcome_prefix_label.pack(side="left")
+
+        self.welcome_name_label = ctk.CTkLabel(welcome_frame, text="", font=ctk.CTkFont(size=18, weight="bold"))
+        self.welcome_name_label.pack(side="left", padx=(5, 0))
+
+        self.welcome_suffix_label = ctk.CTkLabel(welcome_frame, text="", font=ctk.CTkFont(size=18, weight="bold"))
+        self.welcome_suffix_label.pack(side="left")
 
         status_bar = ctk.CTkFrame(sub_frame, fg_color="transparent")
         status_bar.grid(row=1, column=0, columnspan=2, sticky="ew", padx=15, pady=(0, 15))
@@ -72,11 +82,9 @@ class AboutTab(ctk.CTkFrame):
         self.plan_type_label = ctk.CTkLabel(details_frame, text="N/A", font=ctk.CTkFont(weight="bold"))
         self.plan_type_label.grid(row=0, column=1, sticky="w", padx=10)
 
-        # --- ADDED: User Email Display ---
         ctk.CTkLabel(details_frame, text="Email:", text_color="gray50").grid(row=1, column=0, sticky="w", pady=(5,0))
         self.email_label = ctk.CTkLabel(details_frame, text="N/A", font=ctk.CTkFont(weight="bold"))
         self.email_label.grid(row=1, column=1, sticky="w", padx=10, pady=(5,0))
-        # --- END ADDED ---
 
         ctk.CTkLabel(details_frame, text="License Key:", text_color="gray50").grid(row=2, column=0, sticky="w", pady=(5,0))
         key_frame = ctk.CTkFrame(details_frame, fg_color="transparent")
@@ -93,29 +101,27 @@ class AboutTab(ctk.CTkFrame):
         self.devices_used_label = ctk.CTkLabel(details_frame, text="N/A", font=ctk.CTkFont(weight="bold"))
         self.devices_used_label.grid(row=4, column=1, sticky="w", padx=10, pady=(5,0))
 
-        # ADD THIS NEW BLOCK FOR STORAGE
         ctk.CTkLabel(details_frame, text="Storage Used:", text_color="gray50").grid(row=5, column=0, sticky="w", pady=(5,0))
         self.storage_label = ctk.CTkLabel(details_frame, text="N/A", font=ctk.CTkFont(weight="bold"))
         self.storage_label.grid(row=5, column=1, sticky="w", padx=10, pady=(5,0))
-        # END OF NEW BLOCK
-
-        ctk.CTkLabel(details_frame, text="Machine ID:", text_color="gray50").grid(row=6, column=0, sticky="w", pady=(5,0)) # <-- CHANGE THIS
+        
+        ctk.CTkLabel(details_frame, text="Machine ID:", text_color="gray50").grid(row=6, column=0, sticky="w", pady=(5,0))
         machine_id_frame = ctk.CTkFrame(details_frame, fg_color="transparent")
         machine_id_frame.grid(row=6, column=1, sticky="ew", padx=10, pady=(5,0))
         self.machine_id_label = ctk.CTkLabel(machine_id_frame, text="N/A", font=ctk.CTkFont(family="monospace"))
         self.machine_id_label.pack(side="left")
         ctk.CTkButton(machine_id_frame, text="Copy", width=50, command=self._copy_machine_id).pack(side="left", padx=(10,0))
 
-        # --- Changelog Tab ---
+        # --- Changelog, Updates, and other frames remain the same ---
+        # ... (rest of the method is unchanged) ...
         changelog_tab = self.tab_view.tab("Changelog")
         changelog_tab.grid_rowconfigure(0, weight=1); changelog_tab.grid_columnconfigure(0, weight=1)
         self.changelog_text = ctk.CTkTextbox(changelog_tab, wrap=tkinter.WORD, state="disabled")
         self.changelog_text.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
         self._load_changelog_from_file()
 
-        # --- Revamped Updates Tab ---
         update_tab = self.tab_view.tab("Updates")
-        update_tab.grid_rowconfigure(5, weight=1) # Allow row 5 (textbox) to expand
+        update_tab.grid_rowconfigure(5, weight=1)
         update_tab.grid_columnconfigure(0, weight=1)
         
         update_wrapper_frame = ctk.CTkFrame(update_tab, fg_color="transparent")
@@ -140,7 +146,6 @@ class AboutTab(ctk.CTkFrame):
         self.update_progress = ctk.CTkProgressBar(update_wrapper_frame)
         self.update_progress.set(0)
         
-        # --- NEW: Changelog display for new version ---
         self.new_version_changelog_label = ctk.CTkLabel(update_tab, text="What's New in the Next Version:", font=ctk.CTkFont(weight="bold"))
         self.new_version_changelog_textbox = ctk.CTkTextbox(update_tab, wrap=tkinter.WORD, state="disabled", fg_color=("gray90", "gray20"))
         
@@ -148,28 +153,78 @@ class AboutTab(ctk.CTkFrame):
         versions_link = ctk.CTkLabel(update_tab, text="View Full Version History Online ↗", text_color=("#3B82F6", "#60A5FA"), cursor="hand2")
         versions_link.grid(row=6, column=0, sticky='s', pady=(10, 5))
         versions_link.bind("<Button-1>", lambda e: webbrowser.open(versions_url))
-    
-    def _load_changelog_from_file(self):
-        changelog_content = {}
-        try:
-            changelog_path = resource_path("changelog.json")
-            with open(changelog_path, 'r', encoding='utf-8') as f:
-                changelog_content = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError) as e:
-            changelog_content = {"Error": [f"Could not load changelog.json: {e}"]}
-        
-        self.changelog_text.configure(state="normal")
-        self.changelog_text.delete("1.0", tkinter.END)
-        self.changelog_text.tag_config("bold", underline=True)
-        
-        for version, changes in changelog_content.items():
-            self.changelog_text.insert(tkinter.END, f"Version {version}\n", "bold")
-            for change in changes:
-                self.changelog_text.insert(tkinter.END, f"  • {change}\n")
-            self.changelog_text.insert(tkinter.END, "\n")
-        
-        self.changelog_text.configure(state="disabled")
 
+    def update_subscription_details(self, license_info):
+        self.license_info = license_info
+        
+        # --- MODIFIED: Logic to handle dynamic and styled welcome message ---
+        user_name = license_info.get('user_name')
+        key_type = license_info.get('key_type')
+
+        if user_name:
+            self.welcome_prefix_label.configure(text="Welcome, ")
+            self.welcome_name_label.configure(text=user_name)
+            self.welcome_suffix_label.configure(text="!")
+
+            # Apply special styling for paid users
+            if key_type != 'trial':
+                self.welcome_name_label.configure(
+                    text_color=("gold4", "#FFD700"), 
+                    font=ctk.CTkFont(size=18, weight="bold")
+                )
+            else:
+                # Revert to default style for trial users
+                default_color = ctk.ThemeManager.theme["CTkLabel"]["text_color"]
+                self.welcome_name_label.configure(
+                    text_color=default_color, 
+                    font=ctk.CTkFont(size=18, weight="bold")
+                )
+        else:
+            # Fallback if no user name is available
+            self.welcome_prefix_label.configure(text="Welcome!")
+            self.welcome_name_label.configure(text="")
+            self.welcome_suffix_label.configure(text="")
+
+        self.machine_id_label.configure(text=self.app.machine_id)
+
+        expires_at_str = license_info.get('expires_at')
+        status, days_remaining, status_color = "Inactive", None, "gray"
+
+        if expires_at_str:
+            try:
+                expiry_date = datetime.fromisoformat(expires_at_str.split('T')[0]).date()
+                delta = expiry_date - datetime.now().date()
+                days_remaining = delta.days
+                if days_remaining < 0: status, status_color = "Expired", "#E53E3E"
+                elif days_remaining <= 15: status, status_color = "Expires Soon", "#DD6B20"
+                else: status, status_color = "Active", "#38A169"
+            except (ValueError, TypeError): pass
+
+        self.status_label.configure(text=status.upper(), fg_color=status_color)
+        if days_remaining is not None:
+            if days_remaining < 0: self.days_remaining_label.configure(text=f"Expired {-days_remaining} day{'s' if days_remaining != -1 else ''} ago")
+            else: self.days_remaining_label.configure(text=f"{days_remaining} day{'s' if days_remaining != 1 else ''} remaining")
+        else: self.days_remaining_label.configure(text="--")
+        
+        self.plan_type_label.configure(text=f"{str(key_type).capitalize()} Plan")
+        self.email_label.configure(text=license_info.get('user_email', 'N/A'))
+        self.key_label.configure(text=license_info.get('key', 'N/A'))
+        self.expires_on_value_label.configure(text=expires_at_str.split('T')[0] if expires_at_str else 'N/A')
+        
+        max_devices = license_info.get('max_devices', 1)
+        activated_machines_str = license_info.get('activated_machines', '')
+        activated_count = len(activated_machines_str.split(',')) if activated_machines_str else 0
+        self.devices_used_label.configure(text=f"{activated_count} of {max_devices} used")
+
+        self.update_storage_display(
+            license_info.get('total_usage'), 
+            license_info.get('max_storage')
+        )
+
+        self._update_action_panel(status, key_type)
+
+    # All other methods (_create_right_frame, _copy_key, etc.) remain unchanged.
+    # ...
     def _create_right_frame(self):
         self.action_panel_container = ctk.CTkFrame(self)
         self.action_panel_container.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
@@ -198,7 +253,6 @@ class AboutTab(ctk.CTkFrame):
         for widget in self.action_panel_container.winfo_children():
             widget.destroy()
 
-        # Helper function to create the direct login button
         def create_manage_button(parent):
             def open_manage_url():
                 if self.license_info.get('key'):
@@ -217,13 +271,11 @@ class AboutTab(ctk.CTkFrame):
             ctk.CTkLabel(panel, text="Upgrade to a full license to unlock all features permanently and remove limitations.", wraplength=300, justify="center").pack(pady=5, padx=20)
             ctk.CTkButton(panel, text="Upgrade to Full License", command=lambda: self.app.show_purchase_window(context='upgrade')).pack(pady=20, ipady=5)
             
-            # Add Manage button for trial users
             button_container = ctk.CTkFrame(panel, fg_color="transparent")
             button_container.pack(fill='x', padx=10, pady=(0, 15))
             button_container.grid_columnconfigure(0, weight=1)
             create_manage_button(button_container).grid(row=0, column=0, sticky="ew")
             
-            # ADD THIS LINE TO SHOW THE DISCLAIMER
             self._create_disclaimer_frame(panel).pack(side='bottom', fill='x', pady=15, padx=10)
             return
 
@@ -244,7 +296,6 @@ class AboutTab(ctk.CTkFrame):
         
         ctk.CTkLabel(panel, text="Account Management", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(20,10), padx=20)
         
-        # ... (The existing device list code remains unchanged here) ...
         devices_frame = ctk.CTkFrame(panel, fg_color="transparent")
         devices_frame.pack(expand=True, fill="both", padx=15, pady=(0, 10))
         
@@ -291,7 +342,6 @@ class AboutTab(ctk.CTkFrame):
 
 
     def update_storage_display(self, usage, limit):
-        """Updates the storage usage label, called from other tabs."""
         if usage is not None and limit is not None:
             usage_str = humanize.naturalsize(usage)
             limit_str = humanize.naturalsize(limit)
@@ -304,30 +354,14 @@ class AboutTab(ctk.CTkFrame):
         license_key = self.license_info.get('key', 'N/A')
         
         subject = f"Request for Deactivation: Device {machine_id_to_deactivate[:12]}..."
-        body = (
-            f"Hello Support Team,\n\n"
-            f"I would like to request the deactivation of the following device from my license:\n\n"
-            f"Machine ID to remove: {machine_id_to_deactivate}\n\n"
-            f"--- My License Details ---\n"
-            f"Name: {user_name}\n"
-            f"License Key: {license_key}\n\n"
-            f"Thank you."
-        )
+        body = (f"Hello Support Team,\n\nI would like to request the deactivation of the following device from my license:\n\nMachine ID to remove: {machine_id_to_deactivate}\n\n--- My License Details ---\nName: {user_name}\nLicense Key: {license_key}\n\nThank you.")
         self._open_mailto_url(subject, body)
 
     def contact_support_email(self):
         user_name = self.license_info.get('user_name', 'N/A')
         license_key = self.license_info.get('key', 'N/A')
         subject = "NREGA Bot Support Request"
-        body = (
-            f"Hello Support Team,\n\n"
-            f"[Please describe your issue here]\n\n"
-            f"--- My License Details for Reference ---\n"
-            f"Name: {user_name}\n"
-            f"License Key: {license_key}\n"
-            f"App Version: {config.APP_VERSION}\n"
-            f"Machine ID: {self.app.machine_id}\n"
-        )
+        body = (f"Hello Support Team,\n\n[Please describe your issue here]\n\n--- My License Details for Reference ---\nName: {user_name}\nLicense Key: {license_key}\nApp Version: {config.APP_VERSION}\nMachine ID: {self.app.machine_id}")
         self._open_mailto_url(subject, body)
         
     def _open_mailto_url(self, subject, body):
@@ -339,50 +373,7 @@ class AboutTab(ctk.CTkFrame):
             webbrowser.open(mailto_url)
         except Exception as e:
             messagebox.showerror("Error", f"Could not open email client. Please manually email {config.SUPPORT_EMAIL}.\n\nError: {e}")
-
-    def update_subscription_details(self, license_info):
-        self.license_info = license_info
-        self.welcome_label.configure(text=f"Welcome, {license_info.get('user_name', 'Valued User')}!")
-        self.machine_id_label.configure(text=self.app.machine_id)
-
-        expires_at_str = license_info.get('expires_at')
-        status, days_remaining, status_color = "Inactive", None, "gray"
-
-        if expires_at_str:
-            try:
-                expiry_date = datetime.fromisoformat(expires_at_str.split('T')[0]).date()
-                delta = expiry_date - datetime.now().date()
-                days_remaining = delta.days
-                if days_remaining < 0: status, status_color = "Expired", "#E53E3E"
-                elif days_remaining <= 15: status, status_color = "Expires Soon", "#DD6B20"
-                else: status, status_color = "Active", "#38A169"
-            except (ValueError, TypeError): pass
-
-        self.status_label.configure(text=status.upper(), fg_color=status_color)
-        if days_remaining is not None:
-            if days_remaining < 0: self.days_remaining_label.configure(text=f"Expired {-days_remaining} day{'s' if days_remaining != -1 else ''} ago")
-            else: self.days_remaining_label.configure(text=f"{days_remaining} day{'s' if days_remaining != 1 else ''} remaining")
-        else: self.days_remaining_label.configure(text="--")
-        
-        key_type = license_info.get('key_type', 'N/A')
-        self.plan_type_label.configure(text=f"{str(key_type).capitalize()} Plan")
-        self.email_label.configure(text=license_info.get('user_email', 'N/A'))
-        self.key_label.configure(text=license_info.get('key', 'N/A'))
-        self.expires_on_value_label.configure(text=expires_at_str.split('T')[0] if expires_at_str else 'N/A')
-        
-        max_devices = license_info.get('max_devices', 1)
-        activated_machines_str = license_info.get('activated_machines', '')
-        activated_count = len(activated_machines_str.split(',')) if activated_machines_str else 0
-        self.devices_used_label.configure(text=f"{activated_count} of {max_devices} used")
-
-        # Call the storage update method with the new data from the server
-        self.update_storage_display(
-            license_info.get('total_usage'), 
-            license_info.get('max_storage')
-        )
-
-        self._update_action_panel(status, key_type)
-
+    
     def _copy_key(self):
         key_to_copy = self.key_label.cget("text")
         if key_to_copy and key_to_copy != "N/A":
@@ -418,3 +409,24 @@ class AboutTab(ctk.CTkFrame):
     def hide_new_version_changelog(self):
         self.new_version_changelog_label.grid_forget()
         self.new_version_changelog_textbox.grid_forget()
+
+    def _load_changelog_from_file(self):
+        changelog_content = {}
+        try:
+            changelog_path = resource_path("changelog.json")
+            with open(changelog_path, 'r', encoding='utf-8') as f:
+                changelog_content = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            changelog_content = {"Error": [f"Could not load changelog.json: {e}"]}
+        
+        self.changelog_text.configure(state="normal")
+        self.changelog_text.delete("1.0", tkinter.END)
+        self.changelog_text.tag_config("bold", underline=True)
+        
+        for version, changes in changelog_content.items():
+            self.changelog_text.insert(tkinter.END, f"Version {version}\n", "bold")
+            for change in changes:
+                self.changelog_text.insert(tkinter.END, f"  • {change}\n")
+            self.changelog_text.insert(tkinter.END, "\n")
+        
+        self.changelog_text.configure(state="disabled")
