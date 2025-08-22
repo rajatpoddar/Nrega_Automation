@@ -1,7 +1,8 @@
 ; NREGA Bot Inno Setup Script
-; Version 2.6.4 (Bitmap Fix)
+; Version 2.6.5
 
-#define AppVersion "2.6.4"  ; Add this line
+; The build script will override this version. This is a fallback.
+#define AppVersion "2.6.5"
 #define AppName "NREGA Bot"
 #define AppPublisher "PoddarSolutions"
 #define AppURL "https://nregabot.com"
@@ -27,17 +28,10 @@ WizardStyle=modern
 PrivilegesRequired=admin
 UninstallDisplayIcon={app}\{#AppExeName}
 SetupIconFile=assets\app_icon.ico
-
-; --- Professional UI & UX Enhancements ---
-; Use a dedicated .bmp file for maximum compatibility with the wizard.
-; The large image on the left of the wizard.
 WizardImageFile=wizard_image.bmp
-; The small image in the top-right of the wizard.
 WizardSmallImageFile=wizard_small_image.bmp
 LicenseFile=license.txt
 InfoBeforeFile=infobefore.txt
-
-; --- Update & Relaunch Logic ---
 CloseApplications=yes
 CloseApplicationsFilter=NREGA Bot.exe
 
@@ -48,9 +42,6 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}";
 
 [Files]
-; The main executable built by PyInstaller.
-; The license, info, and wizard image files are only needed at compile time
-; and do not need to be included in the [Files] section.
 Source: "dist\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
@@ -59,11 +50,4 @@ Name: "{group}\{cm:UninstallProgram,{#AppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"; Flags: nowait postinstall shellexec
-
-[UninstallDelete]
-; This section ensures a clean uninstall.
-Type: filesandordirs; Name: "{localappdata}\PoddarSolutions\NREGABot"
-
-
-
+Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
