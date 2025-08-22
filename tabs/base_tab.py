@@ -105,6 +105,28 @@ class BaseAutomationTab(ctk.CTkFrame):
 
     def generate_report_image(self, data: list, headers: list, title: str, report_date: str, footer: str, output_path: str):
         """Generates a styled image report from a list of data."""
+        # --- MODIFIED: Dynamically find the bundled wkhtmltoimage executable ---
+        try:
+            # Determine the path to the executable based on the OS
+            if config.OS_SYSTEM == "Windows":
+                path_to_executable = resource_path(os.path.join("bin", "win", "wkhtmltoimage.exe"))
+            elif config.OS_SYSTEM == "Darwin": # macOS
+                path_to_executable = resource_path(os.path.join("bin", "mac", "wkhtmltoimage"))
+            else: # Fallback for other systems (like Linux)
+                path_to_executable = "wkhtmltoimage"
+
+            # Check if the file exists and is executable (for macOS/Linux)
+            if not os.path.exists(path_to_executable):
+                 raise FileNotFoundError(f"wkhtmltoimage not found at {path_to_executable}")
+            if config.OS_SYSTEM != "Windows":
+                os.chmod(path_to_executable, 0o755)
+
+            imgkit_config = imgkit.config(wkhtmltoimage=path_to_executable)
+
+        except Exception as e:
+            messagebox.showerror("Configuration Error", f"Could not configure the image export tool.\n\nError: {e}")
+            return False
+        # --- END MODIFICATION ---
         html_style = """
         <style>
             body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
