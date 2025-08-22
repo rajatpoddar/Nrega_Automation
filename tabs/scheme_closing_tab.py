@@ -105,24 +105,36 @@ class SchemeClosingTab(BaseAutomationTab):
 
         results_tab.grid_columnconfigure(0, weight=1)
         results_tab.grid_rowconfigure(1, weight=1)
+        
+        # --- MODIFIED: Replaced Export CSV with Unified Export Controls ---
         results_action_frame = ctk.CTkFrame(results_tab, fg_color="transparent")
         results_action_frame.grid(row=0, column=0, sticky="ew", pady=(5, 10), padx=5)
-        self.export_csv_button = ctk.CTkButton(results_action_frame, text="Export to CSV", command=lambda: self.export_treeview_to_csv(self.results_tree, "scheme_closing_results.csv"))
-        self.export_csv_button.pack(side="left")
+        
+        export_controls_frame = ctk.CTkFrame(results_action_frame, fg_color="transparent")
+        export_controls_frame.pack(side='right', padx=(10, 0))
+        self.export_button = ctk.CTkButton(export_controls_frame, text="Export Report", command=self.export_report)
+        self.export_button.pack(side='left')
+        self.export_format_menu = ctk.CTkOptionMenu(export_controls_frame, width=130, values=["Image (.jpg)", "PDF (.pdf)", "CSV (.csv)"], command=self._on_format_change)
+        self.export_format_menu.pack(side='left', padx=5)
+        self.export_filter_menu = ctk.CTkOptionMenu(export_controls_frame, width=150, values=["Export All", "Success Only", "Failed Only"])
+        self.export_filter_menu.pack(side='left', padx=(0, 5))
+        # --- END MODIFICATION ---
 
         cols = ("Timestamp", "Work Code", "Status", "Details")
         self.results_tree = ttk.Treeview(results_tab, columns=cols, show='headings')
         for col in cols: self.results_tree.heading(col, text=col)
-        self.results_tree.column("Timestamp", width=100, anchor="center")
-        self.results_tree.column("Work Code", width=250)
-        self.results_tree.column("Status", width=100, anchor="center")
-        self.results_tree.column("Details", width=350)
+        self.results_tree.column("Timestamp", width=100, anchor="center"); self.results_tree.column("Work Code", width=250); self.results_tree.column("Status", width=100, anchor="center"); self.results_tree.column("Details", width=350)
         self.style_treeview(self.results_tree)
+        self._setup_treeview_sorting(self.results_tree) # Added for sortable headers
 
         self.results_tree.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
         scrollbar = ctk.CTkScrollbar(results_tab, command=self.results_tree.yview)
         self.results_tree.configure(yscroll=scrollbar.set)
         scrollbar.grid(row=1, column=1, sticky='ns')
+
+    def _on_format_change(self, selected_format):
+        if "CSV" in selected_format: self.export_filter_menu.configure(state="disabled")
+        else: self.export_filter_menu.configure(state="normal")
 
     def _get_inputs(self):
         inputs = {
@@ -234,7 +246,9 @@ class SchemeClosingTab(BaseAutomationTab):
 
     def _log_result(self, work_code, status, details):
         timestamp = time.strftime("%H:%M:%S")
-        self.app.after(0, lambda: self.results_tree.insert("", "end", values=(timestamp, work_code, status, details)))
+        # --- MODIFIED: Add tags for coloring ---
+        tags = ('failed',) if 'success' not in status.lower() else ()
+        self.app.after(0, lambda: self.results_tree.insert("", "end", values=(timestamp, work_code, status, details), tags=tags))
 
     def _process_single_work_code(self, driver, inputs, work_code, cert_no):
         wait = WebDriverWait(driver, 20)
@@ -367,3 +381,65 @@ class SchemeClosingTab(BaseAutomationTab):
         self.cert_no_entry.configure(state=state)
         self.completion_date_entry.configure(state=state)
         self.work_codes_textbox.configure(state=state)
+        # --- Add new export controls to state management ---
+        self.export_button.configure(state=state)
+        self.export_format_menu.configure(state=state)
+        self.export_filter_menu.configure(state=state)
+        if state == "normal": self._on_format_change(self.export_format_menu.get())
+
+    def export_report(self):
+        export_format = self.export_format_menu.get()
+        if "CSV" in export_format:
+            self.export_treeview_to_csv(self.results_tree, "scheme_closing_results.csv")
+            return
+            
+        data, file_path = self._get_filtered_data_and_filepath(export_format)
+        if not data: return
+        
+        # Reshape data for consistent reporting (Status column at index 1)
+        report_data = [[row[1], row[2], row[3], row[0]] for row in data]
+        report_headers = ["Work Code", "Status", "Details", "Timestamp"]
+        col_widths = [70, 35, 140, 25]
+
+        if "Image" in export_format:
+            self._handle_image_export(report_data, report_headers, file_path)
+        elif "PDF" in export_format:
+            self._handle_pdf_export(report_data, report_headers, col_widths, file_path)
+
+    def _get_filtered_data_and_filepath(self, export_format):
+        if not self.results_tree.get_children(): messagebox.showinfo("No Data", "No results to export."); return None, None
+        panchayat_name = self.panchayat_entry.get().strip()
+        if not panchayat_name: messagebox.showwarning("Input Needed", "Panchayat Name is required for report title."); return None, None
+        
+        filter_option = self.export_filter_menu.get()
+        data_to_export = []
+        for item_id in self.results_tree.get_children():
+            row_values = self.results_tree.item(item_id)['values']
+            status = row_values[2].upper() # Status is at index 2
+            if filter_option == "Export All": data_to_export.append(row_values)
+            elif filter_option == "Success Only" and "SUCCESS" in status: data_to_export.append(row_values)
+            elif filter_option == "Failed Only" and "SUCCESS" not in status: data_to_export.append(row_values)
+        if not data_to_export: messagebox.showinfo("No Data", f"No records found for filter '{filter_option}'."); return None, None
+
+        safe_name = "".join(c for c in panchayat_name if c.isalnum() or c in (' ', '_')).rstrip()
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        details = {"Image (.jpg)": { "ext": ".jpg", "types": [("JPEG Image", "*.jpg")]}, "PDF (.pdf)": { "ext": ".pdf", "types": [("PDF Document", "*.pdf")]}}[export_format]
+        filename = f"Scheme_Closing_Report_{safe_name}_{timestamp}{details['ext']}"
+        file_path = filedialog.asksaveasfilename(defaultextension=details['ext'], filetypes=details['types'], initialdir=self.app.get_user_downloads_path(), initialfile=filename, title="Save Report")
+        return (data_to_export, file_path) if file_path else (None, None)
+
+    def _handle_image_export(self, data, headers, file_path):
+        title = f"Scheme Closing Report: {self.panchayat_entry.get().strip()}"
+        report_date = datetime.now().strftime('%d %b %Y')
+        success = self.generate_report_image(data, headers, title, report_date, "Report Generated by NREGA Bot", file_path)
+        if success and messagebox.askyesno("Success", f"Image Report saved to:\n{file_path}\n\nDo you want to open it?"):
+            if sys.platform == "win32": os.startfile(file_path)
+            else: subprocess.call(['open', file_path])
+    
+    def _handle_pdf_export(self, data, headers, col_widths, file_path):
+        title = f"Scheme Closing Report: {self.panchayat_entry.get().strip()}"
+        report_date = datetime.now().strftime('%d %b %Y')
+        success = self.generate_report_pdf(data, headers, col_widths, title, report_date, file_path)
+        if success and messagebox.askyesno("Success", f"PDF Report saved to:\n{file_path}\n\nDo you want to open it?"):
+            if sys.platform == "win32": os.startfile(file_path)
+            else: subprocess.call(['open', file_path])

@@ -4,11 +4,11 @@ from tkinter import ttk, messagebox, filedialog
 import customtkinter as ctk
 import os, random, time, sys, subprocess
 from datetime import datetime
+from fpdf import FPDF
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import StaleElementReferenceException, NoSuchElementException, TimeoutException, NoAlertPresentException
-from fpdf import FPDF
 import config
 from .base_tab import BaseAutomationTab
 from .autocomplete_widget import AutocompleteEntry
@@ -22,24 +22,31 @@ class MsrTab(BaseAutomationTab):
     def _create_widgets(self):
         controls_frame = ctk.CTkFrame(self)
         controls_frame.grid(row=0, column=0, sticky="ew", pady=(0, 10))
-        controls_frame.grid_columnconfigure(0, weight=1)
+        controls_frame.grid_columnconfigure((0, 1), weight=1)
         
-        ctk.CTkLabel(controls_frame, text="Panchayat Name", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, sticky='w', pady=(10, 5), padx=15)
-        self.panchayat_entry = AutocompleteEntry(controls_frame, suggestions_list=self.app.history_manager.get_suggestions("panchayat_name"))
-        self.panchayat_entry.grid(row=1, column=0, sticky='ew', pady=(0, 5), padx=15)
-        ctk.CTkLabel(controls_frame, text="e.g., Palojori (must exactly match the name on the website)", text_color="gray50").grid(row=2, column=0, sticky='w', padx=15)
+        panchayat_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
+        panchayat_frame.grid(row=0, column=0, sticky='ew', padx=15, pady=(10,0))
+        ctk.CTkLabel(panchayat_frame, text="Panchayat Name", font=ctk.CTkFont(weight="bold")).pack(anchor='w')
+        self.panchayat_entry = AutocompleteEntry(panchayat_frame, suggestions_list=self.app.history_manager.get_suggestions("panchayat_name"))
+        self.panchayat_entry.pack(fill='x', pady=(5,0))
+        ctk.CTkLabel(panchayat_frame, text="e.g., Palojori (must exactly match the name on the website)", text_color="gray50").pack(anchor='w')
         
-        # --- NEW: Added note for GP Login ---
-        ctk.CTkLabel(controls_frame, text="ℹ️ Note: If using GP Login, Panchayat selection is not required and will be skipped.", text_color="gray50").grid(row=3, column=0, sticky='w', padx=15, pady=(5,0))
+        amount_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
+        amount_frame.grid(row=0, column=1, sticky='ew', padx=15, pady=(10,0))
+        ctk.CTkLabel(amount_frame, text="Verify Amount (₹)", font=ctk.CTkFont(weight="bold")).pack(anchor='w')
+        self.verify_amount_entry = ctk.CTkEntry(amount_frame)
+        self.verify_amount_entry.insert(0, "282")
+        self.verify_amount_entry.pack(fill='x', pady=(5,0))
+        ctk.CTkLabel(amount_frame, text="Reject if amount does not match this value.", text_color="gray50").pack(anchor='w')
+
+        ctk.CTkLabel(controls_frame, text="ℹ️ Note: If using GP Login, Panchayat selection is not required and will be skipped.", text_color="gray50").grid(row=1, column=0, columnspan=2, sticky='w', padx=15, pady=(10,0))
 
         action_frame = self._create_action_buttons(parent_frame=controls_frame)
-        action_frame.grid(row=6, column=0, columnspan=4, sticky='ew', pady=(15, 15))
+        action_frame.grid(row=2, column=0, columnspan=2, sticky='ew', pady=(15, 15))
 
         data_notebook = ctk.CTkTabview(self)
         data_notebook.grid(row=1, column=0, sticky="nsew")
-
-        work_codes_frame = data_notebook.add("Work Codes")
-        results_frame = data_notebook.add("Results")
+        work_codes_frame = data_notebook.add("Work Codes"); results_frame = data_notebook.add("Results")
         self._create_log_and_status_area(parent_notebook=data_notebook)
 
         work_codes_frame.grid_columnconfigure(0, weight=1); work_codes_frame.grid_rowconfigure(1, weight=1)
@@ -54,15 +61,19 @@ class MsrTab(BaseAutomationTab):
         results_action_frame = ctk.CTkFrame(results_frame, fg_color="transparent")
         results_action_frame.grid(row=0, column=0, sticky='ew', pady=(5, 10))
         
-        self.export_pdf_button = ctk.CTkButton(results_action_frame, text="Export to PDF", command=self.export_to_pdf)
-        self.export_pdf_button.pack(side='left', padx=(0, 10))
+        # --- NEW: Unified Export Controls ---
+        export_controls_frame = ctk.CTkFrame(results_action_frame, fg_color="transparent")
+        export_controls_frame.pack(side='right', padx=(10, 0))
 
-        self.export_csv_button = ctk.CTkButton(
-            results_action_frame,
-            text="Export to CSV",
-            command=lambda: self.export_treeview_to_csv(self.results_tree, "msr_payment_results.csv")
-        )
-        self.export_csv_button.pack(side='left')
+        self.export_button = ctk.CTkButton(export_controls_frame, text="Export Report", command=self.export_report)
+        self.export_button.pack(side='left')
+        
+        self.export_format_menu = ctk.CTkOptionMenu(export_controls_frame, width=130, values=["Image (.jpg)", "PDF (.pdf)", "CSV (.csv)"], command=self._on_format_change)
+        self.export_format_menu.pack(side='left', padx=5)
+
+        self.export_filter_menu = ctk.CTkOptionMenu(export_controls_frame, width=150, values=["Export All", "Success Only", "Failed Only"])
+        self.export_filter_menu.pack(side='left', padx=(0, 5))
+        # --- End of Unified Export Controls ---
 
         cols = ("Workcode", "Status", "Details", "Timestamp")
         self.results_tree = ttk.Treeview(results_frame, columns=cols, show='headings')
@@ -71,21 +82,35 @@ class MsrTab(BaseAutomationTab):
         self.results_tree.grid(row=1, column=0, sticky='nsew')
         scrollbar = ctk.CTkScrollbar(results_frame, command=self.results_tree.yview)
         self.results_tree.configure(yscroll=scrollbar.set); scrollbar.grid(row=1, column=1, sticky='ns')
-        self.style_treeview(self.results_tree)
+        self.style_treeview(self.results_tree); self._setup_treeview_sorting(self.results_tree)
+    
+    def _on_format_change(self, selected_format):
+        """Disables the filter menu for CSV format as it exports all data."""
+        if "CSV" in selected_format:
+            self.export_filter_menu.configure(state="disabled")
+        else:
+            self.export_filter_menu.configure(state="normal")
 
     def set_ui_state(self, running: bool):
         self.set_common_ui_state(running)
         state = "disabled" if running else "normal"
         self.panchayat_entry.configure(state=state)
+        self.verify_amount_entry.configure(state=state)
         self.work_key_text.configure(state=state)
-        self.export_pdf_button.configure(state=state)
+        # --- Update State Management for New Controls ---
+        self.export_button.configure(state=state)
+        self.export_format_menu.configure(state=state)
+        self.export_filter_menu.configure(state=state)
+        if state == "normal": self._on_format_change(self.export_format_menu.get())
 
+    # ... (start_automation, reset_ui, run_automation_logic, etc., are unchanged)
     def start_automation(self):
         self.app.start_automation_thread(self.automation_key, self.run_automation_logic)
         
     def reset_ui(self):
         if messagebox.askokcancel("Reset Form?", "Clear all inputs, results, and logs?"):
             self.panchayat_entry.delete(0, tkinter.END)
+            self.verify_amount_entry.delete(0, tkinter.END); self.verify_amount_entry.insert(0, "282")
             self.work_key_text.configure(state="normal"); self.work_key_text.delete("1.0", tkinter.END)
             for item in self.results_tree.get_children(): self.results_tree.delete(item)
             self.app.clear_log(self.log_display)
@@ -101,54 +126,38 @@ class MsrTab(BaseAutomationTab):
         self.app.after(0, self.app.set_status, "Running MSR Payment...")
         
         panchayat_name = self.panchayat_entry.get().strip()
+        verify_amount_str = self.verify_amount_entry.get().strip()
         work_keys = [line.strip() for line in self.work_key_text.get("1.0", tkinter.END).strip().splitlines() if line.strip()]
-        if not work_keys:
-            messagebox.showerror("Input Error", "No work keys provided.")
-            self.app.after(0, self.set_ui_state, False)
-            return
+
+        if not work_keys: messagebox.showerror("Input Error", "No work keys provided."); self.app.after(0, self.set_ui_state, False); return
+        try: verify_amount = float(verify_amount_str)
+        except ValueError: messagebox.showerror("Input Error", "Verify Amount must be a valid number."); self.app.after(0, self.set_ui_state, False); return
 
         try:
             driver = self.app.get_driver()
             if not driver: return
             
             wait = WebDriverWait(driver, 15)
-            if driver.current_url != config.MSR_CONFIG["url"]:
-                driver.get(config.MSR_CONFIG["url"])
+            if driver.current_url != config.MSR_CONFIG["url"]: driver.get(config.MSR_CONFIG["url"])
             
-            # --- MODIFIED: Optional Panchayat Selection ---
             try:
-                # Use a short wait to quickly check if the dropdown exists
                 panchayat_select_element = WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.NAME, "ddlPanchayat")))
-                
-                # If it exists, Panchayat Name is mandatory (for Block Login)
-                if not panchayat_name:
-                    messagebox.showerror("Input Error", "Panchayat name is required for Block Login.")
-                    self.app.after(0, self.set_ui_state, False)
-                    return
-                
+                if not panchayat_name: messagebox.showerror("Input Error", "Panchayat name is required for Block Login."); self.app.after(0, self.set_ui_state, False); return
                 panchayat_select = Select(panchayat_select_element)
                 match = next((opt.text for opt in panchayat_select.options if panchayat_name.strip().lower() in opt.text.lower()), None)
-                if not match:
-                    raise ValueError(f"Panchayat '{panchayat_name}' not found.")
-                
+                if not match: raise ValueError(f"Panchayat '{panchayat_name}' not found.")
                 panchayat_select.select_by_visible_text(match)
                 self.app.update_history("panchayat_name", panchayat_name)
-                self.app.log_message(self.log_display, f"Successfully selected Panchayat: {match}", "success")
-                time.sleep(2)
-                
-            except TimeoutException:
-                self.app.log_message(self.log_display, "Panchayat selection not found/required (GP Login). Proceeding...", "info")
-            # --- END MODIFICATION ---
+                self.app.log_message(self.log_display, f"Successfully selected Panchayat: {match}", "success"); time.sleep(2)
+            except TimeoutException: self.app.log_message(self.log_display, "Panchayat selection not found/required (GP Login). Proceeding...", "info")
 
             total = len(work_keys)
             for i, work_key in enumerate(work_keys, 1):
-                if self.app.stop_events[self.automation_key].is_set():
-                    self.app.log_message(self.log_display, "Automation stopped by user.", "warning"); break
+                if self.app.stop_events[self.automation_key].is_set(): self.app.log_message(self.log_display, "Automation stopped by user.", "warning"); break
                 self.app.after(0, self.update_status, f"Processing {i}/{total}: {work_key}", (i/total))
-                self._process_single_work_code(driver, wait, work_key)
+                self._process_single_work_code(driver, wait, work_key, verify_amount)
                 
-            if not self.app.stop_events[self.automation_key].is_set():
-                messagebox.showinfo("Completed", "Automation finished! Check the 'Results' tab for details.")
+            if not self.app.stop_events[self.automation_key].is_set(): messagebox.showinfo("Completed", "Automation finished! Check the 'Results' tab for details.")
         except Exception as e:
             self.app.log_message(self.log_display, f"A critical error occurred: {e}", "error")
             messagebox.showerror("MSR Error", f"An error occurred: {e}")
@@ -157,28 +166,7 @@ class MsrTab(BaseAutomationTab):
             self.app.after(0, self.update_status, "Automation Finished.", 1.0)
             self.app.after(0, self.app.set_status, "Automation Finished")
             
-    def export_to_pdf(self):
-        data = [self.results_tree.item(item_id)['values'] for item_id in self.results_tree.get_children()]
-        if not data: messagebox.showinfo("No Data", "There are no results to export."); return
-        file_path = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF Documents", "*.pdf")], initialdir=self.app.get_user_downloads_path(), title="Save Results As PDF")
-        if not file_path: return
-        try:
-            pdf = FPDF(orientation='L', unit='mm', format='A4')
-            pdf.add_page(); pdf.set_font("Arial", size=12); pdf.cell(0, 10, 'MSR Processing Results', 0, 1, 'C')
-            pdf.set_font("Arial", 'B', 9)
-            col_widths, headers = [55, 35, 155, 25], ["Workcode", "Status", "Details", "Timestamp"]
-            for i, header in enumerate(headers): pdf.cell(col_widths[i], 10, header, 1, 0, 'C')
-            pdf.ln(); pdf.set_font("Arial", '', 8)
-            for row in data:
-                for i, item in enumerate(row): pdf.cell(col_widths[i], 6, str(item).encode('latin-1', 'replace').decode('latin-1'), 1, 0)
-                pdf.ln()
-            pdf.output(file_path)
-            if messagebox.askyesno("Success", f"Results exported to:\n{file_path}\n\nDo you want to open the file?"):
-                if sys.platform == "win32": os.startfile(file_path)
-                else: subprocess.call(['open', file_path])
-        except Exception as e: messagebox.showerror("Export Error", f"Failed to create PDF file.\n\nError: {e}")
-        
-    def _process_single_work_code(self, driver, wait, work_key):
+    def _process_single_work_code(self, driver, wait, work_key, verify_amount):
         try:
             try: driver.switch_to.alert.accept()
             except NoAlertPresentException: pass
@@ -193,6 +181,19 @@ class MsrTab(BaseAutomationTab):
             msr_select = Select(wait.until(EC.presence_of_element_located((By.ID, "ddlMsrNo"))))
             if len(msr_select.options) <= config.MSR_CONFIG["muster_roll_index"]: raise IndexError("Muster Roll (MSR) not found.")
             msr_select.select_by_index(config.MSR_CONFIG["muster_roll_index"]); time.sleep(1.5)
+
+            wage_inputs = driver.find_elements(By.XPATH, "//input[starts-with(@name, 'wage_per_day')]")
+            filled_wages = [float(inp.get_attribute('value')) for inp in wage_inputs if inp.get_attribute('value') and float(inp.get_attribute('value')) > 0]
+            
+            if not filled_wages:
+                self._log_result("Skipped", work_key, "Pending for JE or AE Approval")
+                return
+            
+            for wage in filled_wages:
+                if wage != verify_amount:
+                    self._log_result("Rejected", work_key, f"Verify amount not matched ({wage} != {verify_amount})")
+                    return
+
             wait.until(EC.element_to_be_clickable((By.ID, "btnSave"))).click()
             WebDriverWait(driver, 10).until(EC.alert_is_present()).accept()
             outcome_found = False
@@ -223,4 +224,95 @@ class MsrTab(BaseAutomationTab):
         elif "Muster Roll (MSR) not found" in msg: details = "MR not Filled yet."
         elif "Work code not found" in msg: details = "Work Code not found."
         self.app.log_message(self.log_display, f"'{work_key}' - {status.upper()}: {details}", level=level)
-        self.app.after(0, lambda: self.results_tree.insert("", "end", values=(work_key, status.upper(), details, timestamp)))
+        tags = ('failed',) if 'success' not in status.lower() else ()
+        self.app.after(0, lambda: self.results_tree.insert("", "end", values=(work_key, status.upper(), details, timestamp), tags=tags))
+
+    # --- NEW: Central Export Function ---
+    def export_report(self):
+        export_format = self.export_format_menu.get()
+        if "CSV" in export_format:
+            self.export_treeview_to_csv(self.results_tree, "msr_payment_results.csv")
+            return
+            
+        data, file_path = self._get_filtered_data_and_filepath(export_format)
+        if not data: return
+
+        if "Image" in export_format:
+            self._handle_image_export(data, file_path)
+        elif "PDF" in export_format:
+            self._handle_pdf_export(data, file_path)
+
+    def _get_filtered_data_and_filepath(self, export_format):
+        all_items = self.results_tree.get_children()
+        if not all_items: messagebox.showinfo("No Data", "There are no results to export."); return None, None
+        panchayat_name = self.panchayat_entry.get().strip()
+        if not panchayat_name: messagebox.showwarning("Input Needed", "Please enter a Panchayat Name for the report title."); return None, None
+
+        filter_option = self.export_filter_menu.get()
+        data_to_export = []
+        for item_id in all_items:
+            row_values = self.results_tree.item(item_id)['values']
+            status = row_values[1].upper()
+            if filter_option == "Export All": data_to_export.append(row_values)
+            elif filter_option == "Success Only" and "SUCCESS" in status: data_to_export.append(row_values)
+            elif filter_option == "Failed Only" and "SUCCESS" not in status: data_to_export.append(row_values)
+        if not data_to_export: messagebox.showinfo("No Data", f"No records found for filter '{filter_option}'."); return None, None
+
+        safe_name = "".join(c for c in panchayat_name if c.isalnum() or c in (' ', '_')).rstrip()
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        file_details = {
+            "Image (.jpg)": { "ext": ".jpg", "types": [("JPEG Image", "*.jpg")], "title": "Save Report as Image"},
+            "PDF (.pdf)": { "ext": ".pdf", "types": [("PDF Document", "*.pdf")], "title": "Save Report as PDF"},
+        }
+        details = file_details[export_format]
+        filename = f"MSR_Report_{safe_name}_{timestamp}{details['ext']}"
+
+        file_path = filedialog.asksaveasfilename(defaultextension=details['ext'], filetypes=details['types'], initialdir=self.app.get_user_downloads_path(), initialfile=filename, title=details['title'])
+        return (data_to_export, file_path) if file_path else (None, None)
+
+    def _handle_image_export(self, data, file_path):
+        headers = self.results_tree['columns']
+        title = f"MSR Payment Status Report: {self.panchayat_entry.get().strip()}"
+        report_date = datetime.now().strftime('%d %b %Y')
+        footer = "Report Generated by NREGA Bot"
+        
+        success = self.generate_report_image(data, headers, title, report_date, footer, file_path)
+        if success:
+            upload_success = self._upload_report_to_cloud(file_path, self.panchayat_entry.get().strip())
+            final_message = "Report Saved & Uploaded to Cloud." if upload_success else "Report Saved Locally (Cloud Upload Failed)."
+            if messagebox.askyesno("Export Successful", f"{final_message}\n\nFile saved to:\n{file_path}\n\nDo you want to open the file?"):
+                if sys.platform == "win32": os.startfile(file_path)
+                else: subprocess.call(['open', file_path])
+    
+    def _handle_pdf_export(self, data, file_path):
+        """Handles the generation of the improved PDF report for MSR."""
+        try:
+            headers = self.results_tree['columns']
+            col_widths = [70, 35, 140, 25] # Adjusted widths for A4 Landscape
+            title = f"MSR Payment Status Report: {self.panchayat_entry.get().strip()}"
+            report_date = datetime.now().strftime('%d %b %Y')
+            
+            # This new method is in base_tab.py and handles all the styling
+            success = self.generate_report_pdf(data, headers, col_widths, title, report_date, file_path)
+            
+            if success:
+                if messagebox.askyesno("Success", f"PDF Report exported to:\n{file_path}\n\nDo you want to open the file?"):
+                    if sys.platform == "win32":
+                        os.startfile(file_path)
+                    else:
+                        subprocess.call(['open', file_path])
+        except Exception as e:
+            messagebox.showerror("Export Error", f"Failed to create PDF file.\n\nError: {e}")
+
+    def _upload_report_to_cloud(self, file_path, panchayat_name):
+        self.app.log_message(self.log_display, "Attempting to upload report to cloud...")
+        date_folder = datetime.now().strftime('%d-%b-%Y')
+        safe_panchayat_name = "".join(c for c in panchayat_name if c.isalnum() or c in (' ', '_')).rstrip()
+        filename = os.path.basename(file_path)
+        relative_path = f"REPORTS/{date_folder}/{safe_panchayat_name}/{filename}"
+        
+        upload_success = self.upload_file_to_cloud(file_path, relative_path, 'image/jpeg')
+        if upload_success:
+            self.app.log_message(self.log_display, "   - Successfully uploaded report to cloud.", "success")
+        return upload_success
