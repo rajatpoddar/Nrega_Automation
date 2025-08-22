@@ -99,14 +99,21 @@ class SchemeClosingTab(BaseAutomationTab):
         self._create_log_and_status_area(notebook)
         
         work_codes_tab.grid_columnconfigure(0, weight=1)
-        work_codes_tab.grid_rowconfigure(0, weight=1)
+        work_codes_tab.grid_rowconfigure(1, weight=1)
+
+        # --- NEW: Add a frame for the clear button ---
+        wc_header_frame = ctk.CTkFrame(work_codes_tab, fg_color="transparent")
+        wc_header_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=(5,0))
+        
+        clear_wc_button = ctk.CTkButton(wc_header_frame, text="Clear", width=80, command=lambda: self.work_codes_textbox.delete("1.0", "end"))
+        clear_wc_button.pack(side="right")
+        
         self.work_codes_textbox = ctk.CTkTextbox(work_codes_tab, height=150)
-        self.work_codes_textbox.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        self.work_codes_textbox.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
 
         results_tab.grid_columnconfigure(0, weight=1)
         results_tab.grid_rowconfigure(1, weight=1)
         
-        # --- MODIFIED: Replaced Export CSV with Unified Export Controls ---
         results_action_frame = ctk.CTkFrame(results_tab, fg_color="transparent")
         results_action_frame.grid(row=0, column=0, sticky="ew", pady=(5, 10), padx=5)
         
@@ -118,14 +125,13 @@ class SchemeClosingTab(BaseAutomationTab):
         self.export_format_menu.pack(side='left', padx=5)
         self.export_filter_menu = ctk.CTkOptionMenu(export_controls_frame, width=150, values=["Export All", "Success Only", "Failed Only"])
         self.export_filter_menu.pack(side='left', padx=(0, 5))
-        # --- END MODIFICATION ---
 
         cols = ("Timestamp", "Work Code", "Status", "Details")
         self.results_tree = ttk.Treeview(results_tab, columns=cols, show='headings')
         for col in cols: self.results_tree.heading(col, text=col)
         self.results_tree.column("Timestamp", width=100, anchor="center"); self.results_tree.column("Work Code", width=250); self.results_tree.column("Status", width=100, anchor="center"); self.results_tree.column("Details", width=350)
         self.style_treeview(self.results_tree)
-        self._setup_treeview_sorting(self.results_tree) # Added for sortable headers
+        self._setup_treeview_sorting(self.results_tree) 
 
         self.results_tree.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
         scrollbar = ctk.CTkScrollbar(results_tab, command=self.results_tree.yview)

@@ -5,6 +5,8 @@ import customtkinter as ctk
 import csv, os, sys, subprocess, requests, imgkit
 from datetime import datetime
 from fpdf import FPDF
+import config # <-- Added missing import
+from utils import resource_path # <-- Added missing import
 
 class BaseAutomationTab(ctk.CTkFrame):
     """A base template for tabs that run automation tasks."""
@@ -46,27 +48,33 @@ class BaseAutomationTab(ctk.CTkFrame):
             
             # Table Header
             pdf.set_font("Arial", 'B', 9)
+            pdf.set_fill_color(74, 74, 74)
+            pdf.set_text_color(255, 255, 255)
             for i, header in enumerate(headers):
-                pdf.cell(col_widths[i], 10, header, 1, 0, 'C')
+                pdf.cell(col_widths[i], 10, header, 1, 0, 'C', fill=True)
             pdf.ln()
 
             # Table Body
             pdf.set_font("Arial", '', 8)
+            pdf.set_text_color(0, 0, 0)
+            
+            fill = False
             for row in data:
                 # Determine status color
                 status = str(row[1]).upper() # Status is expected at index 1
-                if "SUCCESS" in status:
-                    pdf.set_text_color(34, 139, 34) # Forest Green
-                else:
-                    pdf.set_text_color(220, 20, 60) # Crimson Red
-
+                
                 # Render cells
                 for i, item in enumerate(row):
-                    # For the status column, draw the cell with color, others default
-                    if i != 1: pdf.set_text_color(0, 0, 0)
-                    pdf.cell(col_widths[i], 6, str(item).encode('latin-1', 'replace').decode('latin-1'), 1, 0)
-                    if i == 1: pdf.set_text_color(0, 0, 0) # Reset color after status
+                    if i == 1: # Status column
+                        if "SUCCESS" in status or "VERIFIED" in status:
+                            pdf.set_text_color(46, 139, 87) # SeaGreen
+                        else:
+                            pdf.set_text_color(205, 92, 92) # IndianRed
+                    
+                    pdf.cell(col_widths[i], 7, str(item).encode('latin-1', 'replace').decode('latin-1'), 1, 0, fill=fill)
+                    pdf.set_text_color(0, 0, 0) # Reset color after every cell
                 pdf.ln()
+                fill = not fill
 
             pdf.output(output_path)
             return True
@@ -105,28 +113,6 @@ class BaseAutomationTab(ctk.CTkFrame):
 
     def generate_report_image(self, data: list, headers: list, title: str, report_date: str, footer: str, output_path: str):
         """Generates a styled image report from a list of data."""
-        # --- MODIFIED: Dynamically find the bundled wkhtmltoimage executable ---
-        try:
-            # Determine the path to the executable based on the OS
-            if config.OS_SYSTEM == "Windows":
-                path_to_executable = resource_path(os.path.join("bin", "win", "wkhtmltoimage.exe"))
-            elif config.OS_SYSTEM == "Darwin": # macOS
-                path_to_executable = resource_path(os.path.join("bin", "mac", "wkhtmltoimage"))
-            else: # Fallback for other systems (like Linux)
-                path_to_executable = "wkhtmltoimage"
-
-            # Check if the file exists and is executable (for macOS/Linux)
-            if not os.path.exists(path_to_executable):
-                 raise FileNotFoundError(f"wkhtmltoimage not found at {path_to_executable}")
-            if config.OS_SYSTEM != "Windows":
-                os.chmod(path_to_executable, 0o755)
-
-            imgkit_config = imgkit.config(wkhtmltoimage=path_to_executable)
-
-        except Exception as e:
-            messagebox.showerror("Configuration Error", f"Could not configure the image export tool.\n\nError: {e}")
-            return False
-        # --- END MODIFICATION ---
         html_style = """
         <style>
             body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
@@ -139,22 +125,21 @@ class BaseAutomationTab(ctk.CTkFrame):
             th { background-color: #4A4A4A; color: white; font-weight: bold; }
             tr:nth-child(even) { background-color: #f9f9f9; }
             .footer { text-align: center; margin-top: 25px; font-size: 12px; color: #888; }
-            .success { color: #2E8B57; font-weight: bold; }
-            .failed { color: #D22B2B; font-weight: bold; }
-            .rejected { color: #E53E3E; font-weight: bold; }
+            .success, .verified { color: #2E8B57; font-weight: bold; }
+            .failed, .rejected { color: #D22B2B; font-weight: bold; }
         </style>
         """
         table_rows_html = ""
         for i, row in enumerate(data, 1):
-            status = str(row[1]).upper()
-            status_class = "success" if "SUCCESS" in status else "rejected" if "REJECT" in status else "failed"
+            status = str(row[1]).upper() # Expects status at index 1
+            status_class = "success" if "SUCCESS" in status or "VERIFIED" in status else "failed"
             
             table_rows_html += "<tr>"
             table_rows_html += f"<td>{i}</td>" # Serial Number
-            # Iterate through the rest of the row data
-            for cell in row:
-                if cell == row[1]: # Special handling for status column
-                    table_rows_html += f"<td class='{status_class}'>{status}</td>"
+            
+            for idx, cell in enumerate(row):
+                if idx == 1: # Special handling for status column
+                    table_rows_html += f"<td class='{status_class}'>{cell}</td>"
                 else:
                     table_rows_html += f"<td>{cell}</td>"
             table_rows_html += "</tr>"
@@ -179,16 +164,26 @@ class BaseAutomationTab(ctk.CTkFrame):
         </body></html>
         """
         try:
-            config = None
-            if sys.platform == 'darwin':
-                path_to_executable = '/usr/local/bin/wkhtmltoimage'
-                if os.path.exists(path_to_executable):
-                    config = imgkit.config(wkhtmltoimage=path_to_executable)
+            # --- FIXED LOGIC ---
+            if sys.platform == "win32":
+                path_to_executable = resource_path(os.path.join("bin", "win", "wkhtmltoimage.exe"))
+            elif sys.platform == "darwin": # macOS
+                path_to_executable = resource_path(os.path.join("bin", "mac", "wkhtmltoimage"))
+            else:
+                messagebox.showerror("Unsupported OS", "Image export is not supported on this operating system.")
+                return False
+
+            if not os.path.exists(path_to_executable):
+                 raise FileNotFoundError(f"wkhtmltoimage not found at {path_to_executable}")
             
-            imgkit.from_string(html_content, output_path, options={'width': 1280, 'quality': 95}, config=config)
+            if sys.platform == "darwin":
+                os.chmod(path_to_executable, 0o755)
+
+            imgkit_config = imgkit.config(wkhtmltoimage=path_to_executable)
+            imgkit.from_string(html_content, output_path, options={'width': 1280, 'quality': 95}, config=imgkit_config)
             return True
         except Exception as e:
-            messagebox.showerror("Image Export Error", f"Failed to generate image report.\nPlease ensure 'wkhtmltoimage' is installed and accessible.\n\nError: {e}")
+            messagebox.showerror("Image Export Error", f"Failed to generate image report.\n\nError: {e}")
             return False
 
     def export_treeview_to_csv(self, treeview_widget: ttk.Treeview, default_filename: str):

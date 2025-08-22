@@ -19,59 +19,61 @@ class EmbVerifyTab(BaseAutomationTab):
     def __init__(self, parent, app_instance):
         super().__init__(parent, app_instance, automation_key="emb_verify")
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(2, weight=1) # Add row for work codes text box
+        self.grid_rowconfigure(2, weight=1) 
         self._create_widgets()
 
     def _create_widgets(self):
         """Creates the user interface elements for the tab."""
         # --- Top Frame for Configuration ---
-        top_frame = ctk.CTkFrame(self)
-        top_frame.grid(row=0, column=0, sticky='ew', padx=10, pady=(10, 0))
-
-        config_frame = ctk.CTkFrame(top_frame)
-        config_frame.pack(pady=(0, 10), fill='x')
-        config_frame.grid_columnconfigure((1, 3), weight=1)
+        config_frame = ctk.CTkFrame(self)
+        config_frame.grid(row=0, column=0, sticky='ew', padx=10, pady=10)
+        config_frame.grid_columnconfigure(1, weight=1)
 
         # Panchayat input field
-        ctk.CTkLabel(config_frame, text="Panchayat Name:").grid(row=0, column=0, sticky='w', padx=15, pady=5)
+        ctk.CTkLabel(config_frame, text="Panchayat Name:").grid(row=0, column=0, sticky='w', padx=15, pady=15)
         self.panchayat_entry = AutocompleteEntry(config_frame, suggestions_list=self.app.history_manager.get_suggestions("panchayat_name"))
-        self.panchayat_entry.grid(row=0, column=1, columnspan=3, sticky='ew', padx=15, pady=5)
+        self.panchayat_entry.grid(row=0, column=1, sticky='ew', padx=15, pady=15)
         
         # Verify Amount input field
-        ctk.CTkLabel(config_frame, text="Verify Amount (₹):").grid(row=1, column=0, sticky='w', padx=15, pady=5)
+        ctk.CTkLabel(config_frame, text="Verify Amount (₹):").grid(row=1, column=0, sticky='w', padx=15, pady=(0, 15))
         self.verify_amount_entry = ctk.CTkEntry(config_frame)
         self.verify_amount_entry.insert(0, "282")
-        self.verify_amount_entry.grid(row=1, column=1, sticky='ew', padx=15, pady=5)
+        self.verify_amount_entry.grid(row=1, column=1, sticky='ew', padx=15, pady=(0, 15))
 
         # Action buttons
-        action_frame_container = ctk.CTkFrame(top_frame)
-        action_frame_container.pack(pady=10, fill='x')
-        action_frame = self._create_action_buttons(parent_frame=action_frame_container)
-        action_frame.pack(expand=True, fill='x')
-
-        # --- Middle Frame for Work Code Input ---
-        work_code_frame = ctk.CTkFrame(self)
-        work_code_frame.grid(row=1, column=0, sticky='ew', padx=10, pady=10)
-        work_code_frame.grid_columnconfigure(0, weight=1)
-        work_code_frame.grid_rowconfigure(1, weight=1)
+        action_frame = self._create_action_buttons(parent_frame=self)
+        action_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 10))
         
-        ctk.CTkLabel(work_code_frame, text="Enter Work Codes (one per line). Leave blank to process all.").pack(anchor='w', padx=10, pady=(5,0))
-        self.work_codes_text = ctk.CTkTextbox(work_code_frame, height=150)
-        self.work_codes_text.pack(expand=True, fill="both", padx=10, pady=10)
-
-
-        # --- Bottom Frame for Results and Logs ---
+        # --- Bottom Frame for Data Tabs ---
         notebook = ctk.CTkTabview(self)
         notebook.grid(row=2, column=0, sticky="nsew", padx=10, pady=(0, 10))
-        results_frame = notebook.add("Results")
-        self._create_log_and_status_area(parent_notebook=notebook)
-
-        # Results Tab UI
-        results_frame.grid_columnconfigure(0, weight=1)
-        results_frame.grid_rowconfigure(1, weight=1)
         
-        # --- MODIFIED: Replaced Export CSV with Unified Export Controls ---
-        results_action_frame = ctk.CTkFrame(results_frame, fg_color="transparent")
+        work_codes_tab = notebook.add("Work Codes")
+        results_tab = notebook.add("Results")
+        self._create_log_and_status_area(parent_notebook=notebook)
+        
+        # --- Work Codes Tab Content ---
+        work_codes_tab.grid_columnconfigure(0, weight=1)
+        work_codes_tab.grid_rowconfigure(1, weight=1)
+        
+        wc_header_frame = ctk.CTkFrame(work_codes_tab, fg_color="transparent")
+        wc_header_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=(5,0))
+        
+        ctk.CTkLabel(wc_header_frame, text="Enter Work Codes (one per line). Leave blank to process all.").pack(side="left", padx=5)
+        
+        # --- NEW: Clear Button ---
+        clear_wc_button = ctk.CTkButton(wc_header_frame, text="Clear", width=80, command=lambda: self.work_codes_text.delete("1.0", "end"))
+        clear_wc_button.pack(side="right")
+        
+        self.work_codes_text = ctk.CTkTextbox(work_codes_tab, height=150)
+        self.work_codes_text.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
+
+
+        # --- Results Tab UI ---
+        results_tab.grid_columnconfigure(0, weight=1)
+        results_tab.grid_rowconfigure(1, weight=1)
+        
+        results_action_frame = ctk.CTkFrame(results_tab, fg_color="transparent")
         results_action_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(5, 10), padx=5)
         
         export_controls_frame = ctk.CTkFrame(results_action_frame, fg_color="transparent")
@@ -82,18 +84,17 @@ class EmbVerifyTab(BaseAutomationTab):
         self.export_format_menu.pack(side='left', padx=5)
         self.export_filter_menu = ctk.CTkOptionMenu(export_controls_frame, width=150, values=["Export All", "Success Only", "Failed Only"])
         self.export_filter_menu.pack(side='left', padx=(0, 5))
-        # --- END MODIFICATION ---
 
         cols = ("Work Code", "Status", "Details", "Timestamp")
-        self.results_tree = ttk.Treeview(results_frame, columns=cols, show='headings')
+        self.results_tree = ttk.Treeview(results_tab, columns=cols, show='headings')
         for col in cols: self.results_tree.heading(col, text=col)
         self.results_tree.column("Work Code", width=250); self.results_tree.column("Status", width=100, anchor='center'); self.results_tree.column("Details", width=350); self.results_tree.column("Timestamp", width=120, anchor='center')
-        self.results_tree.grid(row=1, column=0, sticky='nsew')
+        self.results_tree.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
         
-        scrollbar = ctk.CTkScrollbar(results_frame, command=self.results_tree.yview)
+        scrollbar = ctk.CTkScrollbar(results_tab, command=self.results_tree.yview)
         self.results_tree.configure(yscroll=scrollbar.set); scrollbar.grid(row=1, column=1, sticky='ns')
         self.style_treeview(self.results_tree)
-        self._setup_treeview_sorting(self.results_tree) # Added for sortable headers
+        self._setup_treeview_sorting(self.results_tree)
 
     def _on_format_change(self, selected_format):
         if "CSV" in selected_format: self.export_filter_menu.configure(state="disabled")
@@ -106,7 +107,6 @@ class EmbVerifyTab(BaseAutomationTab):
         self.panchayat_entry.configure(state=state)
         self.verify_amount_entry.configure(state=state)
         self.work_codes_text.configure(state=state)
-        # --- Add new export controls to state management ---
         self.export_button.configure(state=state)
         self.export_format_menu.configure(state=state)
         self.export_filter_menu.configure(state=state)
@@ -146,7 +146,6 @@ class EmbVerifyTab(BaseAutomationTab):
     def _log_result(self, work_code, status, details):
         """Logs a result to the treeview."""
         timestamp = datetime.now().strftime("%H:%M:%S")
-        # --- MODIFIED: Add tags for coloring ---
         tags = ('failed',) if 'success' not in status.lower() and 'verified' not in status.lower() else ()
         self.app.after(0, lambda: self.results_tree.insert("", "end", values=(work_code, status, details, timestamp), tags=tags))
 
@@ -165,7 +164,6 @@ class EmbVerifyTab(BaseAutomationTab):
             driver.get(config.EMB_VERIFY_CONFIG["url"])
             wait = WebDriverWait(driver, 20) 
 
-            # Select Panchayat
             self.app.log_message(self.log_display, f"Selecting Panchayat: {panchayat}")
             panchayat_select = Select(wait.until(EC.presence_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_ddl_panch"))))
             panchayat_select.select_by_visible_text(panchayat)
@@ -198,7 +196,7 @@ class EmbVerifyTab(BaseAutomationTab):
                 self.app.after(0, self.update_status, f"Processing {i+1}/{total}: {current_wc}", (i+1)/total)
                 self._process_single_work_code(driver, wait, current_wc, use_search, verify_amount)
 
-                if not use_search and i < total - 1:
+                if use_search and i < total - 1:
                     self.app.log_message(self.log_display, "Navigating back for next work code...")
                     driver.get(config.EMB_VERIFY_CONFIG["url"])
                     panchayat_select = Select(wait.until(EC.presence_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_ddl_panch"))))
@@ -221,21 +219,18 @@ class EmbVerifyTab(BaseAutomationTab):
     def _process_single_work_code(self, driver, wait, work_code, use_search, verify_amount):
         """Handles the logic for a single work code verification."""
         try:
-            if use_search:
-                self.app.log_message(self.log_display, f"Searching for work code: {work_code}")
-                search_box = wait.until(EC.presence_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_txt_search")))
-                search_box.clear()
-                search_box.send_keys(work_code)
-                driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_imgButtonSearch").click()
-                time.sleep(2) 
-                work_select = Select(wait.until(EC.presence_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_ddl_work"))))
-                if len(work_select.options) <= 1:
-                    raise NoSuchElementException(f"Work code '{work_code}' not found after search.")
-                work_select.select_by_index(1)
-            else:
-                self.app.log_message(self.log_display, f"Selecting work code from dropdown: {work_code}")
-                work_select = Select(wait.until(EC.presence_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_ddl_work"))))
-                work_select.select_by_visible_text(work_code)
+            self.app.log_message(self.log_display, f"Selecting work code: {work_code}")
+            work_select = Select(wait.until(EC.presence_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_ddl_work"))))
+            
+            found = False
+            for option in work_select.options:
+                if work_code in option.text:
+                    work_select.select_by_visible_text(option.text)
+                    found = True
+                    break
+            
+            if not found:
+                raise NoSuchElementException(f"Work code containing '{work_code}' not found in dropdown.")
             
             self.app.log_message(self.log_display, "Work selected. Pausing for page to update...")
             time.sleep(2) 

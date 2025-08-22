@@ -1,17 +1,15 @@
 {
-  "latest_version": "2.6.4",
-  "download_url_windows": "https://nregabot.com/updates/NREGABot-v2.6.4-Setup.exe",
-  "download_url_macos": "https://nregabot.com/updates/NREGABot-v2.6.4-macOS.dmg",
+  "latest_version": "2.6.5",
+  "download_url_windows": "https://nregabot.com/updates/NREGABot-v2.6.5-Setup.exe",
+  "download_url_macos": "https://nregabot.com/updates/NREGABot-v2.6.5-macOS.dmg",
   "changelog": {
-    "2.6.4": [
-      "✨ Feature: 'Send Wagelist' tab now supports processing a specific range of wagelists.",
-      "✨ Improvement: 'MR Payment' automation now supports both Block and GP logins and provides more precise approval status results (JE vs. AE).",
-      "✨ Improvement: 'Send Wagelist' automation is now significantly faster, selecting all EFMS options instantly.",
-      "✨ Improvement: The main header now displays a personalized welcome message (with special styling for licensed users) and a quick-access button for the 'Workcode Extractor'.",
-      "✨ Improvement: The footer now includes an animated icon and color-coded text to better indicate the app's status (Ready, Running, Finished).",
-      "✨ Improvement: Enhanced the 'WC Gen' tab with Panchayat autocomplete, automatic profile saving, and a results summary.",
-      "🐞 Bug Fix: Fixed a critical timing issue in the 'IF Edit' tab that could cause the first work code to be skipped.",
-      "🐞 Bug Fix: Reorganized the layouts of the 'IF Edit' and 'WC Gen' tabs for a more intuitive workflow."
+    "2.6.5": [
+      "✨ Major Performance Overhaul: Implemented lazy loading for all tabs, ensuring near-instant application startup and significantly reduced memory usage.",
+      "✨ Feature: Consolidated report exports on all major tabs into a single, unified system (Image, PDF, CSV) with data filtering.",
+      "✨ Improvement: PDF reports are now styled with headers, footers, and status-based colors (red for failed, green for success).",
+      "✨ Improvement: 'MR Payment' automation now allows verification of an exact wage amount and automatically skips MSRs that are pending approval.",
+      "🐞 Bug Fix: Resolved a cloud upload error that occurred when re-exporting reports by giving each file a unique, timestamped name.",
+      "🐞 Bug Fix: Corrected numerous bugs and crashes that occurred during the recent performance refactoring to ensure stability."
     ]
   }
 }

@@ -6,7 +6,8 @@ ICON_FILE="assets/app_icon.icns"
 
 # --- NEW: Automatically detect version from config.py ---
 echo "Reading application version from config.py..."
-APP_VERSION=$(grep "APP_VERSION =" config.py | sed 's/.*"\\(.*\\)".*/\\1/')
+# This command extracts the version string from the config file
+APP_VERSION=$(grep "APP_VERSION =" config.py | sed 's/.*"\(.*\)".*/\1/')
 
 if [ -z "$APP_VERSION" ]; then
     echo "!!!!!! ERROR: FAILED to read version from config.py !!!!!!"

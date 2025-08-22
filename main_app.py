@@ -7,21 +7,19 @@ from urllib.parse import urlencode
 from PIL import Image
 from packaging.version import parse as parse_version
 from getmac import get_mac_address
-from appdirs import user_data_dir
-from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime
 from dotenv import load_dotenv
 
 from selenium import webdriver
-from selenium.common.exceptions import WebDriverException, SessionNotCreatedException
+from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium.webdriver.firefox.service import Service as FirefoxService
 from webdriver_manager.firefox import GeckoDriverManager
 
 from tabs.history_manager import HistoryManager
-
 import config
+
 # --- TAB CLASS IMPORTS ---
 from tabs.msr_tab import MsrTab
 from tabs.wagelist_gen_tab import WagelistGenTab
@@ -45,25 +43,12 @@ from tabs.scheme_closing_tab import SchemeClosingTab
 from tabs.emb_verify_tab import EmbVerifyTab
 from tabs.resend_rejected_wg_tab import ResendRejectedWgTab
 
+# --- PERFORMANCE IMPROVEMENT: Moved utility functions to utils.py ---
+from utils import resource_path, get_data_path, get_user_downloads_path
+
 
 if config.OS_SYSTEM == "Windows":
     import ctypes
-
-# --- HELPER FUNCTIONS ---
-def resource_path(relative_path):
-    try: base_path = sys._MEIPASS
-    except Exception: base_path = os.path.abspath(".")
-    return os.path.join(base_path, relative_path)
-
-def get_data_path(filename):
-    app_name = "NREGABot"
-    app_author = "PoddarSolutions"
-    data_dir = user_data_dir(app_name, app_author)
-    os.makedirs(data_dir, exist_ok=True)
-    return os.path.join(data_dir, filename)
-
-def get_user_downloads_path():
-    return os.path.join(Path.home(), "Downloads")
 
 load_dotenv()
 
@@ -135,7 +120,6 @@ class NregaBotApp(ctk.CTk):
         self.loading_animation_label = None
         self.is_animating = False
 
-        # --- MODIFIED: Renamed for clarity and added new labels ---
         self.header_welcome_prefix_label = None
         self.header_welcome_name_label = None
         self.header_welcome_suffix_label = None
@@ -165,7 +149,6 @@ class NregaBotApp(ctk.CTk):
             
             self.status_label.configure(text=f"Status: {message}", text_color=color)
 
-            # --- Animation Control Logic ---
             if "running" in message.lower():
                 if not self.is_animating:
                     self.is_animating = True
@@ -179,7 +162,6 @@ class NregaBotApp(ctk.CTk):
                 self.loading_animation_label.configure(text="")
             return
 
-        # Braille characters create a smooth spinning animation
         frames = ["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"]
         if self.loading_animation_label:
             self.loading_animation_label.configure(text=frames[frame_index])
@@ -194,18 +176,33 @@ class NregaBotApp(ctk.CTk):
         
     def start_app(self):
         self.splash = self._create_splash_screen()
-        self.after(200, self._initialize_app)
+        # --- PERFORMANCE IMPROVEMENT: Initialize app in a background thread ---
+        threading.Thread(target=self._initialize_app, daemon=True).start()
+
 
     def _initialize_app(self):
-        self.grid_rowconfigure(1, weight=1); self.grid_columnconfigure(0, weight=1)
-        self._create_header()
-        self._create_footer()
-        self.protocol("WM_DELETE_WINDOW", self.on_closing)
+        # --- This now runs in a background thread, so we use `self.after` to schedule UI updates ---
+        self.after(0, self._setup_main_window)
+        self.after(200, self._destroy_splash)
 
-        if self.splash: self.splash.destroy(); self.splash = None
         self.perform_license_check_flow()
         
         self.after(500, self.run_onboarding_if_needed)
+
+    def _setup_main_window(self):
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        self._create_header()
+        self._create_footer()
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.deiconify()
+        self.attributes("-alpha", 1.0)
+        self.set_status("Initializing...")
+    
+    def _destroy_splash(self):
+        if self.splash:
+            self.splash.destroy()
+            self.splash = None
 
     def run_onboarding_if_needed(self):
         first_run_flag_path = get_data_path('.first_run_complete')
@@ -259,31 +256,30 @@ class NregaBotApp(ctk.CTk):
     def perform_license_check_flow(self):
         self.is_licensed = self.check_license()
         if self.is_licensed:
-            self._create_main_layout()
-            is_expiring = self.check_expiry_and_notify()
-            self._ping_server_in_background()
-            self._unlock_app()
-            self.after(100, self._update_about_tab_info)
-            first_tab_name = list(list(self.get_tabs_definition().values())[0].keys())[0]
-            self.show_frame("About" if is_expiring else first_tab_name)
-            self.check_for_updates_background()
-            self.deiconify(); self.attributes("-alpha", 1.0)
+            self.after(0, self._setup_licensed_ui)
         else:
-            self._create_main_layout(for_activation=True)
-            self._lock_app_to_about_tab()
-            self.deiconify(); self.attributes("-alpha", 1.0)
-            if self.show_activation_window():
-                self.is_licensed = True
-                for widget in self.main_layout_frame.winfo_children(): widget.destroy()
-                self._create_main_layout()
-                self.check_expiry_and_notify()
-                self._unlock_app()
-                self.after(100, self._update_about_tab_info)
-                first_tab_name = list(list(self.get_tabs_definition().values())[0].keys())[0]
-                self.show_frame(first_tab_name)
-                self.check_for_updates_background()
-            else:
-                self.destroy()
+            self.after(0, self._setup_unlicensed_ui)
+
+    def _setup_licensed_ui(self):
+        self._create_main_layout()
+        is_expiring = self.check_expiry_and_notify()
+        self._ping_server_in_background()
+        self._unlock_app()
+        self.after(100, self._update_about_tab_info)
+        first_tab_name = list(list(self.get_tabs_definition().values())[0].keys())[0]
+        self.show_frame("About" if is_expiring else first_tab_name)
+        self.check_for_updates_background()
+        self.set_status("Ready")
+
+    def _setup_unlicensed_ui(self):
+        self._create_main_layout(for_activation=True)
+        self._lock_app_to_about_tab()
+        if self.show_activation_window():
+            self.is_licensed = True
+            for widget in self.main_layout_frame.winfo_children(): widget.destroy()
+            self._setup_licensed_ui()
+        else:
+            self.destroy()
 
     def _ping_server_in_background(self):
         if not self.license_info.get('key'):
@@ -424,7 +420,6 @@ class NregaBotApp(ctk.CTk):
         title_frame = ctk.CTkFrame(header, fg_color="transparent"); title_frame.pack(side="left", fill="x", expand=True)
         ctk.CTkLabel(title_frame, text=config.APP_NAME, font=ctk.CTkFont(size=22, weight="bold")).pack(anchor="w")
         
-        # --- MODIFIED: Create a frame for the multi-part welcome message ---
         welcome_frame = ctk.CTkFrame(title_frame, fg_color="transparent")
         welcome_frame.pack(anchor="w")
 
@@ -462,21 +457,18 @@ class NregaBotApp(ctk.CTk):
             self.header_welcome_name_label.configure(text=user_name)
             self.header_welcome_suffix_label.configure(text="!")
 
-            # Apply special styling for paid users
             if key_type != 'trial':
                 self.header_welcome_name_label.configure(
                     text_color=("gold4", "#FFD700"), 
                     font=ctk.CTkFont(size=13, weight="bold")
                 )
             else:
-                # Revert to default style for trial users
                 default_color = ctk.ThemeManager.theme["CTkLabel"]["text_color"]
                 self.header_welcome_name_label.configure(
                     text_color=default_color, 
                     font=ctk.CTkFont(size=13, weight="normal")
                 )
         else:
-            # Fallback if no user is logged in
             self.header_welcome_prefix_label.configure(text=f"v{config.APP_VERSION} | Log in, then select a task.")
             self.header_welcome_name_label.configure(text="")
             self.header_welcome_suffix_label.configure(text="")
@@ -505,7 +497,6 @@ class NregaBotApp(ctk.CTk):
             for name, data in tabs.items() if "key" in data
         }
 
-        # --- NEW: Create "Most Used" category ---
         most_used_keys = self.history_manager.get_most_used_keys()
         if most_used_keys:
             most_used_frame = CollapsibleFrame(parent, title="Most Used", initially_expanded=True)
@@ -525,17 +516,14 @@ class NregaBotApp(ctk.CTk):
                     self.nav_buttons[name] = btn
                     self.button_to_category_frame[name] = most_used_frame
 
-        # --- Create all other categories ---
         is_first_category = True
         for category, tabs in self.get_tabs_definition().items():
-            # Don't expand the first regular category if "Most Used" exists
             should_expand = is_first_category and not most_used_keys
             
             category_frame = CollapsibleFrame(parent, title=category, initially_expanded=should_expand)
             category_frame.pack(fill="x", pady=0, padx=0)
             
             for name, data in tabs.items():
-                # Avoid duplicating buttons that are already in "Most Used"
                 if name not in self.nav_buttons:
                     btn = ctk.CTkButton(
                         category_frame.content_frame, text=f" {data['icon']}  {name}",
@@ -547,7 +535,6 @@ class NregaBotApp(ctk.CTk):
                     btn.pack(fill="x", padx=5, pady=2)
                     self.nav_buttons[name] = btn
                 
-                # Still map it to its original category for expansion logic
                 self.button_to_category_frame[name] = category_frame
             is_first_category = False
 
@@ -555,12 +542,14 @@ class NregaBotApp(ctk.CTk):
         self.content_frames = {}
         self.tab_instances = {}
         tabs_to_create = {"Application": self.get_tabs_definition()["Application"]} if for_activation else self.get_tabs_definition()
+
         for category, tabs in tabs_to_create.items():
             for name, data in tabs.items():
-                frame_container = ctk.CTkFrame(self.content_area, fg_color="transparent"); frame_container.grid(row=0, column=0, sticky="nsew")
-                tab_instance = data["creation_func"](frame_container, self); tab_instance.pack(expand=True, fill="both")
+                # --- LAZY LOADING: Only create the frame container ---
+                frame_container = ctk.CTkFrame(self.content_area, fg_color="transparent")
+                frame_container.grid(row=0, column=0, sticky="nsew")
                 self.content_frames[name] = frame_container
-                self.tab_instances[name] = tab_instance
+                # --- The tab instance will be created in `show_frame` ---
 
     def get_tabs_definition(self):
         return {
@@ -596,8 +585,20 @@ class NregaBotApp(ctk.CTk):
         }
 
     def show_frame(self, page_name):
+        # --- LAZY LOADING: Create tab instance on demand ---
+        if page_name not in self.tab_instances:
+            tabs_definition = self.get_tabs_definition()
+            for category, tabs in tabs_definition.items():
+                if page_name in tabs:
+                    data = tabs[page_name]
+                    tab_instance = data["creation_func"](self.content_frames[page_name], self)
+                    tab_instance.pack(expand=True, fill="both")
+                    self.tab_instances[page_name] = tab_instance
+                    break
+        
         if page_name in self.button_to_category_frame:
             self.button_to_category_frame[page_name].expand()
+            
         self.content_frames[page_name].tkraise()
         for name, button in self.nav_buttons.items():
             button.configure(fg_color=("gray90", "gray28") if name == page_name else "transparent")
@@ -629,7 +630,6 @@ class NregaBotApp(ctk.CTk):
         nrega_btn = ctk.CTkButton(button_container, text="NREGA Bot Website ↗", image=self.icon_images.get("nrega"), command=lambda: webbrowser.open_new_tab(config.MAIN_WEBSITE_URL), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
         nrega_btn.pack(side="left")
 
-        # --- MODIFIED: WhatsApp button changed to Community button ---
         community_btn = ctk.CTkButton(button_container, text="Community", image=self.icon_images.get("whatsapp"), command=lambda: webbrowser.open_new_tab("https://chat.whatsapp.com/Bup3hDCH3wn2shbUryv8wn"), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
         community_btn.pack(side="left", padx=(10, 0))
 
@@ -906,7 +906,6 @@ class NregaBotApp(ctk.CTk):
         if self.automation_threads.get(key) and self.automation_threads[key].is_alive():
             messagebox.showwarning("In Progress", f"The task is already running."); return
         
-        # --- NEW: Increment usage count for this tool ---
         self.history_manager.increment_usage(key)
 
         self.prevent_sleep()
@@ -1049,18 +1048,42 @@ class NregaBotApp(ctk.CTk):
         
         threading.Thread(target=_download_worker, daemon=True).start()
 
+def initialize_webdriver_manager():
+    """Initializes GeckoDriverManager in a background thread to avoid blocking the UI."""
+    def run():
+        try:
+            logging.info("Checking for GeckoDriver...")
+            GeckoDriverManager().install()
+            logging.info("GeckoDriver is up to date.")
+        except Exception as e:
+            logging.error(f"Could not download/update GeckoDriver: {e}")
+            # Consider showing a non-blocking error message if needed
+            # For example, using a pub/sub mechanism to send a message to the main app
+    threading.Thread(target=run, daemon=True).start()
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+    # --- SINGLE INSTANCE LOCK ---
+    lock_file_path = get_data_path("app.lock")
     try:
-        logging.info("Checking for GeckoDriver...")
-        GeckoDriverManager().install()
-        logging.info("GeckoDriver is up to date.")
-    except Exception as e:
-        logging.error(f"Could not download/update GeckoDriver: {e}")
-        messagebox.showerror("Driver Error", "Could not download the required Firefox driver (GeckoDriver). Please check your internet connection and try again.")
+        # Try to create a lock file in exclusive mode
+        lock_file = os.open(lock_file_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        messagebox.showwarning("Application Already Running", "Another instance of NREGA Bot is already running.")
         sys.exit(1)
-    try: app = NregaBotApp(); app.mainloop()
+
+
+    initialize_webdriver_manager()
+    
+    try: 
+        app = NregaBotApp()
+        app.mainloop()
     except Exception as e:
         if SENTRY_DSN: sentry_sdk.capture_exception(e)
         logging.critical(f"A fatal error occurred on startup: {e}", exc_info=True)
         messagebox.showerror("Fatal Startup Error", f"A critical error occurred on startup:\n\n{e}\n\nThe application will now close.")
+    finally:
+        # --- SINGLE INSTANCE LOCK: Clean up the lock file ---
+        os.close(lock_file)
+        os.remove(lock_file_path)

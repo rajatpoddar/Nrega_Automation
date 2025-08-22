@@ -1,4 +1,12 @@
 {
+  "2.6.5": [
+      "✨ Major Performance Overhaul: Implemented lazy loading for all tabs, ensuring near-instant application startup and significantly reduced memory usage.",
+      "✨ Feature: Consolidated report exports on all major tabs into a single, unified system (Image, PDF, CSV) with data filtering.",
+      "✨ Improvement: PDF reports are now styled with headers, footers, and status-based colors (red for failed, green for success).",
+      "✨ Improvement: 'MR Payment' automation now allows verification of an exact wage amount and automatically skips MSRs that are pending approval.",
+      "🐞 Bug Fix: Resolved a cloud upload error that occurred when re-exporting reports by giving each file a unique, timestamped name.",
+      "🐞 Bug Fix: Corrected numerous bugs and crashes that occurred during the recent performance refactoring to ensure stability."
+    ],
   "2.6.4": [
       "✨ Feature: 'Send Wagelist' tab now supports processing a specific range of wagelists.",
       "✨ Improvement: 'MR Payment' automation now supports both Block and GP logins and provides more precise approval status results (JE vs. AE).",

@@ -22,44 +22,52 @@ class DelWorkAllocTab(BaseAutomationTab):
         super().__init__(parent, app_instance, automation_key="del_work_alloc")
         
         self.grid_columnconfigure(0, weight=1)
-        # --- REVISED: Configure rows for the new 3-section layout ---
-        self.grid_rowconfigure(0, weight=0) # All Controls
-        self.grid_rowconfigure(1, weight=0) # Action Buttons
-        self.grid_rowconfigure(2, weight=1) # Results/Logs (Expanding)
+        self.grid_rowconfigure(2, weight=1) # Make the notebook area expandable
         
         self._create_widgets()
 
     def _create_widgets(self):
         """Creates the UI elements for the tab."""
-        # --- Section 1: A single frame for all input controls ---
+        # --- Section 1: Input controls ---
         controls_frame = ctk.CTkFrame(self)
         controls_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
         controls_frame.grid_columnconfigure(1, weight=1)
 
         # Panchayat Name Input
-        ctk.CTkLabel(controls_frame, text="Panchayat Name:").grid(row=0, column=0, sticky='w', padx=15, pady=10)
+        ctk.CTkLabel(controls_frame, text="Panchayat Name:").grid(row=0, column=0, sticky='w', padx=15, pady=15)
         self.panchayat_entry = AutocompleteEntry(controls_frame, suggestions_list=self.app.history_manager.get_suggestions("panchayat_name"))
-        self.panchayat_entry.grid(row=0, column=1, sticky='ew', padx=15, pady=10)
-
-        # Jobcards Input (Now inside the same controls_frame)
-        ctk.CTkLabel(controls_frame, text="Jobcard / Registration IDs (one per line)", font=ctk.CTkFont(weight="bold")).grid(row=1, column=0, columnspan=2, sticky='w', padx=15, pady=(10,0))
-        ctk.CTkLabel(controls_frame, text="If left empty, the bot will process all Registration IDs for the selected Panchayat.", wraplength=600, justify="left").grid(row=2, column=0, columnspan=2, sticky='w', padx=15, pady=5)
+        self.panchayat_entry.grid(row=0, column=1, sticky='ew', padx=15, pady=15)
         
-        self.jobcards_text = ctk.CTkTextbox(controls_frame, height=150)
-        self.jobcards_text.grid(row=3, column=0, columnspan=2, sticky='nsew', padx=15, pady=(5,15))
-
         # --- Section 2: Action buttons ---
         action_frame = self._create_action_buttons(parent_frame=self)
         action_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=(0,10))
 
-        # --- Section 3: Results and Logs Tabs ---
+        # --- Section 3: Data Tabs (Jobcards, Results, Logs) ---
         data_notebook = ctk.CTkTabview(self)
         data_notebook.grid(row=2, column=0, sticky="nsew", padx=10, pady=(0,10))
         
+        jobcards_tab = data_notebook.add("Jobcards / Reg IDs")
         results_tab = data_notebook.add("Results")
         self._create_log_and_status_area(parent_notebook=data_notebook)
 
-        # Results Tab Content
+        # --- Jobcards Tab Content ---
+        jobcards_tab.grid_rowconfigure(1, weight=1)
+        jobcards_tab.grid_columnconfigure(0, weight=1)
+
+        jc_header_frame = ctk.CTkFrame(jobcards_tab, fg_color="transparent")
+        jc_header_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=(5,0))
+        
+        ctk.CTkLabel(jc_header_frame, text="Enter Jobcard / Registration IDs (one per line).\nIf left empty, the bot will process all IDs for the selected Panchayat.", wraplength=700, justify="left").pack(side="left", padx=5)
+        
+        # --- NEW: Clear Button ---
+        clear_jc_button = ctk.CTkButton(jc_header_frame, text="Clear", width=80, command=lambda: self.jobcards_text.delete("1.0", "end"))
+        clear_jc_button.pack(side="right")
+
+        self.jobcards_text = ctk.CTkTextbox(jobcards_tab, height=150)
+        self.jobcards_text.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
+
+
+        # --- Results Tab Content ---
         results_tab.grid_columnconfigure(0, weight=1)
         results_tab.grid_rowconfigure(1, weight=1)
 
@@ -79,7 +87,7 @@ class DelWorkAllocTab(BaseAutomationTab):
         self.results_tree.column("Status", width=100, anchor='center')
         self.results_tree.column("Details", width=350)
         
-        self.results_tree.grid(row=1, column=0, sticky='nsew')
+        self.results_tree.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
         scrollbar = ctk.CTkScrollbar(results_tab, command=self.results_tree.yview)
         self.results_tree.configure(yscroll=scrollbar.set)
         scrollbar.grid(row=1, column=1, sticky='ns')
@@ -92,6 +100,7 @@ class DelWorkAllocTab(BaseAutomationTab):
         state = "disabled" if running else "normal"
         self.panchayat_entry.configure(state=state)
         self.jobcards_text.configure(state=state)
+        # Note: The new "Clear" button doesn't need state management as it's tied to the textbox
 
     def start_automation(self):
         """Gathers inputs and starts the automation thread."""
