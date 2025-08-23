@@ -16,18 +16,27 @@ class BaseAutomationTab(ctk.CTkFrame):
     # --- FIX 1: Corrected wkhtmltoimage path for Windows ---
     def _get_wkhtml_path(self):
         """Gets the correct path to the wkhtmltoimage executable based on the OS."""
-        base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
-        
-        if platform.system() == "Windows":
-            # Use os.path.join to construct a Windows-compatible path with backslashes
-            return os.path.join(base_path, 'bin', 'win', 'wkhtmltoimage.exe')
-        elif platform.system() == "Darwin":
-            # macOS path remains the same
-            return os.path.join(base_path, 'bin', 'mac', 'wkhtmltoimage')
+        os_type = platform.system()
+    
+        if hasattr(sys, '_MEIPASS'):
+            # In a bundled app, the executable is at the root of the temp folder
+            base_path = sys._MEIPASS
+            if os_type == "Windows":
+                return os.path.join(base_path, 'wkhtmltoimage.exe')
+            elif os_type == "Darwin":  # macOS
+                # For this to work on macOS, you'll need a similar change in build_macos.sh
+                # from "--add-data 'bin:bin'" to "--add-data 'bin/mac/wkhtmltoimage:.'"
+                return os.path.join(base_path, 'wkhtmltoimage')
         else:
-            # Fallback for other systems (e.g., Linux)
-            return 'wkhtmltoimage'
-
+            # In a development environment, use the original path
+            base_path = os.path.abspath(".")
+            if os_type == "Windows":
+                return os.path.join(base_path, 'bin', 'win', 'wkhtmltoimage.exe')
+            elif os_type == "Darwin":
+                return os.path.join(base_path, 'bin', 'mac', 'wkhtmltoimage')
+    
+        # Fallback for other systems (like Linux)
+        return 'wkhtmltoimage'
     def generate_report_image(self, data, headers, title, date_str, footer, output_path):
         try:
             path_wkhtmltoimage = self._get_wkhtml_path()
