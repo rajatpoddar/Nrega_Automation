@@ -27,7 +27,7 @@ pyinstaller --noconfirm --windowed --onefile ^
 --add-data=".env;." ^
 --add-data="jobcard.jpeg;." ^
 --add-data="tabs;tabs" ^
---add-data="bin/win;bin/win" ^
+--add-data "bin\win\wkhtmltoimage.exe;."
 --collect-data fpdf ^
 main_app.py
 
