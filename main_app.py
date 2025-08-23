@@ -181,20 +181,56 @@ class NregaBotApp(ctk.CTk):
             color = "green" if is_connected else "red"
             self.server_status_indicator.configure(fg_color=color)
         
+    
+    # --- In NregaBotApp class (replace old methods) ---
+
+    # --- In NregaBotApp class (replace old methods) ---
+
     def start_app(self):
+        """Show splash and start initialization in background."""
         self.splash = self._create_splash_screen()
-        # --- PERFORMANCE IMPROVEMENT: Initialize app in a background thread ---
         threading.Thread(target=self._initialize_app, daemon=True).start()
 
-
     def _initialize_app(self):
-        # --- This now runs in a background thread, so we use `self.after` to schedule UI updates ---
+        """Initialize app with smooth transition from splash to main window."""
+        # Build UI (but do not show yet)
         self.after(0, self._setup_main_window)
-        self.after(200, self._destroy_splash)
 
+        # Keep splash visible long enough to feel intentional
+        self.after(1200, self._transition_from_splash)
+
+        # Background tasks
         self.perform_license_check_flow()
-        
-        self.after(500, self.run_onboarding_if_needed)
+        self.after(2000, self.run_onboarding_if_needed)
+
+    def _transition_from_splash(self):
+        """Fade out splash, then fade in main window."""
+        if self.splash:
+            self._fade_out_splash(self.splash, step=0)
+
+    def _fade_out_splash(self, splash, step):
+        """Helper for smooth splash fade-out."""
+        steps = 10
+        if step <= steps:
+            alpha = 1.0 - (step / steps)
+            splash.attributes("-alpha", alpha)
+            self.after(40, lambda: self._fade_out_splash(splash, step + 1))
+        else:
+            splash.destroy()
+            self.splash = None
+            self._fade_in_main_window()
+
+    def _fade_in_main_window(self):
+        """Fade in main window after splash is gone."""
+        # Show main window here ONLY once
+        self.attributes("-alpha", 0.0)
+        self.deiconify()
+
+        steps = 10
+        for i in range(steps + 1):
+            alpha = i / steps
+            self.after(i * 50, lambda a=alpha: self.attributes("-alpha", a))
+
 
     def _setup_main_window(self):
         self.grid_rowconfigure(1, weight=1)
@@ -202,9 +238,7 @@ class NregaBotApp(ctk.CTk):
         self._create_header()
         self._create_footer()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
-        self.deiconify()
-        self.attributes("-alpha", 1.0)
-        self.set_status("Initializing...")
+
     
     def _destroy_splash(self):
         if self.splash:
