@@ -62,7 +62,6 @@ if SENTRY_DSN:
         traces_sample_rate=1.0,
     )
 
-# --- FIX: Load the custom theme BEFORE setting the appearance mode ---
 ctk.set_default_color_theme(resource_path("theme.json"))
 ctk.set_appearance_mode("System")
 
@@ -99,13 +98,18 @@ class CollapsibleFrame(ctk.CTkFrame):
         widget.pack(in_=self.content_frame, **pack_options); return widget
 
 
-# --- FIX: Inherit from ctk.CTk to ensure themes work correctly ---
 class NregaBotApp(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.withdraw()  # <-- FIX: Immediately hide the window to prevent startup flicker.
+        self.withdraw()
         self.attributes("-alpha", 0.0)
-        self.title(f"{config.APP_NAME}"); self.geometry("1100x800"); self.minsize(1000, 700)
+        
+        # FIX: Store initial size for reliable centering
+        self.initial_width = 1100
+        self.initial_height = 800
+        self.geometry(f"{self.initial_width}x{self.initial_height}")
+        
+        self.title(f"{config.APP_NAME}"); self.minsize(1000, 700)
         self.history_manager = HistoryManager(self.get_data_path)
         self.is_licensed = False; self.license_info = {}; self.machine_id = self._get_machine_id()
         self.update_info = {"status": "Checking...", "version": None, "url": None}
@@ -132,6 +136,29 @@ class NregaBotApp(ctk.CTk):
         self._load_icon("feedback", "assets/icons/feedback.png")
         self._load_icon("wc_extractor", "assets/icons/extractor.png")
 
+                # --- ADD THIS SECTION TO LOAD ALL EMOJI ICONS ---
+        self._load_icon("emoji_mr_gen", "assets/icons/emojis/mr_gen.png", size=(16,16))
+        self._load_icon("emoji_mr_payment", "assets/icons/emojis/mr_payment.png", size=(16,16))
+        self._load_icon("emoji_gen_wagelist", "assets/icons/emojis/gen_wagelist.png", size=(16,16))
+        self._load_icon("emoji_send_wagelist", "assets/icons/emojis/send_wagelist.png", size=(16,16))
+        self._load_icon("emoji_fto_gen", "assets/icons/emojis/fto_gen.png", size=(16,16))
+        self._load_icon("emoji_emb_entry", "assets/icons/emojis/warning.png", size=(16,16))
+        self._load_icon("emoji_emb_verify", "assets/icons/emojis/emb_verify.png", size=(16,16))
+        self._load_icon("emoji_scheme_closing", "assets/icons/emojis/scheme_closing.png", size=(16,16))
+        self._load_icon("emoji_del_work_alloc", "assets/icons/emojis/del_work_alloc.png", size=(16,16))
+        self._load_icon("emoji_duplicate_mr", "assets/icons/emojis/duplicate_mr.png", size=(16,16))
+        self._load_icon("emoji_wc_gen", "assets/icons/emojis/wc_gen.png", size=(16,16))
+        self._load_icon("emoji_if_editor", "assets/icons/emojis/if_editor.png", size=(16,16))
+        self._load_icon("emoji_add_activity", "assets/icons/emojis/add_activity.png", size=(16,16))
+        self._load_icon("emoji_verify_jobcard", "assets/icons/emojis/verify_jobcard.png", size=(16,16))
+        self._load_icon("emoji_verify_abps", "assets/icons/emojis/verify_abps.png", size=(16,16))
+        self._load_icon("emoji_wc_extractor", "assets/icons/emojis/wc_extractor.png", size=(16,16))
+        self._load_icon("emoji_resend_wg", "assets/icons/emojis/resend_wg.png", size=(16,16))
+        self._load_icon("emoji_update_outcome", "assets/icons/emojis/update_outcome.png", size=(16,16))
+        self._load_icon("emoji_file_manager", "assets/icons/emojis/file_manager.png", size=(16,16))
+        self._load_icon("emoji_feedback", "assets/icons/emojis/feedback.png", size=(16,16))
+        self._load_icon("emoji_about", "assets/icons/emojis/about.png", size=(16,16))
+
         self.bind("<FocusIn>", self._on_window_focus)
         self.after(0, self.start_app)
 
@@ -147,11 +174,11 @@ class NregaBotApp(ctk.CTk):
             if color is None:
                 message_lower = message.lower()
                 if "running" in message_lower:
-                    color = "#E53E3E"  # Red
+                    color = "#E53E3E"
                 elif "finished" in message_lower:
-                    color = "#3B82F6"  # Blue
+                    color = "#3B82F6"
                 elif "ready" in message_lower:
-                    color = "#38A169"  # Green
+                    color = "#38A169"
                 else:
                     color = "gray50"
             
@@ -166,13 +193,11 @@ class NregaBotApp(ctk.CTk):
 
     def _animate_loading_icon(self, frame_index=0):
         if not self.is_animating:
-            if self.loading_animation_label:
-                self.loading_animation_label.configure(text="")
+            if self.loading_animation_label: self.loading_animation_label.configure(text="")
             return
 
         frames = ["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"]
-        if self.loading_animation_label:
-            self.loading_animation_label.configure(text=frames[frame_index])
+        if self.loading_animation_label: self.loading_animation_label.configure(text=frames[frame_index])
 
         next_frame_index = (frame_index + 1) % len(frames)
         self.after(80, self._animate_loading_icon, next_frame_index)
@@ -182,48 +207,21 @@ class NregaBotApp(ctk.CTk):
             color = "green" if is_connected else "red"
             self.server_status_indicator.configure(fg_color=color)
         
-    
-    # --- In NregaBotApp class (replace old methods) ---
-
-    # --- In NregaBotApp class (replace old methods) ---
-
-    # --- In NregaBotApp class (replace old methods) ---
-
     def start_app(self):
-        """Show splash and start initialization in background."""
         self.splash = self._create_splash_screen()
-        # The initialization runs in a background thread to prevent the UI
-        # from freezing during I/O operations like the license check.
         threading.Thread(target=self._initialize_app, daemon=True).start()
 
     def _initialize_app(self):
-        """
-        Handles the app's startup sequence. It builds the UI and performs
-        background tasks, then schedules the transition from splash to main window.
-        """
-        # Schedule the main window's basic components to be built on the main thread.
-        # The window itself remains hidden during this process.
         self.after(0, self._setup_main_window)
-
-        # This function contains the blocking license check. It runs in this
-        # background thread, then schedules the UI updates on the main thread.
         self.perform_license_check_flow()
-
-        # After all setup tasks are queued, schedule the transition. The delay
-        # ensures the splash screen is visible for a minimum, comfortable duration.
-        # This fixes the race condition by ensuring this is the last step.
-        self.after(1200, self._transition_from_splash)
-
-        # Schedule other post-startup tasks.
-        self.after(1200, self.run_onboarding_if_needed)
+        self.after(800, self._transition_from_splash)
+        self.after(800, self.run_onboarding_if_needed)
 
     def _transition_from_splash(self):
-        """Fade out splash, then fade in main window."""
         if self.splash:
             self._fade_out_splash(self.splash, step=0)
 
     def _fade_out_splash(self, splash, step):
-        """Helper for smooth splash fade-out."""
         steps = 10
         if step <= steps:
             alpha = 1.0 - (step / steps)
@@ -234,17 +232,22 @@ class NregaBotApp(ctk.CTk):
             self.splash = None
             self._fade_in_main_window()
 
-    def _fade_in_main_window(self):
-        """Fade in main window after splash is gone and UI is fully built."""
-        # The window is still hidden. Un-hide it (`deiconify`) now that it's ready.
-        # Because its alpha is 0.0, it will be invisible until we start the fade.
-        self.deiconify()
+    # FIX: Correctly center the window using reliable initial dimensions.
+    def _center_window(self):
+        """Centers the main window on the screen."""
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        x = (screen_width // 2) - (self.initial_width // 2)
+        y = (screen_height // 2) - (self.initial_height // 2)
+        self.geometry(f'{self.initial_width}x{self.initial_height}+{x}+{y}')
 
+    def _fade_in_main_window(self):
+        self._center_window()
+        self.deiconify()
         steps = 10
         for i in range(steps + 1):
             alpha = i / steps
             self.after(i * 50, lambda a=alpha: self.attributes("-alpha", a))
-
 
     def _setup_main_window(self):
         self.grid_rowconfigure(1, weight=1)
@@ -253,7 +256,6 @@ class NregaBotApp(ctk.CTk):
         self._create_footer()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
-    
     def _destroy_splash(self):
         if self.splash:
             self.splash.destroy()
@@ -270,28 +272,11 @@ class NregaBotApp(ctk.CTk):
                 print(f"Could not write first run flag file: {e}")
 
     def show_onboarding_guide(self):
-        messagebox.showinfo(
-            "Welcome to NREGA Bot!",
-            "Welcome! This quick guide will show you how to get started."
-        )
-        messagebox.showinfo(
-            "Step 1: Launch a Browser",
-            "First, click one of the 'Launch' buttons at the top right to open a special browser window.\n\n"
-            "We recommend using Chrome for the best experience."
-        )
-        messagebox.showinfo(
-            "Step 2: Log In to the Portal",
-            "In the new browser window that opens, log in to the NREGA portal with your credentials, just like you normally would."
-        )
-        messagebox.showinfo(
-            "Step 3: Choose Your Task",
-            "Once you are logged in, come back to this app and select the task you want to automate from the list on the left."
-        )
-        messagebox.showinfo(
-            "You're All Set!",
-            "Now you can fill in the required details for your chosen task and click 'Start Automation'. Enjoy the magic!\n\n"
-            "For more detailed instructions, please visit our website from the link in the footer."
-        )
+        messagebox.showinfo("Welcome to NREGA Bot!", "Welcome! This quick guide will show you how to get started.")
+        messagebox.showinfo("Step 1: Launch a Browser", "First, click one of the 'Launch' buttons at the top right to open a special browser window.\n\nWe recommend using Chrome for the best experience.")
+        messagebox.showinfo("Step 2: Log In to the Portal", "In the new browser window that opens, log in to the NREGA portal with your credentials, just like you normally would.")
+        messagebox.showinfo("Step 3: Choose Your Task", "Once you are logged in, come back to this app and select the task you want to automate from the list on the left.")
+        messagebox.showinfo("You're All Set!", "Now you can fill in the required details for your chosen task and click 'Start Automation'. Enjoy the magic!\n\nFor more detailed instructions, please visit our website from the link in the footer.")
 
     def _create_splash_screen(self):
         splash = ctk.CTkToplevel(self)
@@ -315,14 +300,27 @@ class NregaBotApp(ctk.CTk):
         else:
             self.after(0, self._setup_unlicensed_ui)
 
+    # FIX: Preload the About tab to prevent data loading glitches.
+    def _preload_and_update_about_tab(self):
+        """Ensures the About tab is created and populated before it's ever shown."""
+        if "About" not in self.tab_instances:
+            # Create instance but keep it hidden by not raising it yet
+            self.show_frame("About", raise_frame=False)
+        self._update_about_tab_info()
+        self.update_idletasks()
+
     def _setup_licensed_ui(self):
         self._create_main_layout()
         is_expiring = self.check_expiry_and_notify()
+        
+        self._preload_and_update_about_tab() # Preload before showing any frame
+
         self._ping_server_in_background()
         self._unlock_app()
-        self.after(100, self._update_about_tab_info)
+        
         first_tab_name = list(list(self.get_tabs_definition().values())[0].keys())[0]
         self.show_frame("About" if is_expiring else first_tab_name)
+        
         self.check_for_updates_background()
         self.set_status("Ready")
 
@@ -350,9 +348,6 @@ class NregaBotApp(ctk.CTk):
 
     def _on_window_focus(self, event=None):
         if self.is_licensed and not self.is_validating_license:
-            # FIX: Add a small delay to allow the window to finish rendering upon
-            # being restored before initiating a background task. This prevents a
-            # visual glitch/flicker.
             self.after(500, lambda: threading.Thread(target=self._validate_in_background, daemon=True).start())
 
     def _validate_in_background(self):
@@ -531,9 +526,8 @@ class NregaBotApp(ctk.CTk):
             self.header_welcome_name_label.configure(text="")
             self.header_welcome_suffix_label.configure(text="")
 
-
     def _create_main_layout(self, for_activation=False):
-        self.main_layout_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
+        self.main_layout_frame = ctk.CTkFrame(self, corner_radius=0)
         self.main_layout_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(10,0))
         self.main_layout_frame.grid_rowconfigure(0, weight=1); self.main_layout_frame.grid_columnconfigure(1, weight=1)
         
@@ -541,7 +535,8 @@ class NregaBotApp(ctk.CTk):
         nav_scroll_frame.grid(row=0, column=0, sticky="nsw", padx=(0,5))
         self._create_nav_buttons(nav_scroll_frame)
         
-        self.content_area = ctk.CTkFrame(self.main_layout_frame, fg_color="transparent"); self.content_area.grid(row=0, column=1, sticky="nsew")
+        self.content_area = ctk.CTkFrame(self.main_layout_frame)
+        self.content_area.grid(row=0, column=1, sticky="nsew")
         self.content_area.grid_rowconfigure(0, weight=1); self.content_area.grid_columnconfigure(0, weight=1)
         self._create_content_frames(for_activation)
 
@@ -564,8 +559,12 @@ class NregaBotApp(ctk.CTk):
                     tab_data = all_tabs_by_key[key]
                     name = tab_data["name"]
                     btn = ctk.CTkButton(
-                        most_used_frame.content_frame, text=f" {tab_data['icon']}  {name}",
-                        command=lambda n=name: self.show_frame(n), anchor="w",
+                        most_used_frame.content_frame, 
+                        text=f" {name}",
+                        image=tab_data.get("icon"),
+                        compound="left",
+                        command=lambda n=name: self.show_frame(n), 
+                        anchor="w",
                         font=ctk.CTkFont(size=13), height=32, corner_radius=6,
                         fg_color="transparent", text_color=("gray10", "gray90"),
                         hover_color=("gray75", "gray25")
@@ -584,8 +583,12 @@ class NregaBotApp(ctk.CTk):
             for name, data in tabs.items():
                 if name not in self.nav_buttons:
                     btn = ctk.CTkButton(
-                        category_frame.content_frame, text=f" {data['icon']}  {name}",
-                        command=lambda n=name: self.show_frame(n), anchor="w",
+                        category_frame.content_frame, 
+                        text=f" {name}",
+                        image=data.get("icon"),
+                        compound="left",
+                        command=lambda n=name: self.show_frame(n), 
+                        anchor="w",
                         font=ctk.CTkFont(size=13), height=32, corner_radius=6,
                         fg_color="transparent", text_color=("gray10", "gray90"),
                         hover_color=("gray75", "gray25")
@@ -603,51 +606,44 @@ class NregaBotApp(ctk.CTk):
 
         for category, tabs in tabs_to_create.items():
             for name, data in tabs.items():
-                # --- LAZY LOADING: Only create the frame container ---
-
-                # FIX: Remove 'fg_color="transparent"' to allow this frame to have the default
-                # theme background color. This solves the black/transparent frame issue.
                 frame_container = ctk.CTkFrame(self.content_area)
-
                 frame_container.grid(row=0, column=0, sticky="nsew")
                 self.content_frames[name] = frame_container
-                # --- The tab instance will be created in `show_frame` ---
 
     def get_tabs_definition(self):
         return {
             "Core NREGA Tasks": {
-                "MR Gen": {"creation_func": MusterrollGenTab, "icon": config.ICONS["MR Gen"], "key": "muster"},
-                "MR Payment": {"creation_func": MsrTab, "icon": config.ICONS["MR Payment"], "key": "msr"},
-                "Gen Wagelist": {"creation_func": WagelistGenTab, "icon": config.ICONS["Gen Wagelist"], "key": "gen"},
-                "Send Wagelist": {"creation_func": WagelistSendTab, "icon": config.ICONS["Send Wagelist"], "key": "send"},
-                "FTO Generation": {"creation_func": FtoGenerationTab, "icon": config.ICONS["FTO Generation"], "key": "fto_gen"},
-                "eMB Entry⚠️": {"creation_func": MbEntryTab, "icon": config.ICONS["eMB Entry"], "key": "mb_entry"},
-                "eMB Verify": {"creation_func": EmbVerifyTab, "icon": config.ICONS["eMB Verify"], "key": "emb_verify"},
-                "Scheme Closing": {"creation_func": SchemeClosingTab, "icon": "🏁", "key": "scheme_close"},
-                "Del Work Alloc": {"creation_func": DelWorkAllocTab, "icon": "🗑️", "key": "del_work_alloc"},
-                "Duplicate MR Print": {"creation_func": DuplicateMrTab, "icon": config.ICONS["Duplicate MR Print"], "key": "dup_mr"},
+                "MR Gen": {"creation_func": MusterrollGenTab, "icon": self.icon_images.get("emoji_mr_gen"), "key": "muster"},
+                "MR Payment": {"creation_func": MsrTab, "icon": self.icon_images.get("emoji_mr_payment"), "key": "msr"},
+                "Gen Wagelist": {"creation_func": WagelistGenTab, "icon": self.icon_images.get("emoji_gen_wagelist"), "key": "gen"},
+                "Send Wagelist": {"creation_func": WagelistSendTab, "icon": self.icon_images.get("emoji_send_wagelist"), "key": "send"},
+                "FTO Generation": {"creation_func": FtoGenerationTab, "icon": self.icon_images.get("emoji_fto_gen"), "key": "fto_gen"},
+                "eMB Entry": {"creation_func": MbEntryTab, "icon": self.icon_images.get("emoji_emb_entry"), "key": "mb_entry"},
+                "eMB Verify": {"creation_func": EmbVerifyTab, "icon": self.icon_images.get("emoji_emb_verify"), "key": "emb_verify"},
+                "Scheme Closing": {"creation_func": SchemeClosingTab, "icon": self.icon_images.get("emoji_scheme_closing"), "key": "scheme_close"},
+                "Del Work Alloc": {"creation_func": DelWorkAllocTab, "icon": self.icon_images.get("emoji_del_work_alloc"), "key": "del_work_alloc"},
+                "Duplicate MR Print": {"creation_func": DuplicateMrTab, "icon": self.icon_images.get("emoji_duplicate_mr"), "key": "dup_mr"},
             },
             "Records & Workcode": {
-                "WC Gen": {"creation_func": WcGenTab, "icon": config.ICONS["WC Gen (Abua)"], "key": "wc_gen"},
-                "IF Editor": {"creation_func": IfEditTab, "icon": config.ICONS["IF Editor (Abua)"], "key": "if_edit"},
-                "Add Activity": {"creation_func": AddActivityTab, "icon": config.ICONS["Add Activity"], "key": "add_activity"},
+                "WC Gen": {"creation_func": WcGenTab, "icon": self.icon_images.get("emoji_wc_gen"), "key": "wc_gen"},
+                "IF Editor": {"creation_func": IfEditTab, "icon": self.icon_images.get("emoji_if_editor"), "key": "if_edit"},
+                "Add Activity": {"creation_func": AddActivityTab, "icon": self.icon_images.get("emoji_add_activity"), "key": "add_activity"},
             },
             "Utilities & Verification": {
-                "Verify Jobcard": {"creation_func": JobcardVerifyTab, "icon": config.ICONS["Verify Jobcard"], "key": "jc_verify"},
-                "Verify ABPS": {"creation_func": AbpsVerifyTab, "icon": config.ICONS["Verify ABPS"], "key": "abps_verify"},
-                "Workcode Extractor": {"creation_func": WorkcodeExtractorTab, "icon": config.ICONS["Workcode Extractor"], "key": "wc_extract"},
-                "Resend Rejected WG": {"creation_func": ResendRejectedWgTab, "icon": config.ICONS["Resend Rejected WG"], "key": "resend_wg"},
-                "Update Outcome": {"creation_func": UpdateOutcomeTab, "icon": config.ICONS["Update Outcome"], "key": "update_outcome"},
-                "File Manager": {"creation_func": FileManagementTab, "icon": config.ICONS["File Manager"], "key": "file_manager"},
+                "Verify Jobcard": {"creation_func": JobcardVerifyTab, "icon": self.icon_images.get("emoji_verify_jobcard"), "key": "jc_verify"},
+                "Verify ABPS": {"creation_func": AbpsVerifyTab, "icon": self.icon_images.get("emoji_verify_abps"), "key": "abps_verify"},
+                "Workcode Extractor": {"creation_func": WorkcodeExtractorTab, "icon": self.icon_images.get("emoji_wc_extractor"), "key": "wc_extract"},
+                "Resend Rejected WG": {"creation_func": ResendRejectedWgTab, "icon": self.icon_images.get("emoji_resend_wg"), "key": "resend_wg"},
+                "Update Outcome": {"creation_func": UpdateOutcomeTab, "icon": self.icon_images.get("emoji_update_outcome"), "key": "update_outcome"},
+                "File Manager": {"creation_func": FileManagementTab, "icon": self.icon_images.get("emoji_file_manager"), "key": "file_manager"},
             },
             "Application": {
-                 "Feedback": {"creation_func": FeedbackTab, "icon": config.ICONS["Feedback"]},
-                 "About": {"creation_func": AboutTab, "icon": config.ICONS["About"]},
+                "Feedback": {"creation_func": FeedbackTab, "icon": self.icon_images.get("emoji_feedback")},
+                "About": {"creation_func": AboutTab, "icon": self.icon_images.get("emoji_about")},
             }
         }
 
-    def show_frame(self, page_name):
-        # --- LAZY LOADING: Create tab instance on demand ---
+    def show_frame(self, page_name, raise_frame=True):
         if page_name not in self.tab_instances:
             tabs_definition = self.get_tabs_definition()
             for category, tabs in tabs_definition.items():
@@ -656,27 +652,22 @@ class NregaBotApp(ctk.CTk):
                     tab_instance = data["creation_func"](self.content_frames[page_name], self)
                     tab_instance.pack(expand=True, fill="both")
                     self.tab_instances[page_name] = tab_instance
-                    
-                    # --- FIX: Force the UI to draw all new widgets before raising the frame ---
-                    # This eliminates the flicker when loading a new tab for the first time.
                     self.update_idletasks()
-                    
                     break
         
-        if page_name in self.button_to_category_frame:
-            self.button_to_category_frame[page_name].expand()
+        if raise_frame:
+            if page_name in self.button_to_category_frame:
+                self.button_to_category_frame[page_name].expand()
             
-        self.content_frames[page_name].tkraise()
-        for name, button in self.nav_buttons.items():
-            button.configure(fg_color=("gray90", "gray28") if name == page_name else "transparent")
+            self.content_frames[page_name].tkraise()
+            for name, button in self.nav_buttons.items():
+                button.configure(fg_color=("gray90", "gray28") if name == page_name else "transparent")
     
     def _create_footer(self):
         footer = ctk.CTkFrame(self, height=40, corner_radius=0)
         footer.grid(row=2, column=0, sticky="ew", padx=20, pady=(10, 15))
-        footer.grid_columnconfigure(0, weight=0)
-        footer.grid_columnconfigure(1, weight=0)
+        footer.grid_columnconfigure((0, 1, 3), weight=0)
         footer.grid_columnconfigure(2, weight=1)
-        footer.grid_columnconfigure(3, weight=0)
 
         left_frame = ctk.CTkFrame(footer, fg_color="transparent")
         left_frame.grid(row=0, column=0, sticky="w", padx=15)
@@ -772,11 +763,9 @@ class NregaBotApp(ctk.CTk):
             return False
 
     def send_wagelist_data_and_switch_tab(self, start_wagelist, end_wagelist):
-        """Switches to the Send Wagelist tab and populates it with data."""
         self.show_frame("Send Wagelist")
         send_wagelist_tab = self.tab_instances.get("Send Wagelist")
         if send_wagelist_tab and hasattr(send_wagelist_tab, 'populate_wagelist_data'):
-            # Use self.after to ensure the UI has updated before populating fields
             self.after(100, lambda: send_wagelist_tab.populate_wagelist_data(start_wagelist, end_wagelist))
         else:
             print("Error: Could not find the Send Wagelist tab instance or populate method.")
@@ -1125,7 +1114,6 @@ class NregaBotApp(ctk.CTk):
         threading.Thread(target=_download_worker, daemon=True).start()
 
 def initialize_webdriver_manager():
-    """Initializes GeckoDriverManager in a background thread to avoid blocking the UI."""
     def run():
         try:
             logging.info("Checking for GeckoDriver...")
@@ -1133,19 +1121,15 @@ def initialize_webdriver_manager():
             logging.info("GeckoDriver is up to date.")
         except Exception as e:
             logging.error(f"Could not download/update GeckoDriver: {e}")
-            # Consider showing a non-blocking error message if needed
-            # For example, using a pub/sub mechanism to send a message to the main app
     threading.Thread(target=run, daemon=True).start()
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-    # --- SINGLE INSTANCE LOCK ---
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-        s.bind(("127.0.0.1", 60123))  # Use a specific port
+        s.bind(("127.0.0.1", 60123))
     except OSError:
-        # Another instance is running, tell it to focus and exit.
         try:
             s.connect(("127.0.0.1", 60123))
             s.sendall(b'focus')
@@ -1154,7 +1138,6 @@ if __name__ == '__main__':
         finally:
             s.close()
             sys.exit(0)
-
 
     initialize_webdriver_manager()
     
