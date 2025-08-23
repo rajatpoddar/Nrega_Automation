@@ -1,6 +1,6 @@
 # tabs/emb_verify_tab.py
 import tkinter
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 import customtkinter as ctk
 import time
 from datetime import datetime
