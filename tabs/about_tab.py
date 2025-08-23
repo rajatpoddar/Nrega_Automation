@@ -25,8 +25,12 @@ class AboutTab(ctk.CTkFrame):
         self.app = app_instance
         self.license_info = {}
 
-        self.grid_columnconfigure(0, weight=3)
-        self.grid_columnconfigure(1, weight=2)
+        # FIX: Change grid weights for a stable layout.
+        # Column 0 (left) will now expand to fill all available space.
+        self.grid_columnconfigure(0, weight=1)
+        # Column 1 (right) is now fixed-width and will not resize proportionally.
+        self.grid_columnconfigure(1, weight=0, minsize=380)
+        
         self.grid_rowconfigure(0, weight=1)
 
         self._create_left_frame()
@@ -40,7 +44,9 @@ class AboutTab(ctk.CTkFrame):
         left_frame.grid_columnconfigure(0, weight=1)
         left_frame.grid_rowconfigure(0, weight=1)
 
-        self.tab_view = ctk.CTkTabview(left_frame)
+        # FIX: Make the tab view's frame transparent to prevent flickering
+        # when switching between its internal tabs.
+        self.tab_view = ctk.CTkTabview(left_frame, fg_color="transparent")
         self.tab_view.grid(row=0, column=0, sticky="nsew")
         self.tab_view.add("Subscription")
         self.tab_view.add("Changelog")
