@@ -1,6 +1,6 @@
 # tabs/musterroll_gen_tab.py
 import tkinter
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 import customtkinter as ctk
 import os, json, time, base64, sys, subprocess, requests
 from datetime import datetime
