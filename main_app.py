@@ -134,6 +134,13 @@ class NregaBotApp(ctk.CTk):
         self.bind("<FocusIn>", self._on_window_focus)
         self.after(0, self.start_app)
 
+    def bring_to_front(self):
+        """Brings the application window to the front."""
+        self.lift()
+        self.attributes("-topmost", True)
+        self.after(100, lambda: self.attributes("-topmost", False))
+        self.focus_force()
+
     def set_status(self, message, color=None):
         if self.status_label:
             if color is None:
@@ -1065,25 +1072,41 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     # --- SINGLE INSTANCE LOCK ---
-    lock_file_path = get_data_path("app.lock")
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-        # Try to create a lock file in exclusive mode
-        lock_file = os.open(lock_file_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-    except FileExistsError:
-        messagebox.showwarning("Application Already Running", "Another instance of NREGA Bot is already running.")
-        sys.exit(1)
+        s.bind(("127.0.0.1", 60123))  # Use a specific port
+    except OSError:
+        # Another instance is running, tell it to focus and exit.
+        try:
+            s.connect(("127.0.0.1", 60123))
+            s.sendall(b'focus')
+        except Exception as e:
+            logging.error(f"Failed to send focus request: {e}")
+        finally:
+            s.close()
+            sys.exit(0)
 
 
     initialize_webdriver_manager()
     
     try: 
         app = NregaBotApp()
+
+        def listen_for_focus_requests():
+            s.listen(1)
+            while True:
+                conn, addr = s.accept()
+                data = conn.recv(1024)
+                if data == b'focus':
+                    app.after(0, app.bring_to_front)
+                conn.close()
+
+        threading.Thread(target=listen_for_focus_requests, daemon=True).start()
+        
         app.mainloop()
     except Exception as e:
         if SENTRY_DSN: sentry_sdk.capture_exception(e)
         logging.critical(f"A fatal error occurred on startup: {e}", exc_info=True)
         messagebox.showerror("Fatal Startup Error", f"A critical error occurred on startup:\n\n{e}\n\nThe application will now close.")
     finally:
-        # --- SINGLE INSTANCE LOCK: Clean up the lock file ---
-        os.close(lock_file)
-        os.remove(lock_file_path)
+        s.close()
