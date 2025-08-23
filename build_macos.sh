@@ -28,7 +28,7 @@ pyinstaller --noconfirm --windowed --name "${APP_NAME}" \
 --add-data=".env:." \
 --add-data="jobcard.jpeg:." \
 --add-data="tabs:tabs" \
---add-data="bin/mac:bin" \
+--add-data="bin/mac:bin/mac" \
 --collect-data fpdf \
 main_app.py
 
