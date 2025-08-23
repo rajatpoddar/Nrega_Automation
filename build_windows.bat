@@ -6,6 +6,7 @@ REM =================================================================
 ECHO [STEP 0] Cleaning up previous build artifacts...
 IF EXIST "dist" ( rmdir /s /q "dist" )
 IF EXIST "build" ( rmdir /s /q "build" )
+IF EXIST "installer" ( rmdir /s /q "installer" )
 ECHO Cleanup complete.
 
 REM --- Configuration ---
@@ -25,7 +26,18 @@ ECHO Found version: %APP_VERSION%
 
 REM --- Step 2: Run PyInstaller ---
 ECHO [STEP 2] Building the application executable with PyInstaller...
-pyinstaller --noconfirm --windowed --onefile --name "%APP_NAME%" --icon="assets/app_icon.ico" --add-data="logo.png;." --add-data="theme.json;." --add-data="changelog.json;." --add-data="assets;assets" --add-data=".env;." --add-data="jobcard.jpeg;." --add-data="tabs;tabs" --add-data="bin;bin" --collect-data fpdf main_app.py
+pyinstaller --noconfirm --windowed --onefile --name "%APP_NAME%" ^
+--icon="assets/app_icon.ico" ^
+--add-data="logo.png;." ^
+--add-data="theme.json;." ^
+--add-data="changelog.json;." ^
+--add-data="assets;assets" ^
+--add-data=".env;." ^
+--add-data="jobcard.jpeg;." ^
+--add-data="tabs;tabs" ^
+--add-data="bin\win;bin" ^
+--collect-data fpdf ^
+main_app.py
 
 if errorlevel 1 (
     ECHO !!!!!!! PyInstaller build FAILED. !!!!!!!
@@ -35,19 +47,21 @@ ECHO PyInstaller build successful.
 
 REM --- Step 3: Run Inno Setup Compiler ---
 ECHO [STEP 3] Creating the installer with Inno Setup...
-if not exist "%INNO_SETUP_COMPILER%" (
-    ECHO !!!!!!! ERROR: Inno Setup Compiler not found! !!!!!!!
+IF NOT EXIST "%INNO_SETUP_COMPILER%" (
+    ECHO !!!!!!! ERROR: Inno Setup Compiler not found at "%INNO_SETUP_COMPILER%" !!!!!!!
+    ECHO Please install it or update the path in this script.
     goto End
 )
 
-"%INNO_SETUP_COMPILER%" /DAppVersion="%APP_VERSION%" "installer.iss"
+"%INNO_SETUP_COMPILER%" /DAppVersion=%APP_VERSION% "installer.iss"
 
 if errorlevel 1 (
     ECHO !!!!!!! Inno Setup build FAILED. !!!!!!!
     goto End
 )
-ECHO Installer created successfully.
+
+ECHO [SUCCESS] Installer created successfully!
+ECHO You can find it in the 'installer' directory.
 
 :End
-ECHO.
 pause

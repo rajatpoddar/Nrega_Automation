@@ -28,7 +28,7 @@ pyinstaller --noconfirm --windowed --name "${APP_NAME}" \
 --add-data=".env:." \
 --add-data="jobcard.jpeg:." \
 --add-data="tabs:tabs" \
---add-data="bin:bin" \
+--add-data="bin/mac:bin" \
 --collect-data fpdf \
 main_app.py
 
@@ -38,10 +38,11 @@ create-dmg \
   --volname "${APP_NAME} Installer" \
   --window-pos 200 120 \
   --window-size 600 400 \
-  --icon-size 128 \
-  --app-drop-link 440 180 \
-  --icon "${APP_NAME}.app" 160 180 \
-  "${OUTPUT_DMG_NAME}" \
+  --icon-size 100 \
+  --icon "${APP_NAME}.app" 175 180 \
+  --hide-extension "${APP_NAME}.app" \
+  --app-drop-link 425 180 \
+  "$OUTPUT_DMG_NAME" \
   "dist/${APP_NAME}.app"
 
-echo "Build complete! Find your installer at: ${OUTPUT_DMG_NAME}"
+echo "Build complete! DMG is located at: ${OUTPUT_DMG_NAME}"
