@@ -107,6 +107,18 @@ class WagelistSendTab(BaseAutomationTab):
 
         self.app.start_automation_thread(self.automation_key, self.run_automation_logic, args=(fin_year, start_wl, end_wl))
 
+    def populate_wagelist_data(self, start_wagelist, end_wagelist):
+        """Receives data from another tab and updates the input fields."""
+        # Clear existing content and insert the new values
+        self.start_wagelist_entry.delete(0, 'end') 
+        self.start_wagelist_entry.insert(0, start_wagelist)
+        
+        self.end_wagelist_entry.delete(0, 'end')
+        self.end_wagelist_entry.insert(0, end_wagelist)
+        
+        self.app.log_message(self.log_display, f"Received Wagelist range: {start_wagelist} to {end_wagelist}")
+        self.app.set_status("Ready to send wagelists")
+
     def run_automation_logic(self, fin_year, start_wl, end_wl):
         self.app.after(0, self.set_ui_state, True)
         self.app.after(0, lambda: [self.results_tree.delete(item) for item in self.results_tree.get_children()])

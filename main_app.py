@@ -711,6 +711,15 @@ class NregaBotApp(ctk.CTk):
             if not is_startup_check: messagebox.showerror("Connection Error", f"Could not connect to the license server: Expecting value: line 1 column 1 (char 0)")
             return False
 
+    def send_wagelist_data_and_switch_tab(self, start_wagelist, end_wagelist):
+        """Switches to the Send Wagelist tab and populates it with data."""
+        self.show_frame("Send Wagelist")
+        send_wagelist_tab = self.tab_instances.get("Send Wagelist")
+        if send_wagelist_tab and hasattr(send_wagelist_tab, 'populate_wagelist_data'):
+            # Use self.after to ensure the UI has updated before populating fields
+            self.after(100, lambda: send_wagelist_tab.populate_wagelist_data(start_wagelist, end_wagelist))
+        else:
+            print("Error: Could not find the Send Wagelist tab instance or populate method.")
 
     def show_activation_window(self):
         activation_window = ctk.CTkToplevel(self); activation_window.title("Activate Product")

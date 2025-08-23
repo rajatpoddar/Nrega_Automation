@@ -3,6 +3,7 @@ import tkinter
 from tkinter import ttk, messagebox, filedialog
 import customtkinter as ctk
 import time, os, sys, subprocess
+import re  # <-- IMPORT ADDED
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs
 from selenium.webdriver.common.by import By
@@ -28,6 +29,17 @@ class WagelistGenTab(BaseAutomationTab):
         self.agency_entry = AutocompleteEntry(controls_frame, suggestions_list=self.app.history_manager.get_suggestions("panchayat_name"))
         self.agency_entry.grid(row=0, column=1, sticky='ew', padx=15, pady=(15,0))
         ctk.CTkLabel(controls_frame, text="Enter only the Panchayat name (e.g., Palojori).", text_color="gray50").grid(row=1, column=1, sticky='w', padx=15)
+
+        # --- NEW: Checkbox to control sending data ---
+        self.send_to_sender_var = ctk.StringVar(value="on")
+        self.send_to_sender_checkbox = ctk.CTkCheckBox(
+            controls_frame, 
+            text="✓ Send generated wagelist range to the 'Send Wagelist' tab automatically",
+            variable=self.send_to_sender_var,
+            onvalue="on",
+            offvalue="off"
+        )
+        self.send_to_sender_checkbox.grid(row=5, column=0, columnspan=4, sticky='w', padx=15, pady=10)
 
         action_frame = self._create_action_buttons(parent_frame=controls_frame)
         action_frame.grid(row=6, column=0, columnspan=4, sticky='ew', pady=(15, 15))
@@ -153,6 +165,23 @@ class WagelistGenTab(BaseAutomationTab):
             self.app.after(0, self.set_ui_state, False)
             self.app.after(0, self.update_status, "Automation Finished.")
             self.app.after(0, self.app.set_status, "Automation Finished")
+            
+            # --- NEW: Logic to pass data to the Send Wagelist tab ---
+            if self.send_to_sender_var.get() == "on":
+                self.app.set_status("Finished. Sending data to next tab...")
+                # We need to get the log content from the main thread
+                log_content = self.log_display.get("1.0", "end-1c")
+                
+                # Find all wagelist numbers from successful logs
+                matches = re.findall(r"SUCCESS: Wagelist (\S+) generated", log_content)
+                if matches:
+                    first_wagelist = matches[0]
+                    last_wagelist = matches[-1]
+                    self.app.log_message(self.log_display, f"Passing range {first_wagelist}-{last_wagelist} to Send Wagelist tab.")
+                    self.app.send_wagelist_data_and_switch_tab(first_wagelist, last_wagelist)
+                else:
+                    self.app.log_message(self.log_display, "Could not find any generated wagelist range to send.", "warning")
+
 
     def _log_result(self, work_code, status, wagelist_no, job_card, applicant_name):
         timestamp = datetime.now().strftime("%H:%M:%S")
