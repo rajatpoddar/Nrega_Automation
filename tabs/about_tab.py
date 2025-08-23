@@ -25,18 +25,15 @@ class AboutTab(ctk.CTkFrame):
         self.app = app_instance
         self.license_info = {}
 
-        # FIX: Change grid weights for a stable layout.
-        # Column 0 (left) will now expand to fill all available space.
         self.grid_columnconfigure(0, weight=1)
-        # Column 1 (right) is now fixed-width and will not resize proportionally.
         self.grid_columnconfigure(1, weight=0, minsize=380)
-        
         self.grid_rowconfigure(0, weight=1)
 
         self._create_left_frame()
         self._create_right_frame()
 
-        self.app.after(100, self.app._update_about_tab_info)
+        # FIX: Removed redundant/delayed call. The main app now controls the update timing.
+        # self.app.after(100, self.app._update_about_tab_info)
 
     def _create_left_frame(self):
         left_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -44,8 +41,6 @@ class AboutTab(ctk.CTkFrame):
         left_frame.grid_columnconfigure(0, weight=1)
         left_frame.grid_rowconfigure(0, weight=1)
 
-        # FIX: Make the tab view's frame transparent to prevent flickering
-        # when switching between its internal tabs.
         self.tab_view = ctk.CTkTabview(left_frame, fg_color="transparent")
         self.tab_view.grid(row=0, column=0, sticky="nsew")
         self.tab_view.add("Subscription")
@@ -60,7 +55,6 @@ class AboutTab(ctk.CTkFrame):
         sub_frame.grid(row=0, column=0, sticky="ew", pady=(0, 15))
         sub_frame.grid_columnconfigure(1, weight=1)
 
-        # --- MODIFIED: Welcome label is now a frame with multiple parts for styling ---
         welcome_frame = ctk.CTkFrame(sub_frame, fg_color="transparent")
         welcome_frame.grid(row=0, column=0, columnspan=2, padx=15, pady=(15, 10), sticky="w")
 
@@ -118,8 +112,6 @@ class AboutTab(ctk.CTkFrame):
         self.machine_id_label.pack(side="left")
         ctk.CTkButton(machine_id_frame, text="Copy", width=50, command=self._copy_machine_id).pack(side="left", padx=(10,0))
 
-        # --- Changelog, Updates, and other frames remain the same ---
-        # ... (rest of the method is unchanged) ...
         changelog_tab = self.tab_view.tab("Changelog")
         changelog_tab.grid_rowconfigure(0, weight=1); changelog_tab.grid_columnconfigure(0, weight=1)
         self.changelog_text = ctk.CTkTextbox(changelog_tab, wrap=tkinter.WORD, state="disabled")

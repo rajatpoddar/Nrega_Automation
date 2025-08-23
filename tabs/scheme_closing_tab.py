@@ -1,6 +1,6 @@
 # tabs/scheme_closing_tab.py
 import tkinter
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 import customtkinter as ctk
 import os
 import json
@@ -10,7 +10,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, NoAlertPresentException
 
 import config
 from .base_tab import BaseAutomationTab
@@ -23,6 +23,8 @@ class SchemeClosingTab(BaseAutomationTab):
         
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
+
+        self.skip_confirmation_var = tkinter.BooleanVar(value=False)
         
         self._create_widgets()
         self._load_saved_inputs()
@@ -51,7 +53,7 @@ class SchemeClosingTab(BaseAutomationTab):
             "Land Development", "Other Works", "Play Ground", "Rural Connectivity", "Rural Sanitation",
             "Bharat Nirman Sewa Kendra", "Water Conservation and Water Harvesting", "Renovation of traditional water bodies"
         ]
-        self.work_category_var = ctk.StringVar(value=work_category_options[8]) # Default selection
+        self.work_category_var = ctk.StringVar(value=work_category_options[8])
         self.work_category_menu = ctk.CTkOptionMenu(input_frame, variable=self.work_category_var, values=work_category_options)
         self.work_category_menu.grid(row=1, column=1, columnspan=3, padx=15, pady=5, sticky="ew")
 
@@ -67,7 +69,7 @@ class SchemeClosingTab(BaseAutomationTab):
             "Gram Rozgar Sewak(GP)", "Junior Engineer(BP)", "Junior Engineer(GP)", "Panchayat Sachiv(GP)",
             "Programme Officer(BP)", "Technical Assistant(BP)", "Technical Assistant(GP)"
         ]
-        self.measured_by_var = ctk.StringVar(value="Junior Engineer(BP)") # Default selection
+        self.measured_by_var = ctk.StringVar(value="Junior Engineer(BP)")
         self.measured_by_menu = ctk.CTkOptionMenu(input_frame, variable=self.measured_by_var, values=designation_options)
         self.measured_by_menu.grid(row=3, column=1, padx=15, pady=5, sticky="ew")
 
@@ -89,6 +91,9 @@ class SchemeClosingTab(BaseAutomationTab):
         # Action Buttons
         action_frame = self._create_action_buttons(main_container)
         action_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
+        
+        self.skip_confirm_checkbox = ctk.CTkCheckBox(action_frame, text="Skip final confirmation for each scheme", variable=self.skip_confirmation_var, onvalue=True, offvalue=False)
+        self.skip_confirm_checkbox.pack(side="right", padx=15)
 
         # Data Notebook
         notebook = ctk.CTkTabview(main_container)
@@ -101,7 +106,6 @@ class SchemeClosingTab(BaseAutomationTab):
         work_codes_tab.grid_columnconfigure(0, weight=1)
         work_codes_tab.grid_rowconfigure(1, weight=1)
 
-        # --- NEW: Add a frame for the clear button ---
         wc_header_frame = ctk.CTkFrame(work_codes_tab, fg_color="transparent")
         wc_header_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=(5,0))
         
@@ -202,7 +206,6 @@ class SchemeClosingTab(BaseAutomationTab):
         self.app.clear_log(self.log_display)
         for item in self.results_tree.get_children(): self.results_tree.delete(item)
         
-        # --- NEW: Update footer status on start ---
         self.app.after(0, self.app.set_status, "Running Scheme Closing...")
 
         self.app.log_message(self.log_display, "--- Starting Scheme Closing ---")
@@ -246,13 +249,10 @@ class SchemeClosingTab(BaseAutomationTab):
             self.app.after(0, self.set_ui_state, False)
             self.update_status("Automation Finished", 1.0)
             self.app.log_message(self.log_display, "\n--- Automation Finished ---")
-            
-            # --- NEW: Update footer status on finish ---
             self.app.after(0, self.app.set_status, "Automation Finished")
 
     def _log_result(self, work_code, status, details):
         timestamp = time.strftime("%H:%M:%S")
-        # --- MODIFIED: Add tags for coloring ---
         tags = ('failed',) if 'success' not in status.lower() else ()
         self.app.after(0, lambda: self.results_tree.insert("", "end", values=(timestamp, work_code, status, details), tags=tags))
 
@@ -262,7 +262,6 @@ class SchemeClosingTab(BaseAutomationTab):
         url = "https://nregade4.nic.in/netnrega/compwork.aspx"
         
         try:
-            # --- PAGE 1 ---
             driver.get(url)
             self.app.log_message(self.log_display, "   - Page 1: Selecting Panchayat...")
             panchayat_select_element = wait.until(EC.element_to_be_clickable((By.ID, "ctl00_ContentPlaceHolder1_ddlPanchayat")))
@@ -276,6 +275,9 @@ class SchemeClosingTab(BaseAutomationTab):
 
             self.app.log_message(self.log_display, "   - Page 1: Searching for Work Code...")
             wc_input = wait.until(EC.element_to_be_clickable((By.ID, "ctl00_ContentPlaceHolder1_txt_search_wrk")))
+
+            time.sleep(1)
+
             wc_input.send_keys(work_code)
             wc_input.send_keys(Keys.TAB)
             wait.until(EC.staleness_of(wc_input))
@@ -307,10 +309,22 @@ class SchemeClosingTab(BaseAutomationTab):
             
             driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_txtccNo").send_keys(str(cert_no))
             driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_txtcc_dt").send_keys(inputs["completion_date"])
+
+            # --- NEW: Check for the optional 'Excavation(cum)' field and fill it if empty ---
+            try:
+                excavation_input = WebDriverWait(driver, 3).until(
+                    EC.presence_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_txtcomp_add_unit"))
+                )
+                if not excavation_input.get_attribute("value"):
+                    excavation_input.send_keys("1")
+                    self.app.log_message(self.log_display, "   - Excavation(cum) field found and filled with '1'.", "info")
+                else:
+                    self.app.log_message(self.log_display, "   - Excavation(cum) field found but already filled.", "info")
+            except TimeoutException:
+                self.app.log_message(self.log_display, "   - Excavation(cum) field not found on this page, skipping.", "info")
             
             driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_BtnNext").click()
             
-            # --- PAGE 2 ---
             self.app.log_message(self.log_display, "   - Page 2: Waiting for page to load...")
             asset_name_input = wait.until(EC.element_to_be_clickable((By.ID, "ctl00_ContentPlaceHolder1_grdData_ctl02_txtAsset_Name")))
             asset_desc_input = wait.until(EC.element_to_be_clickable((By.ID, "ctl00_ContentPlaceHolder1_grdData_ctl02_txtAsset_Description")))
@@ -321,16 +335,16 @@ class SchemeClosingTab(BaseAutomationTab):
             asset_desc_input.clear()
             asset_desc_input.send_keys("Completed")
             
-            confirm_text = f"You are about to close the following scheme:\n\n{work_name_full}\n\nDo you want to proceed?"
-            if not messagebox.askyesno("Confirm Scheme Closing", confirm_text):
-                return "Cancelled", "User cancelled the operation."
+            if not self.skip_confirmation_var.get():
+                confirm_text = f"You are about to close the following scheme:\n\n{work_name_full}\n\nDo you want to proceed?"
+                if not messagebox.askyesno("Confirm Scheme Closing", confirm_text):
+                    return "Cancelled", "User cancelled the operation."
 
             driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_btSave").click()
             
             try:
                 alert_wait = WebDriverWait(driver, 5)
                 alert = alert_wait.until(EC.alert_is_present())
-                
                 alert_text = alert.text
                 alert.accept()
                 
@@ -351,19 +365,21 @@ class SchemeClosingTab(BaseAutomationTab):
                     except NoSuchElementException: pass
                     return "Failed", "Unknown error after saving (no alert or message found)."
 
-        except (TimeoutException, NoSuchElementException) as e:
+        except (TimeoutException, NoSuchElementException, NoAlertPresentException) as e:
             error_message = str(e).splitlines()[0] if str(e) else "No error message"
-            return "Failed", f"Error: {error_message}"
+            self.app.log_message(self.log_display, f"   - Error: {error_message}", "error")
+            return "Failed", f"Error on page: {error_message}"
         except Exception as e:
             error_message = str(e).splitlines()[0] if str(e) else "No error message"
+            self.app.log_message(self.log_display, f"   - An unexpected error occurred: {error_message}", "error")
             return "Failed", f"An unexpected error occurred: {error_message}"
 
     def reset_ui(self):
         if messagebox.askokcancel("Reset Form?", "Are you sure? This will clear all inputs."):
             self.panchayat_entry.delete(0, "end")
-            self.work_category_var.set("")
+            self.work_category_var.set("Provision of Irrigation facility to Land Owned by SC/ST/LR or IAY Beneficiaries/Small or Marginal Farmers")
             self.area_entry.delete(0, "end")
-            self.measured_by_var.set("")
+            self.measured_by_var.set("Junior Engineer(BP)")
             self.measured_name_entry.delete(0, "end")
             self.cert_no_entry.delete(0, "end")
             self.completion_date_entry.clear()
@@ -372,8 +388,6 @@ class SchemeClosingTab(BaseAutomationTab):
                 self.results_tree.delete(item)
             self.app.clear_log(self.log_display)
             self.update_status("Ready", 0)
-            
-            # --- NEW: Reset footer status ---
             self.app.after(0, self.app.set_status, "Ready")
 
     def set_ui_state(self, running: bool):
@@ -387,10 +401,10 @@ class SchemeClosingTab(BaseAutomationTab):
         self.cert_no_entry.configure(state=state)
         self.completion_date_entry.configure(state=state)
         self.work_codes_textbox.configure(state=state)
-        # --- Add new export controls to state management ---
         self.export_button.configure(state=state)
         self.export_format_menu.configure(state=state)
         self.export_filter_menu.configure(state=state)
+        self.skip_confirm_checkbox.configure(state=state)
         if state == "normal": self._on_format_change(self.export_format_menu.get())
 
     def export_report(self):
@@ -402,7 +416,6 @@ class SchemeClosingTab(BaseAutomationTab):
         data, file_path = self._get_filtered_data_and_filepath(export_format)
         if not data: return
         
-        # Reshape data for consistent reporting (Status column at index 1)
         report_data = [[row[1], row[2], row[3], row[0]] for row in data]
         report_headers = ["Work Code", "Status", "Details", "Timestamp"]
         col_widths = [70, 35, 140, 25]
@@ -421,7 +434,7 @@ class SchemeClosingTab(BaseAutomationTab):
         data_to_export = []
         for item_id in self.results_tree.get_children():
             row_values = self.results_tree.item(item_id)['values']
-            status = row_values[2].upper() # Status is at index 2
+            status = row_values[2].upper()
             if filter_option == "Export All": data_to_export.append(row_values)
             elif filter_option == "Success Only" and "SUCCESS" in status: data_to_export.append(row_values)
             elif filter_option == "Failed Only" and "SUCCESS" not in status: data_to_export.append(row_values)

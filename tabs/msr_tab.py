@@ -279,8 +279,7 @@ class MsrTab(BaseAutomationTab):
         
         success = self.generate_report_image(data, headers, title, report_date, footer, file_path)
         if success:
-            upload_success = self._upload_report_to_cloud(file_path, self.panchayat_entry.get().strip())
-            final_message = "Report Saved & Uploaded to Cloud." if upload_success else "Report Saved Locally (Cloud Upload Failed)."
+            final_message = "Report Saved Locally."
             if messagebox.askyesno("Export Successful", f"{final_message}\n\nFile saved to:\n{file_path}\n\nDo you want to open the file?"):
                 if sys.platform == "win32": os.startfile(file_path)
                 else: subprocess.call(['open', file_path])
@@ -304,15 +303,3 @@ class MsrTab(BaseAutomationTab):
                         subprocess.call(['open', file_path])
         except Exception as e:
             messagebox.showerror("Export Error", f"Failed to create PDF file.\n\nError: {e}")
-
-    def _upload_report_to_cloud(self, file_path, panchayat_name):
-        self.app.log_message(self.log_display, "Attempting to upload report to cloud...")
-        date_folder = datetime.now().strftime('%d-%b-%Y')
-        safe_panchayat_name = "".join(c for c in panchayat_name if c.isalnum() or c in (' ', '_')).rstrip()
-        filename = os.path.basename(file_path)
-        relative_path = f"REPORTS/{date_folder}/{safe_panchayat_name}/{filename}"
-        
-        upload_success = self.upload_file_to_cloud(file_path, relative_path, 'image/jpeg')
-        if upload_success:
-            self.app.log_message(self.log_display, "   - Successfully uploaded report to cloud.", "success")
-        return upload_success
