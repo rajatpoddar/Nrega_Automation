@@ -24,17 +24,15 @@ class BaseAutomationTab(ctk.CTkFrame):
             if os_type == "Windows":
                 return os.path.join(base_path, 'wkhtmltoimage.exe')
             elif os_type == "Darwin":  # macOS
-                # For this to work on macOS, you'll need a similar change in build_macos.sh
-                # from "--add-data 'bin:bin'" to "--add-data 'bin/mac/wkhtmltoimage:.'"
                 return os.path.join(base_path, 'wkhtmltoimage')
         else:
-            # In a development environment, use the original path
+            # In a development environment, the base path is the project root.
             base_path = os.path.abspath(".")
             if os_type == "Windows":
                 return os.path.join(base_path, 'bin', 'win', 'wkhtmltoimage.exe')
             elif os_type == "Darwin":
                 return os.path.join(base_path, 'bin', 'mac', 'wkhtmltoimage')
-    
+                
         # Fallback for other systems (like Linux)
         return 'wkhtmltoimage'
     def generate_report_image(self, data, headers, title, date_str, footer, output_path):
