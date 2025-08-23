@@ -15,7 +15,9 @@ SET "INNO_SETUP_COMPILER=C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 
 REM --- Step 1: Dynamically get version from config.py ---
 ECHO [STEP 1] Reading application version from config.py...
-FOR /F "tokens=2 delims=='\" " %%V IN ('findstr /R /C:"^APP_VERSION = " config.py') DO (SET "APP_VERSION=%%V")
+
+REM --- FIXED: Replaced the fragile FOR loop with a more robust version ---
+FOR /F "tokens=3 delims= \"" %%V IN ('findstr /R /C:"^APP_VERSION" config.py') DO (SET "APP_VERSION=%%V")
 
 IF NOT DEFINED APP_VERSION (
     ECHO !!!!!!! ERROR: FAILED to read version from config.py !!!!!!!
