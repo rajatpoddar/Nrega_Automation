@@ -103,6 +103,7 @@ class CollapsibleFrame(ctk.CTkFrame):
 class NregaBotApp(ctk.CTk):
     def __init__(self):
         super().__init__()
+        self.withdraw()  # <-- FIX: Immediately hide the window to prevent startup flicker.
         self.attributes("-alpha", 0.0)
         self.title(f"{config.APP_NAME}"); self.geometry("1100x800"); self.minsize(1000, 700)
         self.history_manager = HistoryManager(self.get_data_path)
@@ -186,22 +187,35 @@ class NregaBotApp(ctk.CTk):
 
     # --- In NregaBotApp class (replace old methods) ---
 
+    # --- In NregaBotApp class (replace old methods) ---
+
     def start_app(self):
         """Show splash and start initialization in background."""
         self.splash = self._create_splash_screen()
+        # The initialization runs in a background thread to prevent the UI
+        # from freezing during I/O operations like the license check.
         threading.Thread(target=self._initialize_app, daemon=True).start()
 
     def _initialize_app(self):
-        """Initialize app with smooth transition from splash to main window."""
-        # Build UI (but do not show yet)
+        """
+        Handles the app's startup sequence. It builds the UI and performs
+        background tasks, then schedules the transition from splash to main window.
+        """
+        # Schedule the main window's basic components to be built on the main thread.
+        # The window itself remains hidden during this process.
         self.after(0, self._setup_main_window)
 
-        # Keep splash visible long enough to feel intentional
+        # This function contains the blocking license check. It runs in this
+        # background thread, then schedules the UI updates on the main thread.
+        self.perform_license_check_flow()
+
+        # After all setup tasks are queued, schedule the transition. The delay
+        # ensures the splash screen is visible for a minimum, comfortable duration.
+        # This fixes the race condition by ensuring this is the last step.
         self.after(1200, self._transition_from_splash)
 
-        # Background tasks
-        self.perform_license_check_flow()
-        self.after(2000, self.run_onboarding_if_needed)
+        # Schedule other post-startup tasks.
+        self.after(1200, self.run_onboarding_if_needed)
 
     def _transition_from_splash(self):
         """Fade out splash, then fade in main window."""
@@ -221,9 +235,9 @@ class NregaBotApp(ctk.CTk):
             self._fade_in_main_window()
 
     def _fade_in_main_window(self):
-        """Fade in main window after splash is gone."""
-        # Show main window here ONLY once
-        self.attributes("-alpha", 0.0)
+        """Fade in main window after splash is gone and UI is fully built."""
+        # The window is still hidden. Un-hide it (`deiconify`) now that it's ready.
+        # Because its alpha is 0.0, it will be invisible until we start the fade.
         self.deiconify()
 
         steps = 10
@@ -336,7 +350,10 @@ class NregaBotApp(ctk.CTk):
 
     def _on_window_focus(self, event=None):
         if self.is_licensed and not self.is_validating_license:
-            threading.Thread(target=self._validate_in_background, daemon=True).start()
+            # FIX: Add a small delay to allow the window to finish rendering upon
+            # being restored before initiating a background task. This prevents a
+            # visual glitch/flicker.
+            self.after(500, lambda: threading.Thread(target=self._validate_in_background, daemon=True).start())
 
     def _validate_in_background(self):
         try:
@@ -587,7 +604,11 @@ class NregaBotApp(ctk.CTk):
         for category, tabs in tabs_to_create.items():
             for name, data in tabs.items():
                 # --- LAZY LOADING: Only create the frame container ---
-                frame_container = ctk.CTkFrame(self.content_area, fg_color="transparent")
+
+                # FIX: Remove 'fg_color="transparent"' to allow this frame to have the default
+                # theme background color. This solves the black/transparent frame issue.
+                frame_container = ctk.CTkFrame(self.content_area)
+
                 frame_container.grid(row=0, column=0, sticky="nsew")
                 self.content_frames[name] = frame_container
                 # --- The tab instance will be created in `show_frame` ---
@@ -635,6 +656,11 @@ class NregaBotApp(ctk.CTk):
                     tab_instance = data["creation_func"](self.content_frames[page_name], self)
                     tab_instance.pack(expand=True, fill="both")
                     self.tab_instances[page_name] = tab_instance
+                    
+                    # --- FIX: Force the UI to draw all new widgets before raising the frame ---
+                    # This eliminates the flicker when loading a new tab for the first time.
+                    self.update_idletasks()
+                    
                     break
         
         if page_name in self.button_to_category_frame:
