@@ -1,34 +1,24 @@
 @echo off
-REM =================================================================
-REM  Professional Windows Build Script for NREGA Bot
-REM =================================================================
-
-ECHO [STEP 0] Cleaning up previous build artifacts...
-IF EXIST "dist" ( rmdir /s /q "dist" )
-IF EXIST "build" ( rmdir /s /q "build" )
-IF EXIST "installer" ( rmdir /s /q "installer" )
-ECHO Cleanup complete.
+REM =======================================================
+REM  Windows Build Script for NREGA Bot
+REM =======================================================
 
 REM --- Configuration ---
-SET "APP_NAME=NREGA Bot"
-SET "INNO_SETUP_COMPILER=C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+REM The APP_VERSION is now set by the GitHub Actions workflow environment variable.
+SET APP_NAME="NREGA Bot"
+SET INNO_SETUP_COMPILER="C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 
-REM --- Step 1: Dynamically get version from config.py ---
-ECHO [STEP 1] Reading application version from config.py...
-
-REM --- FIXED: Replaced the fragile FOR loop with a more robust version ---
-FOR /F "tokens=3 delims= \"" %%V IN ('findstr /R /C:"^APP_VERSION" config.py') DO (SET "APP_VERSION=%%V")
-
-IF NOT DEFINED APP_VERSION (
-    ECHO !!!!!!! ERROR: FAILED to read version from config.py !!!!!!!
-    goto End
-)
-
-ECHO Found version: %APP_VERSION%
-
-REM --- Step 2: Run PyInstaller ---
-ECHO [STEP 2] Building the application executable with PyInstaller...
-pyinstaller --noconfirm --windowed --onefile --name "%APP_NAME%" ^
+ECHO ######################################################
+ECHO.
+ECHO  Building %APP_NAME% v%APP_VERSION% for Windows...
+ECHO.
+ECHO ######################################################
+ECHO.
+REM --- Step 1: Run PyInstaller ---
+ECHO [STEP 1/2] Building the application with PyInstaller...
+ECHO.
+pyinstaller --noconfirm --windowed --onefile ^
+--name %APP_NAME% ^
 --icon="assets/app_icon.ico" ^
 --add-data="logo.png;." ^
 --add-data="theme.json;." ^
@@ -37,33 +27,47 @@ pyinstaller --noconfirm --windowed --onefile --name "%APP_NAME%" ^
 --add-data=".env;." ^
 --add-data="jobcard.jpeg;." ^
 --add-data="tabs;tabs" ^
---add-data="bin\win;bin" ^
+--add-data="bin:bin;"
 --collect-data fpdf ^
 main_app.py
 
+REM Check if PyInstaller failed
 if errorlevel 1 (
+    ECHO.
     ECHO !!!!!!! PyInstaller build FAILED. !!!!!!!
     goto End
 )
-ECHO PyInstaller build successful.
 
-REM --- Step 3: Run Inno Setup Compiler ---
-ECHO [STEP 3] Creating the installer with Inno Setup...
-IF NOT EXIST "%INNO_SETUP_COMPILER%" (
-    ECHO !!!!!!! ERROR: Inno Setup Compiler not found at "%INNO_SETUP_COMPILER%" !!!!!!!
-    ECHO Please install it or update the path in this script.
+ECHO.
+ECHO PyInstaller build successful.
+ECHO.
+
+REM --- Step 2: Run Inno Setup Compiler ---
+ECHO [STEP 2/2] Creating the installer with Inno Setup...
+ECHO.
+REM Check if the Inno Setup compiler exists
+if not exist %INNO_SETUP_COMPILER% (
+    ECHO.
+    ECHO !!!!!!! Inno Setup Compiler not found at %INNO_SETUP_COMPILER% !!!!!!!
+    ECHO Please update the INNO_SETUP_COMPILER path at the top of this script.
     goto End
 )
 
-"%INNO_SETUP_COMPILER%" /DAppVersion=%APP_VERSION% "installer.iss"
+%INNO_SETUP_COMPILER% "installer.iss"
 
 if errorlevel 1 (
-    ECHO !!!!!!! Inno Setup build FAILED. !!!!!!!
+    ECHO.
+    ECHO !!!!!!! Inno Setup compilation FAILED. !!!!!!!
     goto End
 )
 
-ECHO [SUCCESS] Installer created successfully!
-ECHO You can find it in the 'installer' directory.
+ECHO.
+ECHO =======================================================
+ECHO.
+ECHO  Build successful!
+ECHO  Find your installer in the 'installer' sub-folder.
+ECHO.
+ECHO =======================================================
 
 :End
 pause
