@@ -13,28 +13,25 @@ class BaseAutomationTab(ctk.CTkFrame):
         self.app = app_instance
         self.automation_key = automation_key
 
-    # --- FIX 1: Corrected wkhtmltoimage path for Windows ---
     def _get_wkhtml_path(self):
         """Gets the correct path to the wkhtmltoimage executable based on the OS."""
         os_type = platform.system()
     
         if hasattr(sys, '_MEIPASS'):
-            # In a bundled app, the executable is at the root of the temp folder
             base_path = sys._MEIPASS
             if os_type == "Windows":
                 return os.path.join(base_path, 'wkhtmltoimage.exe')
-            elif os_type == "Darwin":  # macOS
+            elif os_type == "Darwin":
                 return os.path.join(base_path, 'wkhtmltoimage')
         else:
-            # In a development environment, the base path is the project root.
             base_path = os.path.abspath(".")
             if os_type == "Windows":
                 return os.path.join(base_path, 'bin', 'win', 'wkhtmltoimage.exe')
             elif os_type == "Darwin":
                 return os.path.join(base_path, 'bin', 'mac', 'wkhtmltoimage')
                 
-        # Fallback for other systems (like Linux)
         return 'wkhtmltoimage'
+        
     def generate_report_image(self, data, headers, title, date_str, footer, output_path):
         try:
             path_wkhtmltoimage = self._get_wkhtml_path()
@@ -69,7 +66,13 @@ class BaseAutomationTab(ctk.CTkFrame):
             </html>
             """
             
-            options = {'width': 800, 'quality': 100, 'enable-local-file-access': None}
+            # --- FIX: Add the 'quiet' option to suppress console output and prevent the error ---
+            options = {
+                'width': 800, 
+                'quality': 100, 
+                'enable-local-file-access': None,
+                'quiet': ''
+            }
             imgkit.from_string(html_content, output_path, config=config, options=options)
             return True
         except Exception as e:
@@ -77,10 +80,9 @@ class BaseAutomationTab(ctk.CTkFrame):
             messagebox.showerror("Image Export Failed", f"Could not generate image report:\n{e}")
             return False
 
-    # --- FIX 2: Removed conditional colors for a clean PDF look ---
     def generate_report_pdf(self, data, headers, col_widths, title, date_str, file_path):
         try:
-            pdf = FPDF()
+            pdf = FPDF(orientation='L', unit='mm', format='A4')
             pdf.add_page()
             pdf.set_font("Arial", 'B', 16)
             
@@ -92,22 +94,18 @@ class BaseAutomationTab(ctk.CTkFrame):
             pdf.set_font("Arial", 'B', 8)
             pdf.set_fill_color(240, 240, 240)
             
-            total_width = sum(col_widths)
+            # Effective page width (total width - margins)
+            effective_width = pdf.w - 2 * pdf.l_margin
             
             for i, header in enumerate(headers):
-                width_percentage = col_widths[i] / total_width
-                pdf.cell(pdf.w * width_percentage * 0.95, 8, header, 1, 0, 'C', 1)
+                pdf.cell(col_widths[i], 8, header, 1, 0, 'C', 1)
             pdf.ln()
 
             pdf.set_font("Arial", '', 7)
             for row in data:
-                # This block used to contain the logic for setting red/green colors.
-                # It has been removed to make all text black by default.
-                pdf.set_text_color(0, 0, 0) # Ensures text is always black
-
+                pdf.set_text_color(0, 0, 0)
                 for i, item in enumerate(row):
-                    width_percentage = col_widths[i] / total_width
-                    pdf.cell(pdf.w * width_percentage * 0.95, 6, str(item), 1, 0)
+                    pdf.cell(col_widths[i], 6, str(item), 1, 0)
                 pdf.ln()
 
             pdf.output(file_path)
@@ -115,8 +113,6 @@ class BaseAutomationTab(ctk.CTkFrame):
         except Exception as e:
             messagebox.showerror("PDF Export Failed", f"Could not generate PDF report:\n{e}", parent=self)
             return False
-
-    # --- Other existing methods in your base_tab.py ---
 
     def _create_action_buttons(self, parent_frame):
         action_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
@@ -156,7 +152,6 @@ class BaseAutomationTab(ctk.CTkFrame):
         self.reset_button.configure(state="disabled" if running else "normal")
 
     def start_automation(self):
-        # This should be implemented in the child class
         raise NotImplementedError
 
     def stop_automation(self):
@@ -164,7 +159,6 @@ class BaseAutomationTab(ctk.CTkFrame):
         self.app.log_message(self.log_display, "Stop signal sent. Finishing current task...", "warning")
 
     def reset_ui(self):
-        # This should be implemented in the child class
         raise NotImplementedError
         
     def update_status(self, message, progress=None):
