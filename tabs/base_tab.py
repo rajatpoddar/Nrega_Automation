@@ -4,7 +4,6 @@ from tkinter import ttk, messagebox, filedialog
 import customtkinter as ctk
 import os, sys, subprocess, csv, platform
 from datetime import datetime
-import imgkit
 from fpdf import FPDF
 
 class BaseAutomationTab(ctk.CTkFrame):

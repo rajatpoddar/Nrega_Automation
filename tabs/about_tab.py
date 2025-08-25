@@ -230,20 +230,34 @@ class AboutTab(ctk.CTkFrame):
         self.action_panel_container.grid_rowconfigure(0, weight=1)
         self._update_action_panel("Loading", "N/A")
 
+    # In about_tab.py, replace the existing _create_disclaimer_frame method with this one.
+
     def _create_disclaimer_frame(self, parent):
         disclaimer_frame = ctk.CTkFrame(parent, fg_color=("gray90", "gray20"))
         disclaimer_frame.grid_columnconfigure(0, weight=1)
 
-        title_label = ctk.CTkLabel(disclaimer_frame, text="⚠️ Disclaimer", font=ctk.CTkFont(weight="bold"))
+        title_label = ctk.CTkLabel(disclaimer_frame, text="Disclaimer", image=self.app.icon_images.get("disclaimer_warning"), compound="left", font=ctk.CTkFont(weight="bold"))
         title_label.pack(pady=(10, 5), padx=20, anchor="w")
         
-        disclaimer_text1 = "⚡ This tool interacts with a live government website. If the portal's structure changes, some features may break until updated."
-        label1 = ctk.CTkLabel(disclaimer_frame, text=disclaimer_text1, wraplength=300, justify="left")
-        label1.pack(pady=(0, 10), padx=20, anchor="w")
+        # Helper function to create icon+text rows for a clean layout
+        def create_disclaimer_row(parent_frame, icon_key, text):
+            row_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
+            
+            icon_label = ctk.CTkLabel(row_frame, text="", image=self.app.icon_images.get(icon_key))
+            icon_label.pack(side="left", padx=(0, 10), pady=2, anchor="n")
 
-        disclaimer_text2 = "🛠️ Use this tool responsibly. The author provides no warranties and is not liable for data entry errors. Always double-check automated work."
-        label2 = ctk.CTkLabel(disclaimer_frame, text=disclaimer_text2, wraplength=300, justify="left")
-        label2.pack(pady=(0, 15), padx=20, anchor="w")
+            text_label = ctk.CTkLabel(row_frame, text=text, wraplength=280, justify="left")
+            text_label.pack(side="left", fill="x", expand=True)
+            
+            return row_frame
+
+        disclaimer_text1 = "This tool interacts with a live government website. If the portal's structure changes, some features may break until updated."
+        row1 = create_disclaimer_row(disclaimer_frame, "disclaimer_thunder", disclaimer_text1)
+        row1.pack(pady=(0, 10), padx=20, anchor="w", fill="x")
+
+        disclaimer_text2 = "Use this tool responsibly. The author provides no warranties and is not liable for data entry errors. Always double-check automated work."
+        row2 = create_disclaimer_row(disclaimer_frame, "disclaimer_tools", disclaimer_text2)
+        row2.pack(pady=(0, 15), padx=20, anchor="w", fill="x")
         
         return disclaimer_frame
 
