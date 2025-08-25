@@ -132,6 +132,11 @@ class NregaBotApp(ctk.CTk):
         self._load_icon("whatsapp", "assets/icons/whatsapp.png")
         self._load_icon("feedback", "assets/icons/feedback.png")
         self._load_icon("wc_extractor", "assets/icons/extractor.png")
+
+        # --- ADD THIS SECTION FOR DISCLAIMER ICONS ---
+        self._load_icon("disclaimer_warning", "assets/icons/emojis/warning.png", size=(16,16))
+        self._load_icon("disclaimer_thunder", "assets/icons/emojis/thunder.png", size=(16,16))
+        self._load_icon("disclaimer_tools", "assets/icons/emojis/tools.png", size=(16,16))
         
         self._load_icon("emoji_mr_gen", "assets/icons/emojis/mr_gen.png", size=(16,16))
         self._load_icon("emoji_mr_payment", "assets/icons/emojis/mr_payment.png", size=(16,16))
