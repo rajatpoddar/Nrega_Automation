@@ -15,4 +15,3 @@ tkcalendar
 humanize
 tkinterdnd2
 requests-toolbelt
-imgkit
