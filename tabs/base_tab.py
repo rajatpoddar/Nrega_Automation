@@ -33,52 +33,13 @@ class BaseAutomationTab(ctk.CTkFrame):
         return 'wkhtmltoimage'
         
     def generate_report_image(self, data, headers, title, date_str, footer, output_path):
-        try:
-            path_wkhtmltoimage = self._get_wkhtml_path()
-            if not os.path.exists(path_wkhtmltoimage):
-                messagebox.showerror("Error", f"wkhtmltoimage not found at {path_wkhtmltoimage}")
-                return False
-
-            config = imgkit.config(wkhtmltoimage=path_wkhtmltoimage)
-            
-            header_html = "".join(f"<th>{h}</th>" for h in headers)
-            rows_html = "".join("<tr>" + "".join(f"<td>{item}</td>" for item in row) + "</tr>" for row in data)
-            
-            html_content = f"""
-            <html>
-            <head>
-                <style>
-                    body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 20px; }}
-                    table {{ border-collapse: collapse; width: 100%; font-size: 12px; }}
-                    th, td {{ border: 1px solid #dddddd; text-align: left; padding: 8px; }}
-                    th {{ background-color: #f2f2f2; }}
-                    .header {{ text-align: center; margin-bottom: 20px; }}
-                    .header h1 {{ margin: 0; font-size: 20px; }}
-                    .header p {{ margin: 5px 0; font-size: 12px; color: #555; }}
-                    .footer {{ text-align: center; margin-top: 20px; font-size: 10px; color: #777; }}
-                </style>
-            </head>
-            <body>
-                <div class="header"><h1>{title}</h1><p>{date_str}</p></div>
-                <table><thead><tr>{header_html}</tr></thead><tbody>{rows_html}</tbody></table>
-                <div class="footer"><p>{footer}</p></div>
-            </body>
-            </html>
-            """
-            
-            # --- FIX: Add the 'quiet' option to suppress console output and prevent the error ---
-            options = {
-                'width': 800, 
-                'quality': 100, 
-                'enable-local-file-access': None,
-                'quiet': ''
-            }
-            imgkit.from_string(html_content, output_path, config=config, options=options)
-            return True
-        except Exception as e:
-            self.app.log_message(self.log_display, f"Failed to generate image report. Error: {e}", "error")
-            messagebox.showerror("Image Export Failed", f"Could not generate image report:\n{e}")
-            return False
+        """Shows a 'Coming Soon' message instead of generating an image."""
+        messagebox.showinfo(
+            "Feature in Development",
+            "Image export is being optimized to reduce application size and will be available in a future update.",
+            parent=self.app
+        )
+        return False
 
     def generate_report_pdf(self, data, headers, col_widths, title, date_str, file_path):
         try:
