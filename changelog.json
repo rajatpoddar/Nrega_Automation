@@ -1,5 +1,5 @@
 {
-  "2.6.5": [
+  "2.7.0": [
       "✨ Major Performance Overhaul: Implemented lazy loading for all tabs, ensuring near-instant application startup and significantly reduced memory usage.",
       "✨ Feature: Consolidated report exports on all major tabs into a single, unified system (Image, PDF, CSV) with data filtering.",
       "✨ Improvement: PDF reports are now styled with headers, footers, and status-based colors (red for failed, green for success).",
