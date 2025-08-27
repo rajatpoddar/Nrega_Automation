@@ -5,7 +5,7 @@
 # <div align="center">NREGA Bot</div>
 
 <p align="center">
-  <b>Version 2.7.0 | The ultimate tool to automate your repetitive NREGA portal tasks.</b><br />
+  <b>Version 2.7.1 | The ultimate tool to automate your repetitive NREGA portal tasks.</b><br />
   <a href="https://nregabot.com/#downloads"><strong>Download Now »</strong></a><br /><br />
   <a href="https://nregabot.com/how-to-use.html">View Instructions</a> ·
   <a href="https://nregabot.com/contact.html">Report Bug</a> ·
@@ -64,8 +64,8 @@ You only need to have a supported web browser installed on your system:
 Download the latest version from the official website:
 
 - Website: [nregabot.com/#downloads](https://nregabot.com/#downloads)
-- **For Windows**: `NREGABot-v2.7.0-Setup.exe`
-- **For macOS**: `NREGABot-v2.7.0-macOS.dmg`
+- **For Windows**: `NREGABot-v2.7.1-Setup.exe`
+- **For macOS**: `NREGABot-v2.7.1-macOS.dmg`
 
 ### 2️⃣ First-Time Launch & Trial
 

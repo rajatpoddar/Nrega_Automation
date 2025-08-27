@@ -8,7 +8,7 @@ APP_TAGLINE = "Your NREGA Task Management Companion"
 APP_DESCRIPTION = "A comprehensive tool for managing NREGA tasks efficiently."
 APP_AUTHOR = "Rajat Poddar"
 APP_AUTHOR_EMAIL = "Rajatpoddar@outlook.com"
-APP_VERSION = "2.7.0"
+APP_VERSION = "2.7.1"
 LICENSE_SERVER_URL = "https://license.nregabot.com"
 MAIN_WEBSITE_URL = "https://nregabot.com"
 SUPPORT_EMAIL = "nregabot@gmail.com"
@@ -134,10 +134,11 @@ DEL_WORK_ALLOC_CONFIG = {
     "url": "https://nregade4.nic.in/Netnrega/delWrkAlloc.aspx"
 }
 
-# --- Update Outcome Configuration ---
-UPDATE_OUTCOME_CONFIG = {
+# --- Update Estimate Configuration ---
+UPDATE_ESTIMATE_CONFIG = {
     "url": "https://nregade4.nic.in/Netnrega/Update_proposedstatus.aspx"
 }
+
 
 # --- Duplicate MR Print Configuration ---
 DUPLICATE_MR_CONFIG = {

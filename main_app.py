@@ -35,13 +35,14 @@ from tabs.workcode_extractor_tab import WorkcodeExtractorTab
 from tabs.add_activity_tab import AddActivityTab
 from tabs.abps_verify_tab import AbpsVerifyTab
 from tabs.del_work_alloc_tab import DelWorkAllocTab
-from tabs.update_outcome_tab import UpdateOutcomeTab
+from tabs.update_estimate_tab import UpdateEstimateTab
 from tabs.duplicate_mr_tab import DuplicateMrTab
 from tabs.feedback_tab import FeedbackTab
 from tabs.file_management_tab import FileManagementTab
 from tabs.scheme_closing_tab import SchemeClosingTab
 from tabs.emb_verify_tab import EmbVerifyTab
 from tabs.resend_rejected_wg_tab import ResendRejectedWgTab
+from tabs.reports_tab import ReportsTab
 
 from utils import resource_path, get_data_path, get_user_downloads_path
 
@@ -159,6 +160,7 @@ class NregaBotApp(ctk.CTk):
         self._load_icon("emoji_file_manager", "assets/icons/emojis/file_manager.png", size=(16,16))
         self._load_icon("emoji_feedback", "assets/icons/emojis/feedback.png", size=(16,16))
         self._load_icon("emoji_about", "assets/icons/emojis/about.png", size=(16,16))
+        self._load_icon("emoji_reports", "assets/icons/emojis/reports.png", size=(16,16))
 
         self.bind("<FocusIn>", self._on_window_focus)
         self.after(0, self.start_app)
@@ -501,14 +503,17 @@ class NregaBotApp(ctk.CTk):
                 "WC Gen": {"creation_func": WcGenTab, "icon": self.icon_images.get("emoji_wc_gen"), "key": "wc_gen"},
                 "IF Editor": {"creation_func": IfEditTab, "icon": self.icon_images.get("emoji_if_editor"), "key": "if_edit"},
                 "Add Activity": {"creation_func": AddActivityTab, "icon": self.icon_images.get("emoji_add_activity"), "key": "add_activity"},
+                "Update Estimate": {"creation_func": UpdateEstimateTab, "icon": self.icon_images.get("emoji_update_outcome"), "key": "update_outcome"},
             },
             "Utilities & Verification": {
                 "Verify Jobcard": {"creation_func": JobcardVerifyTab, "icon": self.icon_images.get("emoji_verify_jobcard"), "key": "jc_verify"},
                 "Verify ABPS": {"creation_func": AbpsVerifyTab, "icon": self.icon_images.get("emoji_verify_abps"), "key": "abps_verify"},
                 "Workcode Extractor": {"creation_func": WorkcodeExtractorTab, "icon": self.icon_images.get("emoji_wc_extractor"), "key": "wc_extract"},
-                "Resend Rejected WG": {"creation_func": ResendRejectedWgTab, "icon": self.icon_images.get("emoji_resend_wg"), "key": "resend_wg"},
-                "Update Outcome": {"creation_func": UpdateOutcomeTab, "icon": self.icon_images.get("emoji_update_outcome"), "key": "update_outcome"},
+                "Resend Rejected WG": {"creation_func": ResendRejectedWgTab, "icon": self.icon_images.get("emoji_resend_wg"), "key": "resend_wg"},               
                 "File Manager": {"creation_func": FileManagementTab, "icon": self.icon_images.get("emoji_file_manager"), "key": "file_manager"},
+            },
+            "Reporting": {
+                "Reports": {"creation_func": ReportsTab, "icon": self.icon_images.get("emoji_reports"), "key": "reports"},
             },
             "Application": {
                  "Feedback": {"creation_func": FeedbackTab, "icon": self.icon_images.get("emoji_feedback")},
@@ -528,6 +533,13 @@ class NregaBotApp(ctk.CTk):
             if page_name in self.button_to_category_frame: self.button_to_category_frame[page_name].expand()
             self.content_frames[page_name].tkraise()
             for name, btn in self.nav_buttons.items(): btn.configure(fg_color=("gray90", "gray28") if name == page_name else "transparent")
+
+    def open_web_file_manager(self):
+        if self.license_info.get('key'):
+            auth_url = f"{config.LICENSE_SERVER_URL}/authenticate-from-app/{self.license_info['key']}?next=files"
+            webbrowser.open_new_tab(auth_url)
+        else:
+            messagebox.showerror("Error", "License key not found. Please log in to use the web file manager.")
     
     def _create_footer(self):
         footer = ctk.CTkFrame(self, height=40, corner_radius=0)
@@ -545,8 +557,8 @@ class NregaBotApp(ctk.CTk):
         def create_link(parent, text, image_key, url):
             btn = ctk.CTkButton(parent, text=text, image=self.icon_images.get(image_key), command=lambda: webbrowser.open_new_tab(url), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
             return btn
-        create_link(btn_container, "NREGA Bot Website ↗", "nrega", config.MAIN_WEBSITE_URL).pack(side="left")
-        create_link(btn_container, "Community", "whatsapp", "https://chat.whatsapp.com/Bup3hDCH3wn2shbUryv8wn").pack(side="left", padx=(10, 0))
+        ctk.CTkButton(btn_container, text="File Manager", image=self.icon_images.get("emoji_file_manager"), command=self.open_web_file_manager, fg_color="transparent", hover=False, text_color=("gray10", "gray80")).pack(side="left")
+        ctk.CTkButton(btn_container, text="Community", image=self.icon_images.get("whatsapp"), command=lambda: webbrowser.open_new_tab("https://chat.whatsapp.com/Bup3hDCH3wn2shbUryv8wn"), fg_color="transparent", hover=False, text_color=("gray10", "gray80")).pack(side="left", padx=(10, 0))
         ctk.CTkButton(btn_container, text="Contact Support", image=self.icon_images.get("feedback"), command=lambda: self.show_frame("Feedback"), fg_color="transparent", hover=False, text_color=("gray10", "gray80")).pack(side="left", padx=(10, 0))
         self.server_status_indicator = ctk.CTkFrame(btn_container, width=12, height=12, corner_radius=6, fg_color="gray"); self.server_status_indicator.pack(side="left", padx=(10, 5))
         ctk.CTkLabel(btn_container, text="Server").pack(side="left")

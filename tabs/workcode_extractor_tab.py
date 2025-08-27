@@ -76,6 +76,14 @@ class WorkcodeExtractorTab(ctk.CTkFrame):
         self.extract_full_code_checkbox = ctk.CTkCheckBox(checkbox_frame, text="Extract Full Workcode")
         self.extract_full_code_checkbox.pack(side="left")
         
+        # --- NEW: Checkbox to extract wagelist IDs like 3422003WL031552 ---
+        self.extract_wagelist_checkbox = ctk.CTkCheckBox(checkbox_frame, text="Extract Wagelist IDs")
+        self.extract_wagelist_checkbox.pack(side="left", padx=(10,0))
+
+        # --- NEW: Optional date filter for wagelist extraction (format DD-MM-YYYY) ---
+        self.wagelist_date_entry = ctk.CTkEntry(checkbox_frame, width=160, placeholder_text="Filter date (DD-MM-YYYY)")
+        self.wagelist_date_entry.pack(side="left", padx=(8,0))
+        
         self.clear_button = ctk.CTkButton(action_frame, text="Clear All", command=self._clear_all, fg_color="transparent", border_width=2, text_color=("gray10", "#DCE4EE"))
         self.clear_button.grid(row=0, column=2, padx=15, pady=10)
 
@@ -86,32 +94,63 @@ class WorkcodeExtractorTab(ctk.CTkFrame):
             return
 
         work_code_pattern = re.compile(r'\b(34\d{8}(?:/\w+)+/\d+)\b')
-        found_codes = work_code_pattern.findall(input_content)
-        
-        extracted_results = []
-        extract_full_code = self.extract_full_code_checkbox.get()
+        wagelist_pattern = re.compile(r'\b\d+WL\d+\b', re.IGNORECASE)
 
-        for code in found_codes:
-            if extract_full_code:
-                extracted_results.append(code)
-            else:
-                last_part = code.split('/')[-1]
-                if len(last_part) > 7:
-                    extracted_results.append(last_part[-6:])
-                else:
-                    extracted_results.append(last_part)
+        found_work_codes = work_code_pattern.findall(input_content)
 
-        if self.remove_duplicates_checkbox.get():
-            final_results = list(dict.fromkeys(extracted_results))
+        # Build wagelist list by scanning lines; apply optional date filter if provided
+        found_wagelists = []
+        if self.extract_wagelist_checkbox.get():
+            date_filter = ""
+            try:
+                date_filter = self.wagelist_date_entry.get().strip()
+            except Exception:
+                date_filter = ""
+            for line in input_content.splitlines():
+                if not line.strip():
+                    continue
+                if date_filter and date_filter not in line:
+                    continue
+                matches = wagelist_pattern.findall(line)
+                if matches:
+                    # normalize to upper-case and keep as-is
+                    found_wagelists.extend([m.upper() for m in matches])
+
+        # Build primary results
+        results = []
+
+        # If wagelist extraction is requested, return only wagelist IDs (skip work codes)
+        if self.extract_wagelist_checkbox.get():
+            results = found_wagelists
         else:
-            final_results = extracted_results
-        
+            extract_full_code = self.extract_full_code_checkbox.get()
+            for code in found_work_codes:
+                if extract_full_code:
+                    results.append(code)
+                else:
+                    last_part = code.split('/')[-1]
+                    if len(last_part) > 7:
+                        results.append(last_part[-6:])
+                    else:
+                        results.append(last_part)
+
+            # Optionally include wagelist IDs only when wagelist checkbox is checked (kept behaviour)
+            # (No change here: wagelists are only appended when checkbox is checked, and above branch
+            # prevents workcodes when that checkbox is true.)
+
+        # Remove duplicates while preserving order if requested
+        if self.remove_duplicates_checkbox.get():
+            final_results = list(dict.fromkeys(results))
+        else:
+            final_results = results
+
+        # Display results
         self.output_text.configure(state="normal")
         self.output_text.delete("1.0", tkinter.END)
         if final_results:
             self.output_text.insert("1.0", "\n".join(final_results))
         else:
-            self.output_text.insert("1.0", "No matching work codes found.")
+            self.output_text.insert("1.0", "No matching work codes or wagelist IDs found.")
         self.output_text.configure(state="disabled")
 
     def _copy_results(self):

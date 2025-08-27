@@ -2,7 +2,7 @@
 import tkinter
 from tkinter import ttk, messagebox, filedialog
 import customtkinter as ctk
-import time, os, json, sys, subprocess
+import time, os, json, sys, subprocess, random
 from datetime import datetime
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
@@ -17,8 +17,10 @@ class MbEntryTab(BaseAutomationTab):
         super().__init__(parent, app_instance, automation_key="mb_entry")
         self.config_file = self.app.get_data_path("mb_entry_inputs.json")
         self.config_vars = {}
+        self.auto_mb_no_var = ctk.BooleanVar(value=True)
         self.grid_columnconfigure(0, weight=1); self.grid_rowconfigure(1, weight=1)
         self._create_widgets(); self._load_inputs()
+        self._toggle_mb_no_entry()
 
     def _create_widgets(self):
         top_frame = ctk.CTkFrame(self)
@@ -29,17 +31,32 @@ class MbEntryTab(BaseAutomationTab):
         config_frame.grid_columnconfigure((1, 3), weight=1)
         
         self.panchayat_entry = self._create_autocomplete_field(config_frame, "panchayat_name", "Panchayat Name", 0, 0)
-        self.mb_no_entry = self._create_field(config_frame, "measurement_book_no", "MB No.", 1, 0)
+        
+        # --- MB No. with Auto Checkbox ---
+        ctk.CTkLabel(config_frame, text="MB No.").grid(row=1, column=0, sticky='w', padx=15, pady=5)
+        mb_frame = ctk.CTkFrame(config_frame, fg_color="transparent")
+        mb_frame.grid(row=1, column=1, sticky='ew', padx=15, pady=5)
+        mb_frame.grid_columnconfigure(0, weight=1)
+        
+        mb_var = ctk.StringVar()
+        self.config_vars["measurement_book_no"] = mb_var
+        self.mb_no_entry = ctk.CTkEntry(mb_frame, textvariable=mb_var)
+        self.mb_no_entry.grid(row=0, column=0, sticky='ew')
+
+        self.auto_mb_no_checkbox = ctk.CTkCheckBox(
+            mb_frame, text="Auto", variable=self.auto_mb_no_var,
+            command=self._toggle_mb_no_entry
+        )
+        self.auto_mb_no_checkbox.grid(row=0, column=1, padx=(10, 0))
+        # --- End MB No. Section ---
+
         self.page_no_entry = self._create_field(config_frame, "page_no", "Page No.", 1, 2)
-        self.meas_date_entry = self._create_field(config_frame, "measurement_date", "Meas. Date", 2, 0)
-        self.unit_cost_entry = self._create_field(config_frame, "unit_cost", "Unit Cost (₹)", 2, 2)
-        self.mate_name_entry = self._create_autocomplete_field(config_frame, "mate_name", "Mate Name", 3, 0)
-        self.pit_count_entry = self._create_field(config_frame, "default_pit_count", "Pit Count", 3, 2)
-        self.je_name_entry = self._create_autocomplete_field(config_frame, "je_name", "JE Name", 4, 0)
-        self.je_desig_entry = self._create_autocomplete_field(config_frame, "je_designation", "JE Desig.", 4, 2)
+        self.unit_cost_entry = self._create_field(config_frame, "unit_cost", "Unit Cost (₹)", 2, 0)
+        self.pit_count_entry = self._create_field(config_frame, "default_pit_count", "Pit Count", 2, 2)
+        self.mate_name_entry = self._create_autocomplete_field(config_frame, "mate_name", "Mate Names (comma-separated)", 3, 0)
 
         note = ctk.CTkLabel(config_frame, text="ℹ️ Note: Use this emb automation only for single activity works.", text_color="#E53E3E", wraplength=450)
-        note.grid(row=5, column=0, columnspan=4, sticky='w', padx=15, pady=(10, 15))
+        note.grid(row=4, column=0, columnspan=4, sticky='w', padx=15, pady=(10, 15))
 
         action_frame_container = ctk.CTkFrame(top_frame)
         action_frame_container.pack(pady=10, fill='x')
@@ -81,6 +98,19 @@ class MbEntryTab(BaseAutomationTab):
         self.results_tree.configure(yscroll=scrollbar.set); scrollbar.grid(row=1, column=1, sticky='ns')
         self.style_treeview(self.results_tree); self._setup_treeview_sorting(self.results_tree)
     
+    def _toggle_mb_no_entry(self):
+        if self.auto_mb_no_var.get():
+            self.mb_no_entry.configure(state="disabled")
+            self.config_vars["measurement_book_no"].set("Auto from Workcode")
+        else:
+            self.mb_no_entry.configure(state="normal")
+            saved_data = {}
+            if os.path.exists(self.config_file):
+                try:
+                    with open(self.config_file, 'r') as f: saved_data = json.load(f)
+                except (json.JSONDecodeError, IOError): pass
+            self.config_vars["measurement_book_no"].set(saved_data.get("measurement_book_no", ""))
+
     def _on_format_change(self, selected_format):
         if "CSV" in selected_format: self.export_filter_menu.configure(state="disabled")
         else: self.export_filter_menu.configure(state="normal")
@@ -96,26 +126,30 @@ class MbEntryTab(BaseAutomationTab):
         ctk.CTkLabel(parent, text=text).grid(row=r, column=c, sticky='w', padx=15, pady=5)
         var = ctk.StringVar(); self.config_vars[key] = var
         entry = AutocompleteEntry(parent, textvariable=var, suggestions_list=self.app.history_manager.get_suggestions(key))
-        entry.grid(row=r, column=c+1, columnspan=3 if key=="panchayat_name" else 1, sticky='ew', padx=15, pady=5)
+        entry.grid(row=r, column=c+1, columnspan=3, sticky='ew', padx=15, pady=5)
         return entry
 
     def set_ui_state(self, running: bool):
         self.set_common_ui_state(running)
         state = "disabled" if running else "normal"
         self.work_codes_text.configure(state=state)
-        for key, var in self.config_vars.items():
-            entry_widget = self.nametowidget(var.get().lower()) # This is not reliable, direct is better
-        self.panchayat_entry.configure(state=state); self.mb_no_entry.configure(state=state); self.page_no_entry.configure(state=state)
-        self.meas_date_entry.configure(state=state); self.unit_cost_entry.configure(state=state); self.mate_name_entry.configure(state=state)
-        self.pit_count_entry.configure(state=state); self.je_name_entry.configure(state=state); self.je_desig_entry.configure(state=state)
+        self.panchayat_entry.configure(state=state)
+        self.page_no_entry.configure(state=state)
+        self.unit_cost_entry.configure(state=state); self.mate_name_entry.configure(state=state)
+        self.pit_count_entry.configure(state=state)
         self.export_button.configure(state=state); self.export_format_menu.configure(state=state); self.export_filter_menu.configure(state=state)
-        if state == "normal": self._on_format_change(self.export_format_menu.get())
+        self.auto_mb_no_checkbox.configure(state=state)
+
+        if state == "normal":
+            self._on_format_change(self.export_format_menu.get())
+            self._toggle_mb_no_entry()
+        else:
+            self.mb_no_entry.configure(state="disabled")
 
     def reset_ui(self):
         if messagebox.askokcancel("Reset Form?", "Clear all inputs and logs?"):
             self._load_inputs()
-            for key in ['panchayat_name']: self.config_vars[key].set("")
-            self.config_vars['measurement_date'].set(datetime.now().strftime('%d/%m/%Y'))
+            self.config_vars['panchayat_name'].set("")
             self.work_codes_text.configure(state="normal"); self.work_codes_text.delete("1.0", tkinter.END)
             for item in self.results_tree.get_children(): self.results_tree.delete(item)
             self.app.clear_log(self.log_display); self.update_status("Ready", 0.0)
@@ -124,9 +158,21 @@ class MbEntryTab(BaseAutomationTab):
 
     def start_automation(self):
         cfg = {key: var.get().strip() for key, var in self.config_vars.items()}
-        if any(not value for value in cfg.values()): messagebox.showwarning("Input Error", "All configuration fields are required."); return
+        
+        if not self.auto_mb_no_var.get() and not cfg.get("measurement_book_no"):
+            messagebox.showwarning("Input Error", "MB No. field is required when 'Auto' is unchecked.")
+            return
+            
+        required_fields = ["panchayat_name", "page_no", "unit_cost", "default_pit_count", "mate_name"]
+        if any(not cfg.get(key) for key in required_fields):
+            messagebox.showwarning("Input Error", "All configuration fields must be filled out.")
+            return
+
         work_codes_raw = [line.strip() for line in self.work_codes_text.get("1.0", tkinter.END).strip().splitlines() if line.strip()]
-        if not work_codes_raw: messagebox.showwarning("Input Required", "Please paste at least one work code."); return
+        if not work_codes_raw:
+            messagebox.showwarning("Input Required", "Please paste at least one work code.")
+            return
+            
         self._save_inputs(cfg)
         self.app.start_automation_thread(self.automation_key, self.run_automation_logic, args=(cfg, work_codes_raw))
     
@@ -144,7 +190,6 @@ class MbEntryTab(BaseAutomationTab):
         for key, var in self.config_vars.items():
             default_value = config.MB_ENTRY_CONFIG["defaults"].get(key, "")
             var.set(saved_data.get(key, default_value))
-        if not self.config_vars['measurement_date'].get(): self.config_vars['measurement_date'].set(datetime.now().strftime('%d/%m/%Y'))
 
     def run_automation_logic(self, cfg, work_codes_raw):
         self.app.after(0, self.set_ui_state, True); self.app.clear_log(self.log_display)
@@ -154,17 +199,33 @@ class MbEntryTab(BaseAutomationTab):
         try:
             driver = self.app.get_driver()
             if not driver: return
+
+            mate_names_list = [name.strip() for name in cfg["mate_name"].split(',') if name.strip()]
+            if not mate_names_list:
+                messagebox.showerror("Input Error", "Please provide at least one Mate Name.")
+                return
+
             if not self.app.stop_events[self.automation_key].is_set():
                 for key, value in cfg.items():
-                    if key != "measurement_date": self.app.update_history(key, value)
+                    self.app.update_history(key, value)
+            
             processed_codes = set()
             total = len(work_codes_raw)
+            is_first_run = True
+
             for i, work_code in enumerate(work_codes_raw):
-                if self.app.stop_events[self.automation_key].is_set(): self.app.log_message(self.log_display, "Automation stopped.", "warning"); break
+                if self.app.stop_events[self.automation_key].is_set():
+                    self.app.log_message(self.log_display, "Automation stopped.", "warning"); break
+                
                 self.app.after(0, self.update_status, f"Processing {i+1}/{total}: {work_code}", (i+1) / total)
-                if work_code in processed_codes: self._log_result(work_code, "Skipped", "Duplicate entry."); continue
-                self._process_single_work_code(driver, work_code, cfg)
+                
+                if work_code in processed_codes:
+                    self._log_result(work_code, "Skipped", "Duplicate entry."); continue
+                
+                self._process_single_work_code(driver, work_code, cfg, is_first_run, mate_names_list)
                 processed_codes.add(work_code)
+                is_first_run = False
+
             final_msg = "Automation finished." if not self.app.stop_events[self.automation_key].is_set() else "Stopped."
             self.app.after(0, self.update_status, final_msg, 1.0)
             if not self.app.stop_events[self.automation_key].is_set(): messagebox.showinfo("Complete", "e-MB Entry process has finished.")
@@ -180,32 +241,46 @@ class MbEntryTab(BaseAutomationTab):
         tags = ('failed',) if 'success' not in status.lower() else ()
         self.app.after(0, lambda: self.results_tree.insert("", "end", values=(work_code, status, details, timestamp), tags=tags))
 
-    def _process_single_work_code(self, driver, work_code, cfg):
+    def _process_single_work_code(self, driver, work_code, cfg, is_first_run, mate_names_list):
         wait = WebDriverWait(driver, 20)
         try:
             driver.get(config.MB_ENTRY_CONFIG["url"])
-            try:
-                panchayat_dropdown = WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.ID, 'ctl00_ContentPlaceHolder1_ddl_panch')))
-                page_body = driver.find_element(By.TAG_NAME, 'body')
-                self.app.log_message(self.log_display, f"Selecting Panchayat '{cfg['panchayat_name']}'...")
-                Select(panchayat_dropdown).select_by_visible_text(cfg['panchayat_name'])
-                wait.until(EC.staleness_of(page_body))
-            except (TimeoutException, NoSuchElementException): self.app.log_message(self.log_display, "Panchayat dropdown not needed.", "info")
+            
+            if is_first_run:
+                try:
+                    panchayat_dropdown = WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.ID, 'ctl00_ContentPlaceHolder1_ddl_panch')))
+                    page_body = driver.find_element(By.TAG_NAME, 'body')
+                    self.app.log_message(self.log_display, f"Selecting Panchayat '{cfg['panchayat_name']}'...")
+                    Select(panchayat_dropdown).select_by_visible_text(cfg['panchayat_name'])
+                    wait.until(EC.staleness_of(page_body))
+                except (TimeoutException, NoSuchElementException):
+                    self.app.log_message(self.log_display, "Panchayat dropdown not needed (GP Login).", "info")
+            
+            mb_no_to_use = cfg["measurement_book_no"]
+            if self.auto_mb_no_var.get():
+                if len(work_code) >= 4:
+                    mb_no_to_use = work_code[-4:]
+                    self.app.log_message(self.log_display, f"Using auto MB No: {mb_no_to_use} from workcode.", "info")
+                else:
+                    self.app.log_message(self.log_display, "Workcode too short for auto MB No. Using manual value.", "warning")
 
-            wait.until(EC.presence_of_element_located((By.ID, 'ctl00_ContentPlaceHolder1_txtMBNo'))).send_keys(cfg["measurement_book_no"])
+            wait.until(EC.presence_of_element_located((By.ID, 'ctl00_ContentPlaceHolder1_txtMBNo'))).send_keys(mb_no_to_use)
             driver.find_element(By.ID, 'ctl00_ContentPlaceHolder1_txtpageno').send_keys(cfg["page_no"])
-            driver.find_element(By.ID, 'ctl00_ContentPlaceHolder1_txtMDate').send_keys(cfg["measurement_date"])
             driver.find_element(By.ID, 'ctl00_ContentPlaceHolder1_txtWrkCode').send_keys(work_code)
             driver.find_element(By.ID, 'ctl00_ContentPlaceHolder1_imgButtonSearch').click()
+            
             wait.until(EC.presence_of_element_located((By.ID, 'ctl00_ContentPlaceHolder1_ddlSelWrk'))); time.sleep(1)
             select_work = Select(driver.find_element(By.ID, 'ctl00_ContentPlaceHolder1_ddlSelWrk'))
             if len(select_work.options) <= 1: raise ValueError("Work code not found/processed.")
             select_work.select_by_index(1)
+            
             driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_rddist_0").click()
             time.sleep(2)
+            
             period_dropdown = Select(driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_ddlSelMPeriod"))
             if len(period_dropdown.options) <= 1: raise ValueError("No measurement period found.")
             period_dropdown.select_by_index(1)
+            
             total_persondays_str = driver.find_element(By.ID, 'ctl00_ContentPlaceHolder1_lbl_person_days').get_attribute('value').strip()
             total_persondays = int(total_persondays_str) if total_persondays_str else 0
             if total_persondays == 0: raise ValueError("eMB already Booked")
@@ -214,17 +289,25 @@ class MbEntryTab(BaseAutomationTab):
             driver.find_element(By.NAME, f'{prefix}$qty').send_keys(str(total_persondays))
             driver.find_element(By.NAME, f'{prefix}$unitcost').send_keys(cfg["unit_cost"])
             driver.find_element(By.NAME, f'{prefix}$labcomp').send_keys(str(total_persondays * int(cfg["unit_cost"])))
+            
             try: driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_txtpit").send_keys(cfg["default_pit_count"])
             except NoSuchElementException: pass
-            driver.find_element(By.ID, 'ctl00_ContentPlaceHolder1_txt_mat_name').send_keys(cfg["mate_name"])
-            driver.find_element(By.ID, 'ctl00_ContentPlaceHolder1_txt_eng_name').send_keys(cfg["je_name"])
-            driver.find_element(By.ID, 'ctl00_ContentPlaceHolder1_txt_eng_desig').send_keys(cfg["je_designation"])
+
+            random_mate = random.choice(mate_names_list)
+            self.app.log_message(self.log_display, f"Randomly selected Mate: {random_mate}")
+            mate_name_field = driver.find_element(By.ID, 'ctl00_ContentPlaceHolder1_txt_mat_name')
+            mate_name_field.clear()
+            mate_name_field.send_keys(random_mate)
+
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);"); time.sleep(0.5)
             driver.find_element(By.XPATH, '//input[@value="Save"]').click()
+            
             try:
                 alert = WebDriverWait(driver, 5).until(EC.alert_is_present())
                 self._log_result(work_code, "Success", alert.text); alert.accept()
-            except TimeoutException: self._log_result(work_code, "Success", "Saved (No confirmation alert).")
+            except TimeoutException:
+                self._log_result(work_code, "Success", "Saved (No confirmation alert).")
+
         except UnexpectedAlertPresentException:
             try:
                 alert = driver.switch_to.alert; self._log_result(work_code, "Failed", f"Unexpected Alert: {alert.text}"); alert.accept()

@@ -1,15 +1,15 @@
 {
-  "latest_version": "2.7.0",
-  "download_url_windows": "https://nregabot.com/updates/NREGABot-v2.7.0-Setup.exe",
-  "download_url_macos": "https://nregabot.com/updates/NREGABot-v2.7.0-macOS.dmg",
+  "latest_version": "2.7.1",
+  "download_url_windows": "https://nregabot.com/updates/NREGABot-v2.7.1-Setup.exe",
+  "download_url_macos": "https://nregabot.com/updates/NREGABot-v2.7.1-macOS.dmg",
   "changelog": {
-    "2.7.0": [
-      "✨ Major Performance Overhaul: Implemented lazy loading for all tabs, ensuring near-instant application startup and significantly reduced memory usage.",
-      "✨ Feature: Consolidated report exports on all major tabs into a single, unified system (Image, PDF, CSV) with data filtering.",
-      "✨ Improvement: PDF reports are now styled with headers, footers, and status-based colors (red for failed, green for success).",
-      "✨ Improvement: 'MR Payment' automation now allows verification of an exact wage amount and automatically skips MSRs that are pending approval.",
-      "🐞 Bug Fix: Resolved a cloud upload error that occurred when re-exporting reports by giving each file a unique, timestamped name.",
-      "🐞 Bug Fix: Corrected numerous bugs and crashes that occurred during the recent performance refactoring to ensure stability."
+    "2.7.1": [
+      "✨ Feature (eMB Entry): Added an 'Auto' checkbox to automatically fill the MB Number from the last four digits of the work code.",
+      "✨ Improvement (eMB Entry): Mate Name field now accepts multiple comma-separated names and will randomly select one for each entry.",
+      "✨ UI Update (eMB Entry): Removed JE Name and Designation fields to match recent website changes.",
+      "✨ Feature: Added a new 'Reports' tab as a placeholder for upcoming reporting features.",
+      "🐞 Bug Fix: The 'Manage Account' button in the About tab now correctly opens the user's web account page.",
+      "⚙️ Improvement: The 'File Manager' button in the footer now opens the web-based file manager instead of the in-app tab."
     ]
   }
 }
