@@ -211,7 +211,6 @@ class MbEntryTab(BaseAutomationTab):
             
             processed_codes = set()
             total = len(work_codes_raw)
-            is_first_run = True
 
             for i, work_code in enumerate(work_codes_raw):
                 if self.app.stop_events[self.automation_key].is_set():
@@ -222,9 +221,8 @@ class MbEntryTab(BaseAutomationTab):
                 if work_code in processed_codes:
                     self._log_result(work_code, "Skipped", "Duplicate entry."); continue
                 
-                self._process_single_work_code(driver, work_code, cfg, is_first_run, mate_names_list)
+                self._process_single_work_code(driver, work_code, cfg, mate_names_list)
                 processed_codes.add(work_code)
-                is_first_run = False
 
             final_msg = "Automation finished." if not self.app.stop_events[self.automation_key].is_set() else "Stopped."
             self.app.after(0, self.update_status, final_msg, 1.0)
@@ -241,20 +239,19 @@ class MbEntryTab(BaseAutomationTab):
         tags = ('failed',) if 'success' not in status.lower() else ()
         self.app.after(0, lambda: self.results_tree.insert("", "end", values=(work_code, status, details, timestamp), tags=tags))
 
-    def _process_single_work_code(self, driver, work_code, cfg, is_first_run, mate_names_list):
+    def _process_single_work_code(self, driver, work_code, cfg, mate_names_list):
         wait = WebDriverWait(driver, 20)
         try:
             driver.get(config.MB_ENTRY_CONFIG["url"])
             
-            if is_first_run:
-                try:
-                    panchayat_dropdown = WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.ID, 'ctl00_ContentPlaceHolder1_ddl_panch')))
-                    page_body = driver.find_element(By.TAG_NAME, 'body')
-                    self.app.log_message(self.log_display, f"Selecting Panchayat '{cfg['panchayat_name']}'...")
-                    Select(panchayat_dropdown).select_by_visible_text(cfg['panchayat_name'])
-                    wait.until(EC.staleness_of(page_body))
-                except (TimeoutException, NoSuchElementException):
-                    self.app.log_message(self.log_display, "Panchayat dropdown not needed (GP Login).", "info")
+            try:
+                panchayat_dropdown = WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.ID, 'ctl00_ContentPlaceHolder1_ddl_panch')))
+                page_body = driver.find_element(By.TAG_NAME, 'body')
+                self.app.log_message(self.log_display, f"Selecting Panchayat '{cfg['panchayat_name']}'...")
+                Select(panchayat_dropdown).select_by_visible_text(cfg['panchayat_name'])
+                wait.until(EC.staleness_of(page_body))
+            except (TimeoutException, NoSuchElementException):
+                self.app.log_message(self.log_display, "Panchayat dropdown not needed (GP Login).", "info")
             
             mb_no_to_use = cfg["measurement_book_no"]
             if self.auto_mb_no_var.get():
