@@ -42,15 +42,18 @@ from tabs.file_management_tab import FileManagementTab
 from tabs.scheme_closing_tab import SchemeClosingTab
 from tabs.emb_verify_tab import EmbVerifyTab
 from tabs.resend_rejected_wg_tab import ResendRejectedWgTab
-from tabs.reports_tab import ReportsTab
+from tabs.SA_report_tab import SAReportTab
+from tabs.mis_reports_tab import MisReportsTab
 
-from utils import resource_path, get_data_path, get_user_downloads_path
-
+from utils import resource_path, get_data_path, get_user_downloads_path, get_config, save_config
 
 if config.OS_SYSTEM == "Windows":
     import ctypes
 
 load_dotenv()
+
+# --- ADD THIS LINE AFTER load_dotenv() ---
+config.create_default_config_if_not_exists()
 
 import sentry_sdk
 SENTRY_DSN = os.getenv("SENTRY_DSN")
@@ -160,7 +163,8 @@ class NregaBotApp(ctk.CTk):
         self._load_icon("emoji_file_manager", "assets/icons/emojis/file_manager.png", size=(16,16))
         self._load_icon("emoji_feedback", "assets/icons/emojis/feedback.png", size=(16,16))
         self._load_icon("emoji_about", "assets/icons/emojis/about.png", size=(16,16))
-        self._load_icon("emoji_reports", "assets/icons/emojis/reports.png", size=(16,16))
+        self._load_icon("emoji_social_audit", "assets/icons/emojis/social_audit.png", size=(16,16))
+        self._load_icon("emoji_mis_reports", "assets/icons/emojis/mis_reports.png", size=(16,16))
 
         self.bind("<FocusIn>", self._on_window_focus)
         self.after(0, self.start_app)
@@ -513,7 +517,8 @@ class NregaBotApp(ctk.CTk):
                 "File Manager": {"creation_func": FileManagementTab, "icon": self.icon_images.get("emoji_file_manager"), "key": "file_manager"},
             },
             "Reporting": {
-                "Reports": {"creation_func": ReportsTab, "icon": self.icon_images.get("emoji_reports"), "key": "reports"},
+                "Social Audit Report": {"creation_func": SAReportTab, "icon": self.icon_images.get("emoji_social_audit"), "key": "social_audit_respond"},
+                "MIS Reports": {"creation_func": MisReportsTab, "icon": self.icon_images.get("emoji_mis_reports"), "key": "mis_reports"},
             },
             "Application": {
                  "Feedback": {"creation_func": FeedbackTab, "icon": self.icon_images.get("emoji_feedback")},

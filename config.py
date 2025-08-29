@@ -8,7 +8,7 @@ APP_TAGLINE = "Your NREGA Task Management Companion"
 APP_DESCRIPTION = "A comprehensive tool for managing NREGA tasks efficiently."
 APP_AUTHOR = "Rajat Poddar"
 APP_AUTHOR_EMAIL = "Rajatpoddar@outlook.com"
-APP_VERSION = "2.7.1"
+APP_VERSION = "2.7.2"
 LICENSE_SERVER_URL = "https://license.nregabot.com"
 MAIN_WEBSITE_URL = "https://nregabot.com"
 SUPPORT_EMAIL = "nregabot@gmail.com"
@@ -152,3 +152,26 @@ EMB_VERIFY_CONFIG = {
 REJECTED_WL_CONFIG = {
     "RESEND_REJECTED_WG": "https://nregade4.nic.in/Netnrega/view_wagelist_rejected.aspx"
 }
+
+import os
+import json
+from utils import get_data_path
+
+def create_default_config_if_not_exists():
+    """
+    Creates a default config.json in the app data directory if it doesn't exist.
+    """
+    config_file_path = get_data_path('config.json')
+
+    if not os.path.exists(config_file_path):
+        # Define the default settings that should be in the config.json
+        DEFAULT_USER_CONFIG = {
+            "theme": "System",
+            "last_used_browser": "chrome",
+            "onboarding_complete": False
+        }
+        try:
+            with open(config_file_path, 'w') as f:
+                json.dump(DEFAULT_USER_CONFIG, f, indent=4)
+        except IOError as e:
+            print(f"Error creating default config file: {e}")

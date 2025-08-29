@@ -44,35 +44,55 @@ class BaseAutomationTab(ctk.CTkFrame):
         try:
             pdf = FPDF(orientation='L', unit='mm', format='A4')
             pdf.add_page()
-            pdf.set_font("Arial", 'B', 16)
+            # Add a font that supports a wider range of characters, including Hindi
+            try:
+                font_path = self.app.resource_path("assets/fonts/DejaVuSans.ttf")
+                pdf.add_font('DejaVu', '', font_path, uni=True)
+                pdf.set_font('DejaVu', '', 14)
+            except Exception as e:
+                print(f"Custom font not found, falling back to Arial: {e}")
+                pdf.set_font("Arial", 'B', 16)
             
             pdf.cell(0, 10, title, 0, 1, 'C')
-            pdf.set_font("Arial", '', 10)
+            pdf.set_font('DejaVu' if 'font_path' in locals() else 'Arial', '', 10)
             pdf.cell(0, 5, date_str, 0, 1, 'C')
             pdf.ln(10)
 
-            pdf.set_font("Arial", 'B', 8)
+            pdf.set_font('DejaVu' if 'font_path' in locals() else 'Arial', 'B', 8)
             pdf.set_fill_color(240, 240, 240)
             
-            # Effective page width (total width - margins)
-            effective_width = pdf.w - 2 * pdf.l_margin
-            
             for i, header in enumerate(headers):
-                pdf.cell(col_widths[i], 8, header, 1, 0, 'C', 1)
+                pdf.cell(col_widths[i], 8, str(header), 1, 0, 'C', 1)
             pdf.ln()
 
-            pdf.set_font("Arial", '', 7)
+            pdf.set_font('DejaVu' if 'font_path' in locals() else 'Arial', '', 7)
             for row in data:
-                pdf.set_text_color(0, 0, 0)
+                # Determine max number of lines in the row
+                max_lines = 1
+                for item in row:
+                    lines = len(pdf.multi_cell(0, 6, str(item), split_only=True))
+                    if lines > max_lines:
+                        max_lines = lines
+                
+                # Get current Y position
+                y_pos = pdf.get_y()
+                x_pos = pdf.get_x()
+
+                # Draw cells with manual height
+                cell_height = 6 * max_lines
                 for i, item in enumerate(row):
-                    pdf.cell(col_widths[i], 6, str(item), 1, 0)
-                pdf.ln()
+                    pdf.multi_cell(col_widths[i], 6, str(item), 1, 'L')
+                    # Move to the start of the next cell
+                    pdf.set_xy(x_pos + sum(col_widths[:i+1]), y_pos)
+
+                pdf.ln(cell_height)
 
             pdf.output(file_path)
             return True
         except Exception as e:
             messagebox.showerror("PDF Export Failed", f"Could not generate PDF report:\n{e}", parent=self)
             return False
+
 
     def _create_action_buttons(self, parent_frame):
         action_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
@@ -91,13 +111,27 @@ class BaseAutomationTab(ctk.CTkFrame):
     def _create_log_and_status_area(self, parent_notebook):
         log_frame = parent_notebook.add("Logs & Status")
         log_frame.grid_columnconfigure(0, weight=1)
-        log_frame.grid_rowconfigure(0, weight=1)
+        log_frame.grid_rowconfigure(1, weight=1)
+
+        log_actions_frame = ctk.CTkFrame(log_frame, fg_color="transparent")
+        log_actions_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=(5, 0))
+
+        def copy_logs_to_clipboard():
+            logs = self.log_display.get("1.0", tkinter.END)
+            if logs.strip():
+                self.app.clipboard_clear(); self.app.clipboard_append(logs)
+                messagebox.showinfo("Copied", "Logs copied to clipboard.", parent=self.app)
+            else:
+                messagebox.showwarning("Empty", "There are no logs to copy.", parent=self.app)
+
+        copy_button = ctk.CTkButton(log_actions_frame, text="Copy Logs", width=100, command=copy_logs_to_clipboard)
+        copy_button.pack(side="right")
 
         self.log_display = ctk.CTkTextbox(log_frame, state="disabled")
-        self.log_display.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        self.log_display.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
         
         status_bar_frame = ctk.CTkFrame(log_frame, height=30)
-        status_bar_frame.grid(row=1, column=0, sticky="ew", padx=5, pady=(0, 5))
+        status_bar_frame.grid(row=2, column=0, sticky="ew", padx=5, pady=(0, 5))
 
         self.status_label = ctk.CTkLabel(status_bar_frame, text="Status: Ready", anchor="w")
         self.status_label.pack(side="left", padx=10)

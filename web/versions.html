@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
+
     <title>Version History | NREGA Bot</title>
     <meta name="description" content="Download older versions of NREGA Bot and the legacy NREGA Automation Dashboard.">
     <meta name="author" content="Rajat Poddar">
@@ -14,22 +15,34 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
+
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .version-entry { display: none; }
-        .version-entry.active { display: block; }
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .version-entry {
+            display: none;
+        }
+
+        .version-entry.active {
+            display: block;
+        }
     </style>
 </head>
+
 <body class="bg-gray-50 text-gray-800 antialiased dark:bg-gray-900 dark:text-gray-200">
 
-    <header class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm shadow-sm sticky top-0 z-50 dark:border-b dark:border-gray-800">
+    <header
+        class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm shadow-sm sticky top-0 z-50 dark:border-b dark:border-gray-800">
         <div class="container mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
             <a href="index.html" class="text-xl font-bold text-gray-900 flex items-center gap-2 dark:text-white">
                 <img src="/logo.png" alt="NREGA Bot Logo" class="h-8 w-8 rounded-full">
                 <span>NREGA Bot</span>
             </a>
-            <a href="index.html#downloads" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors dark:bg-blue-500 dark:hover:bg-blue-600">&larr; Back to Main Page</a>
+            <a href="index.html#downloads"
+                class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors dark:bg-blue-500 dark:hover:bg-blue-600">&larr;
+                Back to Main Page</a>
         </div>
     </header>
 
@@ -38,260 +51,463 @@
             <div class="container mx-auto px-6">
                 <div class="text-center mb-16">
                     <h2 class="text-4xl font-extrabold text-gray-900 dark:text-white">Version History & Downloads</h2>
-                    <p class="text-lg text-gray-600 dark:text-gray-400 mt-4 max-w-3xl mx-auto">Access the latest and previous releases of NREGA Bot.</p>
+                    <p class="text-lg text-gray-600 dark:text-gray-400 mt-4 max-w-3xl mx-auto">Access the latest and
+                        previous releases of NREGA Bot.</p>
                 </div>
 
                 <div id="version-list" class="max-w-4xl mx-auto space-y-8">
 
-                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border-2 border-blue-500 dark:border-blue-500 shadow-lg">
+                    <div
+                        class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border-2 border-blue-500 dark:border-blue-500 shadow-lg">
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.7.2 (NREGA Bot)</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: August 30, 2025</p>
+                        <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
+                            <li><span class="tag new">New Feature</span> Added 'MIS Reports' tab to download multiple
+                                reports into a single multi-sheet Excel file.</li>
+                            <li><span class="tag new">New Feature</span> The MIS Reports tab now automatically solves
+                                the mathematical CAPTCHA.</li>
+                            <li><span class="tag new">New Feature</span> Added a new 'Social Audit Report' automation
+                                for the SA View/Respond page.</li>
+                            <li><span class="tag enhancement">Enhancement</span> PDF exports for the Social Audit Report
+                                now have a dynamic title.</li>
+                            <li><span class="tag enhancement">Enhancement</span> Added a pop-up alert to notify users
+                                when automation tasks are complete.</li>
+                            <li><span class="tag enhancement">Enhancement</span> The MIS Reports tab now remembers the
+                                last used State, District, and Block.</li>
+                            <li><span class="tag fix">Fix</span> Major improvements to web automation stability for
+                                handling page reloads and complex dynamic tables.</li>
+                            <li><span class="tag fix">Fix</span> Resolved a crash during PDF export caused by special
+                                characters (e.g., Hindi text).</li>
+                            <li><span class="tag fix">Fix</span> Fixed various bugs in the new report automations,
+                                including input persistence and navigation logic.</li>
+                        </ul>
+                        <div class="mt-6 flex flex-col sm:flex-row gap-4">
+                            <a href="https://nregabot.com/updates/NREGABot-v2.7.2-Setup.exe"
+                                class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download
+                                for Windows</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.7.2-macOS.dmg"
+                                class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download
+                                for macOS</a>
+                        </div>
+                    </div>
+
+                    <div
+                        class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.7.1 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: August 27, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
-                            <li>✨ **Feature (eMB Entry):** Added an 'Auto' checkbox to automatically fill the MB Number from the last four digits of the work code.</li>
-                            <li>✨ **Improvement (eMB Entry):** Mate Name field now accepts multiple comma-separated names and will randomly select one for each entry.</li>
-                            <li>✨ **UI Update (eMB Entry):** Removed JE Name and Designation fields to match recent website changes.</li>
-                            <li>✨ **Feature:** Added a new 'Reports' tab as a placeholder for upcoming reporting features.</li>
-                            <li>🐞 **Bug Fix:** The 'Manage Account' button in the About tab now correctly opens the user's web account page.</li>
-                            <li>⚙️ **Improvement:** The 'File Manager' button in the footer now opens the web-based file manager instead of the in-app tab.</li>
-                            <li>⚙️ **Build Process:** Significantly improved Docker build times by ignoring backup and upload directories.</li>
+                            <li>✨ **Feature (eMB Entry):** Added an 'Auto' checkbox to automatically fill the MB Number
+                                from the last four digits of the work code.</li>
+                            <li>✨ **Improvement (eMB Entry):** Mate Name field now accepts multiple comma-separated
+                                names and will randomly select one for each entry.</li>
+                            <li>✨ **UI Update (eMB Entry):** Removed JE Name and Designation fields to match recent
+                                website changes.</li>
+                            <li>✨ **Feature:** Added a new 'Reports' tab as a placeholder for upcoming reporting
+                                features.</li>
+                            <li>🐞 **Bug Fix:** The 'Manage Account' button in the About tab now correctly opens the
+                                user's web account page.</li>
+                            <li>⚙️ **Improvement:** The 'File Manager' button in the footer now opens the web-based file
+                                manager instead of the in-app tab.</li>
+                            <li>⚙️ **Build Process:** Significantly improved Docker build times by ignoring backup and
+                                upload directories.</li>
                         </ul>
                         <div class="mt-6 flex flex-col sm:flex-row gap-4">
-                            <a href="https://nregabot.com/updates/NREGABot-v2.7.1-Setup.exe" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download for Windows</a>
-                            <a href="https://nregabot.com/updates/NREGABot-v2.7.1-macOS.dmg" class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download for macOS</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.7.1-Setup.exe"
+                                class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download
+                                for Windows</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.7.1-macOS.dmg"
+                                class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download
+                                for macOS</a>
                         </div>
                     </div>
 
-                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                    <div
+                        class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.7.0 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: August 24, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
-                            <li>✨ **Major Performance Overhaul:** Implemented lazy loading for all tabs, ensuring near-instant application startup and significantly reduced memory usage.</li>
-                            <li>✨ **Feature:** Consolidated report exports on all major tabs into a single, unified system (Image, PDF, CSV) with data filtering.</li>
-                            <li>✨ **Improvement:** PDF reports are now styled with headers, footers, and status-based colors (red for failed, green for success).</li>
-                            <li>✨ **Improvement:** 'MR Payment' automation now allows verification of an exact wage amount and automatically skips MSRs that are pending approval.</li>
-                            <li>🐞 **Bug Fix:** Resolved a cloud upload error that occurred when re-exporting reports by giving each file a unique, timestamped name.</li>
-                            <li>🐞 **Bug Fix:** Corrected numerous bugs and crashes that occurred during the recent performance refactoring to ensure stability.</li>
+                            <li>✨ **Major Performance Overhaul:** Implemented lazy loading for all tabs, ensuring
+                                near-instant application startup and significantly reduced memory usage.</li>
+                            <li>✨ **Feature:** Consolidated report exports on all major tabs into a single, unified
+                                system (Image, PDF, CSV) with data filtering.</li>
+                            <li>✨ **Improvement:** PDF reports are now styled with headers, footers, and status-based
+                                colors (red for failed, green for success).</li>
+                            <li>✨ **Improvement:** 'MR Payment' automation now allows verification of an exact wage
+                                amount and automatically skips MSRs that are pending approval.</li>
+                            <li>🐞 **Bug Fix:** Resolved a cloud upload error that occurred when re-exporting reports by
+                                giving each file a unique, timestamped name.</li>
+                            <li>🐞 **Bug Fix:** Corrected numerous bugs and crashes that occurred during the recent
+                                performance refactoring to ensure stability.</li>
                         </ul>
                         <div class="mt-6 flex flex-col sm:flex-row gap-4">
-                            <a href="https://nregabot.com/updates/NREGABot-v2.7.0-Setup.exe" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download for Windows</a>
-                            <a href="https://nregabot.com/updates/NREGABot-v2.7.0-macOS.dmg" class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download for macOS</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.7.0-Setup.exe"
+                                class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download
+                                for Windows</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.7.0-macOS.dmg"
+                                class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download
+                                for macOS</a>
                         </div>
                     </div>
 
-                    
-                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+
+                    <div
+                        class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.6.4 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: August 21, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
-                            <li>✨ **New Feature: Wagelist Range** - The 'Send Wagelist' tab now supports processing a specific, user-defined range of wagelists.</li>
-                            <li>🛠️ **Major Improvement: MR Payment** - Automation now supports both Block and GP logins and provides more precise approval status reports (JE vs. AE).</li>
-                            <li>🚀 **Performance Boost: Send Wagelist** - The 'Send Wagelist' automation is now significantly faster, selecting all EFMS options instantly using a single command.</li>
-                            <li>🛠️ **UI Overhaul: WC Gen** - The 'Workcode Generation' tab has been enhanced with Panchayat autocomplete, automatic profile saving, a results summary, and a more logical layout.</li>
-                            <li>🛠️ **UI/UX Enhancements** - The app header and footer have been upgraded with a personalized welcome message, a 'Workcode Extractor' shortcut, and a dynamic animated status indicator.</li>
-                            <li>🐞 **Critical Bug Fix: IF Edit** - Resolved a persistent timing issue in the 'IF Edit' tab that could cause the first work code in a batch to be skipped.</li>
+                            <li>✨ **New Feature: Wagelist Range** - The 'Send Wagelist' tab now supports processing a
+                                specific, user-defined range of wagelists.</li>
+                            <li>🛠️ **Major Improvement: MR Payment** - Automation now supports both Block and GP logins
+                                and provides more precise approval status reports (JE vs. AE).</li>
+                            <li>🚀 **Performance Boost: Send Wagelist** - The 'Send Wagelist' automation is now
+                                significantly faster, selecting all EFMS options instantly using a single command.</li>
+                            <li>🛠️ **UI Overhaul: WC Gen** - The 'Workcode Generation' tab has been enhanced with
+                                Panchayat autocomplete, automatic profile saving, a results summary, and a more logical
+                                layout.</li>
+                            <li>🛠️ **UI/UX Enhancements** - The app header and footer have been upgraded with a
+                                personalized welcome message, a 'Workcode Extractor' shortcut, and a dynamic animated
+                                status indicator.</li>
+                            <li>🐞 **Critical Bug Fix: IF Edit** - Resolved a persistent timing issue in the 'IF Edit'
+                                tab that could cause the first work code in a batch to be skipped.</li>
                         </ul>
                         <div class="mt-6 flex flex-col sm:flex-row gap-4">
-                            <a href="https://nregabot.com/updates/NREGABot-v2.6.4-Setup.exe" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download for Windows</a>
-                            <a href="https://nregabot.com/updates/NREGABot-v2.6.4-macOS.dmg" class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download for macOS</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.6.4-Setup.exe"
+                                class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download
+                                for Windows</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.6.4-macOS.dmg"
+                                class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download
+                                for macOS</a>
                         </div>
                     </div>
 
-                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                    <div
+                        class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.6.3 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: August 19, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
-                            <li>✨ **New Automation: Resend Rejected Wagelist** - Added a new tab to automate reprocessing payments for transactions rejected by the bank.</li>
-                            <li>✨ **New Feature: Folder Sharing** - Implemented a new folder sharing option in the File Manager for collaborative work.</li>
-                            <li>🛠️ **Major Improvement: Jobcard Verification** - Overhauled the 'Jobcard Verification' tab with a 'Process all villages' option and fixed all critical photo upload bugs.</li>
-                            <li>🛠️ **Improvement: Dynamic Footer Bar** - The app's footer now shows the real-time automation status and server connectivity.</li>
-                            <li>🛠️ **Improvement: UI Layout** - Updated the layout of the 'Delete Work Allocation' tab for a more intuitive user experience.</li>
+                            <li>✨ **New Automation: Resend Rejected Wagelist** - Added a new tab to automate
+                                reprocessing payments for transactions rejected by the bank.</li>
+                            <li>✨ **New Feature: Folder Sharing** - Implemented a new folder sharing option in the File
+                                Manager for collaborative work.</li>
+                            <li>🛠️ **Major Improvement: Jobcard Verification** - Overhauled the 'Jobcard Verification'
+                                tab with a 'Process all villages' option and fixed all critical photo upload bugs.</li>
+                            <li>🛠️ **Improvement: Dynamic Footer Bar** - The app's footer now shows the real-time
+                                automation status and server connectivity.</li>
+                            <li>🛠️ **Improvement: UI Layout** - Updated the layout of the 'Delete Work Allocation' tab
+                                for a more intuitive user experience.</li>
                         </ul>
                         <div class="mt-6 flex flex-col sm:flex-row gap-4">
-                            <a href="https://nregabot.com/updates/NREGABot-v2.6.3-Setup.exe" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download for Windows</a>
-                            <a href="https://nregabot.com/updates/NREGABot-v2.6.3-macOS.dmg" class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download for macOS</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.6.3-Setup.exe"
+                                class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download
+                                for Windows</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.6.3-macOS.dmg"
+                                class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download
+                                for macOS</a>
                         </div>
                     </div>
 
-                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                    <div
+                        class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.6.2 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: August 16, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
-                            <li>✨ **Major Feature:** Complete File Manager overhaul with drag & drop uploads, folder creation, and an enhanced, more reliable UI.</li>
-                            <li>✨ **Feature:** Added new Quarterly and Half-Yearly subscription plans for greater user flexibility.</li>
-                            <li>✨ **Feature:** Users can now upgrade their cloud storage capacity directly from their web account page.</li>
-                            <li>🛠️ **Improvement:** The 'About' tab in the desktop app now correctly displays the user's email and real-time cloud storage usage.</li>
-                            <li>🐞 **Critical Bug Fix:** Resolved numerous startup and data synchronization bugs, leading to a much smoother and more reliable user experience.</li>
+                            <li>✨ **Major Feature:** Complete File Manager overhaul with drag & drop uploads, folder
+                                creation, and an enhanced, more reliable UI.</li>
+                            <li>✨ **Feature:** Added new Quarterly and Half-Yearly subscription plans for greater user
+                                flexibility.</li>
+                            <li>✨ **Feature:** Users can now upgrade their cloud storage capacity directly from their
+                                web account page.</li>
+                            <li>🛠️ **Improvement:** The 'About' tab in the desktop app now correctly displays the
+                                user's email and real-time cloud storage usage.</li>
+                            <li>🐞 **Critical Bug Fix:** Resolved numerous startup and data synchronization bugs,
+                                leading to a much smoother and more reliable user experience.</li>
                         </ul>
                         <div class="mt-6 flex flex-col sm:flex-row gap-4">
-                            <a href="https://nregabot.com/updates/NREGABot-v2.6.2-Setup.exe" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download for Windows</a>
-                            <a href="https://nregabot.com/updates/NREGABot-v2.6.2-macOS.dmg" class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download for macOS</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.6.2-Setup.exe"
+                                class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download
+                                for Windows</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.6.2-macOS.dmg"
+                                class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download
+                                for macOS</a>
                         </div>
                     </div>
 
-                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                    <div
+                        class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.6.1 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: August 10, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
-                            <li>✨ **Major UI Overhaul:** Re-architected the 'WC Gen' and 'IF Editor' tabs with a new tabbed layout (Settings, Results, Logs) for a cleaner, more spacious interface.</li>
-                            <li>✨ **New Feature (Profile Binding):** Selecting a saved profile in the 'WC Gen' tab now automatically triggers the web category loading process, making setup much faster.</li>
-                            <li>🛠️ **Improvement (UI):** Added icons to the main browser launch and website link buttons for better visual identification.</li>
-                            <li>🛠️ **Improvement (UX):** Moved the 'Download Demo CSV' buttons from the footer directly into their relevant tabs ('WC Gen' and 'IF Editor') for more intuitive access.</li>
-                            <li>🐞 **Bug Fix:** Fixed the 'Download Demo CSV' buttons being invisible on some themes by applying a high-contrast green color.</li>
+                            <li>✨ **Major UI Overhaul:** Re-architected the 'WC Gen' and 'IF Editor' tabs with a new
+                                tabbed layout (Settings, Results, Logs) for a cleaner, more spacious interface.</li>
+                            <li>✨ **New Feature (Profile Binding):** Selecting a saved profile in the 'WC Gen' tab now
+                                automatically triggers the web category loading process, making setup much faster.</li>
+                            <li>🛠️ **Improvement (UI):** Added icons to the main browser launch and website link
+                                buttons for better visual identification.</li>
+                            <li>🛠️ **Improvement (UX):** Moved the 'Download Demo CSV' buttons from the footer directly
+                                into their relevant tabs ('WC Gen' and 'IF Editor') for more intuitive access.</li>
+                            <li>🐞 **Bug Fix:** Fixed the 'Download Demo CSV' buttons being invisible on some themes by
+                                applying a high-contrast green color.</li>
                         </ul>
                         <div class="mt-6 flex flex-col sm:flex-row gap-4">
-                            <a href="https://nregabot.com/updates/NREGABot-v2.6.1-Setup.exe" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download for Windows</a>
-                            <a href="https://nregabot.com/updates/NREGABot-v2.6.1-macOS.dmg" class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download for macOS</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.6.1-Setup.exe"
+                                class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download
+                                for Windows</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.6.1-macOS.dmg"
+                                class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download
+                                for macOS</a>
                         </div>
                     </div>
 
-                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                    <div
+                        class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.6.0 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: August 9, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
-                            <li>✨ **New Automation: eMB Verify** - Added a new tab to automate the verification of Measurement Book entries for a list of work codes.</li>
-                            <li>✨ **New Automation: Scheme Closing** - Added a new tab to automate the closing of schemes for multiple work codes.</li>
-                            <li>✨ **New Automation: Delete Work Allocation** - Added a new tab to quickly delete work allocations for a list of Muster Roll numbers.</li>
-                            <li>🛠️ **Improvement (Admin Search):** Admin Dashboard search is now universal, allowing searches by License Key, User Name, Email, Mobile, and Machine ID.</li>
-                            <li>🛠️ **Improvement (Cloud Storage):** Muster Roll PDFs saved to the cloud are now automatically organized into structured folders by date and Panchayat name.</li>
-                            <li>🛠️ **Improvement (UX):** The license upgrade and renewal process is now seamless. The purchase form is automatically pre-filled with the user's details.</li>
-                            <li>🐞 **Bug Fix:** Resolved an issue where active trial users were unable to log in to the desktop app using their email address.</li>
-                            <li>🐞 **Bug Fix:** Fixed a critical error that occurred when activating a new license using a key.</li>
-                            <li>🐞 **Bug Fix (Server):** Corrected a 'FileNotFoundError' that prevented file uploads by ensuring user directories are created automatically.</li>
+                            <li>✨ **New Automation: eMB Verify** - Added a new tab to automate the verification of
+                                Measurement Book entries for a list of work codes.</li>
+                            <li>✨ **New Automation: Scheme Closing** - Added a new tab to automate the closing of
+                                schemes for multiple work codes.</li>
+                            <li>✨ **New Automation: Delete Work Allocation** - Added a new tab to quickly delete work
+                                allocations for a list of Muster Roll numbers.</li>
+                            <li>🛠️ **Improvement (Admin Search):** Admin Dashboard search is now universal, allowing
+                                searches by License Key, User Name, Email, Mobile, and Machine ID.</li>
+                            <li>🛠️ **Improvement (Cloud Storage):** Muster Roll PDFs saved to the cloud are now
+                                automatically organized into structured folders by date and Panchayat name.</li>
+                            <li>🛠️ **Improvement (UX):** The license upgrade and renewal process is now seamless. The
+                                purchase form is automatically pre-filled with the user's details.</li>
+                            <li>🐞 **Bug Fix:** Resolved an issue where active trial users were unable to log in to the
+                                desktop app using their email address.</li>
+                            <li>🐞 **Bug Fix:** Fixed a critical error that occurred when activating a new license using
+                                a key.</li>
+                            <li>🐞 **Bug Fix (Server):** Corrected a 'FileNotFoundError' that prevented file uploads by
+                                ensuring user directories are created automatically.</li>
                         </ul>
                         <div class="mt-6 flex flex-col sm:flex-row gap-4">
-                            <a href="https://nregabot.com/updates/NREGABot-v2.6.0-Setup.exe" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download for Windows</a>
-                            <a href="https://nregabot.com/updates/NREGABot-v2.6.0-macOS.dmg" class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download for macOS</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.6.0-Setup.exe"
+                                class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download
+                                for Windows</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.6.0-macOS.dmg"
+                                class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download
+                                for macOS</a>
                         </div>
                     </div>
 
-                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                    <div
+                        class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.5.5 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: August 6, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
-                            <li>✨ **Feature:** Added a new 'File Manager' tab for cloud storage and a 'Feedback' tab for user submissions.</li>
-                            <li>✨ **Feature:** Added a 'Feedback' tab for users to submit bug reports and feature requests directly from the app.</li>
-                            <li>✨ **Feature:** Implemented a web-based file manager on the user account page, including a drag-and-drop uploader.</li>
-                            <li>✨ **Feature:** Added new admin panel pages to view user feedback and manage user file storage.</li>
-                            <li>🛠️ **Improvement (MR Gen):** Generated Muster Roll PDFs with the same name will now be saved with a number (e.g., 'file (1).pdf') instead of being overwritten.</li>
-                            <li>🛠️ **Improvement (MR Gen):** Enhanced error handling to detect and skip date overlap errors and other specific page issues without crashing.</li>
-                            <li>🛠️ **Improvement (Trial Activation):** Added validation to ensure email and mobile number formats are correct during trial registration.</li>
-                            <li>🛠️ **Improvement (Server):** Refactored the monolithic server file into a scalable, blueprint-based structure for better maintenance.</li>
-                            <li>🐞 **Critical Bug Fix (Duplicate MR Print):** Overhauled logic to resolve persistent timeouts by correctly handling page loading behavior.</li>
-                            <li>🐞 **Critical Bug Fix (Firefox PDF Saving):** Fixed error preventing PDF saves in Firefox on 'MR Gen' and 'Duplicate MR Print' tabs.</li>
-                            <li>🛠️ **Improvement (MR Gen):** Automation now waits up to 30 seconds for the 'Technical Staff' list to populate, preventing timeouts on slow connections.</li>
-                            <li>🛠️ **Improvement (UI/UX):** Added a user-friendly pop-up if automation is started before a browser is launched.</li>
-                            <li>🛠️ **Improvement (UI/UX):** Standardized PDF filenames for 'Duplicate MR Print' to use the last 6 digits of the work code.</li>
+                            <li>✨ **Feature:** Added a new 'File Manager' tab for cloud storage and a 'Feedback' tab for
+                                user submissions.</li>
+                            <li>✨ **Feature:** Added a 'Feedback' tab for users to submit bug reports and feature
+                                requests directly from the app.</li>
+                            <li>✨ **Feature:** Implemented a web-based file manager on the user account page, including
+                                a drag-and-drop uploader.</li>
+                            <li>✨ **Feature:** Added new admin panel pages to view user feedback and manage user file
+                                storage.</li>
+                            <li>🛠️ **Improvement (MR Gen):** Generated Muster Roll PDFs with the same name will now be
+                                saved with a number (e.g., 'file (1).pdf') instead of being overwritten.</li>
+                            <li>🛠️ **Improvement (MR Gen):** Enhanced error handling to detect and skip date overlap
+                                errors and other specific page issues without crashing.</li>
+                            <li>🛠️ **Improvement (Trial Activation):** Added validation to ensure email and mobile
+                                number formats are correct during trial registration.</li>
+                            <li>🛠️ **Improvement (Server):** Refactored the monolithic server file into a scalable,
+                                blueprint-based structure for better maintenance.</li>
+                            <li>🐞 **Critical Bug Fix (Duplicate MR Print):** Overhauled logic to resolve persistent
+                                timeouts by correctly handling page loading behavior.</li>
+                            <li>🐞 **Critical Bug Fix (Firefox PDF Saving):** Fixed error preventing PDF saves in
+                                Firefox on 'MR Gen' and 'Duplicate MR Print' tabs.</li>
+                            <li>🛠️ **Improvement (MR Gen):** Automation now waits up to 30 seconds for the 'Technical
+                                Staff' list to populate, preventing timeouts on slow connections.</li>
+                            <li>🛠️ **Improvement (UI/UX):** Added a user-friendly pop-up if automation is started
+                                before a browser is launched.</li>
+                            <li>🛠️ **Improvement (UI/UX):** Standardized PDF filenames for 'Duplicate MR Print' to use
+                                the last 6 digits of the work code.</li>
                         </ul>
                         <div class="mt-6 flex flex-col sm:flex-row gap-4">
-                            <a href="https://nregabot.com/updates/NREGABot-v2.5.5-Setup.exe" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download for Windows</a>
-                            <a href="https://nregabot.com/updates/NREGABot-v2.5.5-macOS.dmg" class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download for macOS</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.5.5-Setup.exe"
+                                class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download
+                                for Windows</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.5.5-macOS.dmg"
+                                class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download
+                                for macOS</a>
                         </div>
                     </div>
 
-                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                    <div
+                        class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.5.4 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: August 5, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
-                            <li>✨ **New Feature (Duplicate MR Print):** Added UI controls to select PDF orientation (Landscape/Portrait) and adjust content scale (50-100%).</li>
-                            <li>✨ **New Feature (Muster Roll Gen):** Added UI controls for PDF orientation and scale to match the Duplicate MR Print tab.</li>
-                            <li>🐞 **Critical Bug Fix (IF Edit Tab):** Completely overhauled the Page 3 automation logic to resolve persistent 'stale element' errors by implementing a more robust sequence of waits and actions.</li>
-                            <li>🐞 **Critical Bug Fix (macOS):** Resolved a common app crash on macOS caused by showing message boxes from a background thread.</li>
-                            <li>🐞 **Bug Fix (PDF Generation):** Fixed a bug where the 'Landscape' orientation setting was being ignored by the browser's print-to-PDF function.</li>
-                            <li>🐞 **Bug Fix (UI):** Fixed a bug preventing the scrollbar from working on results tables (Treeview) on macOS by setting a more compatible UI theme.</li>
-                            <li>🛠️ **Improvement (All Tabs):** Added strategic delays and more intelligent waits to several automation sequences to improve reliability.</li>
+                            <li>✨ **New Feature (Duplicate MR Print):** Added UI controls to select PDF orientation
+                                (Landscape/Portrait) and adjust content scale (50-100%).</li>
+                            <li>✨ **New Feature (Muster Roll Gen):** Added UI controls for PDF orientation and scale to
+                                match the Duplicate MR Print tab.</li>
+                            <li>🐞 **Critical Bug Fix (IF Edit Tab):** Completely overhauled the Page 3 automation logic
+                                to resolve persistent 'stale element' errors by implementing a more robust sequence of
+                                waits and actions.</li>
+                            <li>🐞 **Critical Bug Fix (macOS):** Resolved a common app crash on macOS caused by showing
+                                message boxes from a background thread.</li>
+                            <li>🐞 **Bug Fix (PDF Generation):** Fixed a bug where the 'Landscape' orientation setting
+                                was being ignored by the browser's print-to-PDF function.</li>
+                            <li>🐞 **Bug Fix (UI):** Fixed a bug preventing the scrollbar from working on results tables
+                                (Treeview) on macOS by setting a more compatible UI theme.</li>
+                            <li>🛠️ **Improvement (All Tabs):** Added strategic delays and more intelligent waits to
+                                several automation sequences to improve reliability.</li>
                         </ul>
                         <div class="mt-6 flex flex-col sm:flex-row gap-4">
-                            <a href="https://nregabot.com/updates/NREGABot-v2.5.4-Setup.exe" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download for Windows</a>
-                            <a href="https://nregabot.com/updates/NREGABot-v2.5.4-macOS.dmg" class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download for macOS</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.5.4-Setup.exe"
+                                class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download
+                                for Windows</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.5.4-macOS.dmg"
+                                class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download
+                                for macOS</a>
                         </div>
                     </div>
 
-                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                    <div
+                        class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.5.3 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: August 2, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
-                            <li>✨ **New Automation: Update Estimated Outcome** - Added a new tab to automate updating the "Estimated Outcome" for a list of work codes.</li>
-                            <li>✨ **New Automation: Duplicate MR Print** - Implemented a powerful new feature to find, save, and print duplicate Muster Rolls for multiple work codes in a single batch operation.</li>
-                            <li>✨ **UI Overhaul: Collapsible Navigation Menu** - Reorganized the left-side menu into expandable categories for a cleaner, more scalable interface.</li>
-                            <li>✨ **UI/UX: Dynamic "Open Folder" Prompt** - The app now asks to open the output folder after file-generating automations are complete.</li>
-                            <li>🛠️ **Major Improvement (IF Editor):** Redesigned the UI to be more intuitive and moved Page 3 settings (Activity Code, etc.) from the CSV to the main interface for greater flexibility.</li>
-                            <li>🐞 **Critical Bug Fix (Duplicate MR Print):** Completely rewrote the automation logic to correctly handle websites that require a full page reload between processing items in a loop, resolving persistent timeout errors.</li>
-                            <li>🐞 **Critical Bug Fix (IF Editor):** Fixed a recurring timing issue on Page 3 by implementing the correct sequence of pauses and browser actions, ensuring data is saved reliably.</li>
-                            <li>🛠️ **Improvement (File Management):** The "Duplicate MR Print" feature now saves PDFs into a structured, date-stamped, and Panchayat-named folder hierarchy.</li>
+                            <li>✨ **New Automation: Update Estimated Outcome** - Added a new tab to automate updating
+                                the "Estimated Outcome" for a list of work codes.</li>
+                            <li>✨ **New Automation: Duplicate MR Print** - Implemented a powerful new feature to find,
+                                save, and print duplicate Muster Rolls for multiple work codes in a single batch
+                                operation.</li>
+                            <li>✨ **UI Overhaul: Collapsible Navigation Menu** - Reorganized the left-side menu into
+                                expandable categories for a cleaner, more scalable interface.</li>
+                            <li>✨ **UI/UX: Dynamic "Open Folder" Prompt** - The app now asks to open the output folder
+                                after file-generating automations are complete.</li>
+                            <li>🛠️ **Major Improvement (IF Editor):** Redesigned the UI to be more intuitive and moved
+                                Page 3 settings (Activity Code, etc.) from the CSV to the main interface for greater
+                                flexibility.</li>
+                            <li>🐞 **Critical Bug Fix (Duplicate MR Print):** Completely rewrote the automation logic to
+                                correctly handle websites that require a full page reload between processing items in a
+                                loop, resolving persistent timeout errors.</li>
+                            <li>🐞 **Critical Bug Fix (IF Editor):** Fixed a recurring timing issue on Page 3 by
+                                implementing the correct sequence of pauses and browser actions, ensuring data is saved
+                                reliably.</li>
+                            <li>🛠️ **Improvement (File Management):** The "Duplicate MR Print" feature now saves PDFs
+                                into a structured, date-stamped, and Panchayat-named folder hierarchy.</li>
                         </ul>
                         <div class="mt-6 flex flex-col sm:flex-row gap-4">
-                            <a href="https://nregabot.com/updates/NREGABot-v2.5.3-Setup.exe" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download for Windows</a>
-                            <a href="https://nregabot.com/updates/NREGABot-v2.5.3-macOS.dmg" class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download for macOS</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.5.3-Setup.exe"
+                                class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download
+                                for Windows</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.5.3-macOS.dmg"
+                                class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download
+                                for macOS</a>
                         </div>
                     </div>
-                    
-                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+
+                    <div
+                        class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.5.2 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: July 29, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
-                            <li>✨ New Feature: Added 'Download Demo CSV' links to the app's footer for 'WC Gen' and 'IF Edit' tabs.</li>
-                            <li>🛠️ Major Overhaul (WC Gen): Replaced static defaults with a fully dynamic UI that loads categories live from the NREGA website.</li>
-                            <li>🛠️ Major Overhaul (IF Edit): Replaced static defaults with a fully configurable UI with separate settings for all three pages.</li>
-                            <li>🛠️ Improvement (IF Edit): Added a 'Convergence Work' switch to easily run automation for single-page or multi-page edits.</li>
-                            <li>🛠️ Improvement (IF Edit): Automation now supports adding multiple activities/materials to a work code via an updated iterative CSV format.</li>
-                            <li>🐞 Bug Fix (Critical): Fixed multiple startup crashes caused by missing theme definitions for new UI elements.</li>
-                            <li>🐞 Bug Fix: Corrected UI logic for enabling/disabling scheme name dropdowns in the 'IF Edit' tab.</li>
+                            <li>✨ New Feature: Added 'Download Demo CSV' links to the app's footer for 'WC Gen' and 'IF
+                                Edit' tabs.</li>
+                            <li>🛠️ Major Overhaul (WC Gen): Replaced static defaults with a fully dynamic UI that loads
+                                categories live from the NREGA website.</li>
+                            <li>🛠️ Major Overhaul (IF Edit): Replaced static defaults with a fully configurable UI with
+                                separate settings for all three pages.</li>
+                            <li>🛠️ Improvement (IF Edit): Added a 'Convergence Work' switch to easily run automation
+                                for single-page or multi-page edits.</li>
+                            <li>🛠️ Improvement (IF Edit): Automation now supports adding multiple activities/materials
+                                to a work code via an updated iterative CSV format.</li>
+                            <li>🐞 Bug Fix (Critical): Fixed multiple startup crashes caused by missing theme
+                                definitions for new UI elements.</li>
+                            <li>🐞 Bug Fix: Corrected UI logic for enabling/disabling scheme name dropdowns in the 'IF
+                                Edit' tab.</li>
                         </ul>
                         <div class="mt-6 flex flex-col sm:flex-row gap-4">
-                            <a href="https://nregabot.com/updates/NREGABot-v2.5.2-Setup.exe" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download for Windows</a>
-                            <a href="https://nregabot.com/updates/NREGABot-v2.5.2-macOS.dmg" class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download for macOS</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.5.2-Setup.exe"
+                                class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download
+                                for Windows</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.5.2-macOS.dmg"
+                                class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download
+                                for macOS</a>
                         </div>
                     </div>
-                    
-                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+
+                    <div
+                        class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.5.1 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: July 29, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
                             <li>✨ New Feature: Added full support for the Mozilla Firefox browser.</li>
-                            <li>✨ New Feature: Added an 'Export to CSV' option on all result tabs for easy data analysis.</li>
-                            <li>✨ New Feature: Added a 'Print' option to the 'MR Gen' tab to send muster rolls directly to the default printer.</li>
-                            <li>✨ New Feature: Replaced date text fields with an interactive calendar date-picker on the 'MR Gen' tab.</li>
-                            <li>🛠️ Improvement: Fully automated the 'Send Wagelist' tab, handling page navigation and financial year selection.</li>
-                            <li>🛠️ Improvement: Implemented a Hybrid Browser Mode where Chrome is now 'detachable' to persist login sessions.</li>
-                            <li>🐞 Bug Fix (Critical): Resolved a major performance issue that caused the application to lag or become unresponsive when focused.</li>
+                            <li>✨ New Feature: Added an 'Export to CSV' option on all result tabs for easy data
+                                analysis.</li>
+                            <li>✨ New Feature: Added a 'Print' option to the 'MR Gen' tab to send muster rolls directly
+                                to the default printer.</li>
+                            <li>✨ New Feature: Replaced date text fields with an interactive calendar date-picker on the
+                                'MR Gen' tab.</li>
+                            <li>🛠️ Improvement: Fully automated the 'Send Wagelist' tab, handling page navigation and
+                                financial year selection.</li>
+                            <li>🛠️ Improvement: Implemented a Hybrid Browser Mode where Chrome is now 'detachable' to
+                                persist login sessions.</li>
+                            <li>🐞 Bug Fix (Critical): Resolved a major performance issue that caused the application to
+                                lag or become unresponsive when focused.</li>
                         </ul>
                         <div class="mt-6 flex flex-col sm:flex-row gap-4">
-                            <a href="https://nregabot.com/updates/NREGABot-v2.5.1-Setup.exe" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download for Windows</a>
-                            <a href="https://nregabot.com/updates/NREGABot-v2.5.1-macOS.dmg" class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download for macOS</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.5.1-Setup.exe"
+                                class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download
+                                for Windows</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.5.1-macOS.dmg"
+                                class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download
+                                for macOS</a>
                         </div>
                     </div>
-                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                    <div
+                        class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.5.0 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: July 26, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
-                            <li>🚀 Major Rebranding: Application has been renamed from NREGA Dashboard to NREGA Bot.</li>
+                            <li>🚀 Major Rebranding: Application has been renamed from NREGA Dashboard to NREGA Bot.
+                            </li>
                             <li>💳 Subscription UI Overhaul: Dynamic subscription status card on the 'About' page.</li>
                             <li>🛠️ Improved UX: Added a dynamic action panel to renew or manage your subscription.</li>
-                            <li>📝 New Trial Process: Implemented a new registration form for server-side trial activation.</li>
-                            <li>🐞 Bug Fixes: Resolved various startup crashes and UI rendering issues for a smoother experience.</li>
+                            <li>📝 New Trial Process: Implemented a new registration form for server-side trial
+                                activation.</li>
+                            <li>🐞 Bug Fixes: Resolved various startup crashes and UI rendering issues for a smoother
+                                experience.</li>
                         </ul>
                         <div class="mt-6 flex flex-col sm:flex-row gap-4">
-                            <a href="https://nregabot.com/updates/NREGABot-v2.5.0-Setup.exe" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download for Windows</a>
-                            <a href="https://nregabot.com/updates/NREGABot-v2.5.0-macOS.dmg" class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download for macOS</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.5.0-Setup.exe"
+                                class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download
+                                for Windows</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.5.0-macOS.dmg"
+                                class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download
+                                for macOS</a>
                         </div>
                     </div>
 
-                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
-                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.4.4 (NREGA Dashboard)</h3>
+                    <div
+                        class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.4.4 (NREGA Dashboard)
+                        </h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: July 24, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
                             <li>✨ New "Verify ABPS" tab with auto-village and pagination handling.</li>
                             <li>🛠️ FTO Generation login fields are now optional.</li>
-                            <li>🐞 Fixed critical bugs in ABPS automation, including infinite loops and empty village crashes.</li>
+                            <li>🐞 Fixed critical bugs in ABPS automation, including infinite loops and empty village
+                                crashes.</li>
                         </ul>
                         <div class="mt-6 flex flex-col sm:flex-row gap-4">
-                            <a href="https://nrega-dashboard.palojori.in/updates/NREGA-Dashboard-v2.4.4-Setup.exe" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download for Windows</a>
-                            <a href="https://nrega-dashboard.palojori.in/updates/NREGA-Dashboard-v2.4.4-macOS.dmg" class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download for macOS</a>
+                            <a href="https://nrega-dashboard.palojori.in/updates/NREGA-Dashboard-v2.4.4-Setup.exe"
+                                class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download
+                                for Windows</a>
+                            <a href="https://nrega-dashboard.palojori.in/updates/NREGA-Dashboard-v2.4.4-macOS.dmg"
+                                class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download
+                                for macOS</a>
                         </div>
                     </div>
 
-                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
-                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.4.3 (NREGA Dashboard)</h3>
+                    <div
+                        class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.4.3 (NREGA Dashboard)
+                        </h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: July 23, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
                             <li>✨ New "Add Activity" tab to automate adding default activities.</li>
@@ -299,13 +515,19 @@
                             <li>🐞 Critical fixes to the application startup and activation window flow.</li>
                         </ul>
                         <div class="mt-6 flex flex-col sm:flex-row gap-4">
-                            <a href="https://nrega-dashboard.palojori.in/updates/NREGA-Dashboard-v2.4.3-Setup.exe" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download for Windows</a>
-                            <a href="https://nrega-dashboard.palojori.in/updates/NREGA-Dashboard-v2.4.3-macOS.dmg" class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download for macOS</a>
+                            <a href="https://nrega-dashboard.palojori.in/updates/NREGA-Dashboard-v2.4.3-Setup.exe"
+                                class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download
+                                for Windows</a>
+                            <a href="https://nrega-dashboard.palojori.in/updates/NREGA-Dashboard-v2.4.3-macOS.dmg"
+                                class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download
+                                for macOS</a>
                         </div>
                     </div>
 
-                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
-                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.4.2 (NREGA Dashboard)</h3>
+                    <div
+                        class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.4.2 (NREGA Dashboard)
+                        </h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: July 15, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
                             <li>✨ New "Workcode Extractor" and Autocomplete for inputs.</li>
@@ -313,13 +535,19 @@
                             <li>🐞 Fixed numerous UI bugs related to themes and browser handling.</li>
                         </ul>
                         <div class="mt-6 flex flex-col sm:flex-row gap-4">
-                            <a href="https://nrega-dashboard.palojori.in/updates/NREGA-Dashboard-v2.4.2-Setup.exe" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download for Windows</a>
-                            <a href="https://nrega-dashboard.palojori.in/updates/NREGA-Dashboard-v2.4.2-macOS.dmg" class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download for macOS</a>
+                            <a href="https://nrega-dashboard.palojori.in/updates/NREGA-Dashboard-v2.4.2-Setup.exe"
+                                class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download
+                                for Windows</a>
+                            <a href="https://nrega-dashboard.palojori.in/updates/NREGA-Dashboard-v2.4.2-macOS.dmg"
+                                class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download
+                                for macOS</a>
                         </div>
                     </div>
 
-                    <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
-                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.4.1 (NREGA Dashboard)</h3>
+                    <div
+                        class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.4.1 (NREGA Dashboard)
+                        </h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: July 8, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
                             <li>🎨 Implemented a new, professional two-tone color theme.</li>
@@ -327,13 +555,19 @@
                             <li>🐞 Fixed update checker status display and pricing display.</li>
                         </ul>
                         <div class="mt-6 flex flex-col sm:flex-row gap-4">
-                            <a href="https://nrega-dashboard.palojori.in/updates/NREGA-Dashboard-v2.4.1-Setup.exe" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download for Windows</a>
-                            <a href="https://nrega-dashboard.palojori.in/updates/NREGA-Dashboard-v2.4.1-macOS.dmg" class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download for macOS</a>
+                            <a href="https://nrega-dashboard.palojori.in/updates/NREGA-Dashboard-v2.4.1-Setup.exe"
+                                class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download
+                                for Windows</a>
+                            <a href="https://nrega-dashboard.palojori.in/updates/NREGA-Dashboard-v2.4.1-macOS.dmg"
+                                class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download
+                                for macOS</a>
                         </div>
                     </div>
 
-                     <div class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
-                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.4.0 (NREGA Dashboard)</h3>
+                    <div
+                        class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.4.0 (NREGA Dashboard)
+                        </h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: July 1, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
                             <li>🚀 Complete UI overhaul to a modern theme (CustomTkinter).</li>
@@ -341,14 +575,18 @@
                             <li>✨ New vertical, IDE-style navigation for easier access to tools.</li>
                         </ul>
                         <div class="mt-6 flex flex-col sm:flex-row gap-4">
-                            <a href="https://nrega-dashboard.palojori.in/updates/NREGA-Dashboard-v2.4.0-Setup.exe" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download for Windows</a>
-                            <a href="https://nrega-dashboard.palojori.in/updates/NREGA-Dashboard-v2.4.0-macOS.dmg" class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download for macOS</a>
+                            <a href="https://nrega-dashboard.palojori.in/updates/NREGA-Dashboard-v2.4.0-Setup.exe"
+                                class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download
+                                for Windows</a>
+                            <a href="https://nrega-dashboard.palojori.in/updates/NREGA-Dashboard-v2.4.0-macOS.dmg"
+                                class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download
+                                for macOS</a>
                         </div>
                     </div>
 
                 </div>
-                 <div id="pagination-controls" class="flex justify-center items-center mt-12 space-x-2">
-                    </div>
+                <div id="pagination-controls" class="flex justify-center items-center mt-12 space-x-2">
+                </div>
             </div>
         </section>
     </main>
@@ -358,9 +596,9 @@
             <p>&copy; 2025 NREGA Bot by Rajat Poddar. All rights reserved.</p>
         </div>
     </footer>
-    
+
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const itemsPerPage = 5;
             const versionList = document.getElementById('version-list');
             const versionEntries = Array.from(versionList.getElementsByClassName('version-entry'));
@@ -393,7 +631,7 @@
                 prevButton.disabled = currentPage === 1;
                 prevButton.addEventListener('click', () => showPage(currentPage - 1));
                 paginationControls.appendChild(prevButton);
-                
+
                 // Page Numbers
                 for (let i = 1; i <= totalPages; i++) {
                     const pageButton = document.createElement('button');
@@ -416,9 +654,10 @@
                 nextButton.addEventListener('click', () => showPage(currentPage + 1));
                 paginationControls.appendChild(nextButton);
             }
-            
+
             showPage(1);
         });
     </script>
 </body>
+
 </html>

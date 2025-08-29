@@ -1,4 +1,15 @@
 {
+  "2.7.2": [
+      "New Feature: Added 'MIS Reports' tab to download multiple reports into a single multi-sheet Excel file.",
+      "New Feature: The MIS Reports tab now automatically solves the mathematical CAPTCHA.",
+      "New Feature: Added a new 'Social Audit Report' automation for the SA View/Respond page.",
+      "Enhancement: PDF exports for the Social Audit Report now have a dynamic title.",
+      "Enhancement: Added a pop-up alert to notify users when automation tasks are complete.",
+      "Enhancement: The MIS Reports tab now remembers the last used State, District, and Block.",
+      "Fix: Major improvements to web automation stability for handling page reloads and complex dynamic tables.",
+      "Fix: Resolved a crash during PDF export caused by special characters (e.g., Hindi text).",
+      "Fix: Fixed various bugs in the new report automations, including input persistence and navigation logic."
+    ],
   "2.7.1": [
       "✨ Feature (eMB Entry): Added an 'Auto' checkbox to automatically fill the MB Number from the last four digits of the work code.",
       "✨ Improvement (eMB Entry): Mate Name field now accepts multiple comma-separated names and will randomly select one for each entry.",
