@@ -17,3 +17,4 @@ tkinterdnd2
 requests-toolbelt
 openpyxl
 pandas
+lxml
