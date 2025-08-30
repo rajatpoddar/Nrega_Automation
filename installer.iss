@@ -1,8 +1,8 @@
 ; NREGA Bot Inno Setup Script
-; Version 2.7.1
+; Version 2.7.2
 
 ; The build script will override this version. This is a fallback.
-#define AppVersion "2.7.1"
+#define AppVersion "2.7.2"
 #define AppName "NREGA Bot"
 #define AppPublisher "PoddarSolutions"
 #define AppURL "https://nregabot.com"
@@ -51,4 +51,5 @@ Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
 [Run]
+
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
