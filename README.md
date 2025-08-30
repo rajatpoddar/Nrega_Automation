@@ -5,7 +5,7 @@
 # <div align="center">NREGA Bot</div>
 
 <p align="center">
-  <b>Version 2.7.1 | The ultimate tool to automate your repetitive NREGA portal tasks.</b><br />
+  <b>Version 2.7.2 | The ultimate tool to automate your repetitive NREGA portal tasks.</b><br />
   <a href="https://nregabot.com/#downloads"><strong>Download Now »</strong></a><br /><br />
   <a href="https://nregabot.com/how-to-use.html">View Instructions</a> ·
   <a href="https://nregabot.com/contact.html">Report Bug</a> ·
@@ -45,7 +45,8 @@ An intuitive, tab-based interface for every automation task:
 - 🏁 **Scheme Closing** - Automate the process of closing schemes for completed work.
 - 📁 **File Manager with Sharing** - A built-in cloud file manager to save, organize, and share your important documents like Muster Roll PDFs.
 - 🎨 **Dynamic UI** – A modern interface with a dynamic footer, Dark/Light theme support, and real-time status updates.
-
+- 📊 **MIS Reports Downloader:** Solves the portal's CAPTCHA automatically and downloads multiple MIS reports for a specified District and Block into a single, multi-sheet Excel file.
+- 📈 **Social Audit Reports:** Automates the process of fetching Social Audit issue details. The bot navigates, clicks 'View' on each issue in the list, extracts the detailed description, and compiles it into a comprehensive report.
 ---
 
 ## 🛠 Prerequisites
@@ -64,8 +65,8 @@ You only need to have a supported web browser installed on your system:
 Download the latest version from the official website:
 
 - Website: [nregabot.com/#downloads](https://nregabot.com/#downloads)
-- **For Windows**: `NREGABot-v2.7.1-Setup.exe`
-- **For macOS**: `NREGABot-v2.7.1-macOS.dmg`
+- **For Windows**: `NREGABot-v2.7.2-Setup.exe`
+- **For macOS**: `NREGABot-v2.7.2-macOS.dmg`
 
 ### 2️⃣ First-Time Launch & Trial
 
