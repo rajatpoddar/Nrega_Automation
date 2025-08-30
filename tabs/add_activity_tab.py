@@ -5,6 +5,7 @@ import customtkinter as ctk
 import time
 from datetime import datetime
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException, UnexpectedAlertPresentException, StaleElementReferenceException
@@ -133,7 +134,6 @@ class AddActivityTab(BaseAutomationTab):
         self.app.after(0, self.app.set_status, "Running Add Activity...")
 
         try:
-            # Replace connect_to_chrome with get_driver
             driver = self.app.get_driver()
             if not driver:
                 return
@@ -162,34 +162,10 @@ class AddActivityTab(BaseAutomationTab):
         self.app.after(0, lambda: self.results_tree.insert("", "end", values=(work_key, status, details, timestamp)))
 
     def _process_single_work_key(self, driver, work_key, unit_price, quantity):
-        """
-        Automates the process of adding a new activity to a single work key on the NREGA portal.
-        
-        This function navigates to the activity page, enters all the required data,
-        and intelligently waits for the server to respond after saving.
-        
-        Args:
-            driver: The Selenium WebDriver instance.
-            work_key (str): The work key to process.
-            unit_price (str): The unit price for the activity.
-            quantity (str): The quantity for the activity.
-        """
         wait = WebDriverWait(driver, 20)
         activity_code = config.ADD_ACTIVITY_CONFIG['defaults']['activity_code']
-        progress_element_id = 'ctl00_ContentPlaceHolder1_UpdateProgress2'
-
-        def wait_for_postback_to_finish():
-            """A helper function to intelligently wait for the page to finish loading."""
-            try:
-                loader = WebDriverWait(driver, 3).until(
-                    EC.visibility_of_element_located((By.ID, progress_element_id))
-                )
-                wait.until(EC.invisibility_of_element_located(loader))
-            except TimeoutException:
-                self.app.log_message(self.log_display, "Page loaded quickly.")
 
         try:
-            # Always navigate fresh to avoid stale elements
             driver.get(config.ADD_ACTIVITY_CONFIG["url"])
 
             # 1. Enter work key and trigger reload
@@ -205,30 +181,39 @@ class AddActivityTab(BaseAutomationTab):
             wait.until(lambda d: len(Select(d.find_element(By.ID, work_name_dd_id)).options) > 1)
             Select(driver.find_element(By.ID, work_name_dd_id)).select_by_index(1)
             self.app.log_message(self.log_display, "Work selected. Loading details...")
+            
+            # --- NEW: Check if an activity already exists ---
+            existing_tables = driver.find_elements(By.ID, 'ctl00_ContentPlaceHolder1_grdDisplayAct')
+            if len(existing_tables) > 0 and existing_tables[0].is_displayed():
+                self.app.log_message(self.log_display, "Activity already exists. Skipping.", "warning")
+                self._log_result(work_key, "Skipped", "An activity is already present.")
+                return
+            else:
+                self.app.log_message(self.log_display, "No existing activity. Proceeding to add.")
 
             # 3. Select Activity
             activity_dd_id = 'ctl00_ContentPlaceHolder1_ddlAct'
             wait.until(EC.element_to_be_clickable((By.ID, activity_dd_id)))
             Select(driver.find_element(By.ID, activity_dd_id)).select_by_value(activity_code)
-            wait_for_postback_to_finish()
+            wait.until(EC.staleness_of(driver.find_element(By.ID, activity_dd_id)))
 
-            # 4. Fill Unit Price (no clearing)
-            unit_price_input = wait.until(EC.presence_of_element_located((By.ID, 'ctl00_ContentPlaceHolder1_txtAct_UnitPrice')))
+            # 4. Fill Unit Price
+            unit_price_input = wait.until(EC.element_to_be_clickable((By.ID, 'ctl00_ContentPlaceHolder1_txtAct_UnitPrice')))
             unit_price_input.send_keys(unit_price)
-            driver.execute_script("javascript:setTimeout('__doPostBack(\\'ctl00$ContentPlaceHolder1$txtAct_UnitPrice\\',\\'\\')', 0)")
-            wait_for_postback_to_finish()
+            driver.find_element(By.TAG_NAME, 'body').click()
+            wait.until(EC.staleness_of(unit_price_input))
 
-            # 5. Fill Quantity (no clearing)
-            quantity_input = wait.until(EC.presence_of_element_located((By.ID, 'ctl00_ContentPlaceHolder1_txtAct_Qty')))
+            # 5. Fill Quantity
+            quantity_input = wait.until(EC.element_to_be_clickable((By.ID, 'ctl00_ContentPlaceHolder1_txtAct_Qty')))
             quantity_input.send_keys(quantity)
-            driver.execute_script("javascript:setTimeout('__doPostBack(\\'ctl00$ContentPlaceHolder1$txtAct_Qty\\',\\'\\')', 0)")
-            wait_for_postback_to_finish()
+            quantity_input.send_keys(Keys.TAB)
 
-            time.sleep(0.5)
+            time.sleep(2)
 
             # 6. Click Save
             self.app.log_message(self.log_display, "Saving activity...")
-            driver.find_element(By.ID, 'ctl00_ContentPlaceHolder1_btsave').click()
+            save_button = wait.until(EC.element_to_be_clickable((By.ID, 'ctl00_ContentPlaceHolder1_btsave')))
+            save_button.click()
 
             # Check for success/error message
             try:

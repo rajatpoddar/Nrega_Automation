@@ -29,7 +29,7 @@ class SAReportTab(BaseAutomationTab):
         ctk.CTkLabel(controls_frame, text="Panchayat:").grid(row=0, column=0, sticky='w', padx=15, pady=(15, 5))
         self.panchayat_entry = AutocompleteEntry(controls_frame, suggestions_list=self.app.history_manager.get_suggestions("audit_panchayat_respond"))
         self.panchayat_entry.grid(row=0, column=1, sticky='ew', padx=15, pady=(15, 5))
-        ctk.CTkLabel(controls_frame, text="Note: Must match a name from the dropdown on the page.", text_color="gray50").grid(row=1, column=1, sticky='w', padx=15, pady=(0,10))
+        ctk.CTkLabel(controls_frame, text="On PO LOGIN, go to D23 > Social Audit View, then start the automation. Stay on that page.", text_color="gray50").grid(row=1, column=1, sticky='w', padx=15, pady=(0,10))
 
 
         ctk.CTkLabel(controls_frame, text="Audit Conducted in:").grid(row=2, column=0, sticky='w', padx=15, pady=5)

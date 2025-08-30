@@ -147,14 +147,11 @@
     <div id="main-content">
         <section id="home">
 
-            <!-- Banner section -->
-            <!-- Banner section -->
             <div class="bg-blue-600 dark:bg-blue-500">
                 <div class="container mx-auto px-4 sm:px-6 py-3 text-center text-white">
                     <p>
                         <span class="font-bold bg-white text-blue-600 rounded-full px-2 py-0.5 text-xs mr-2">NEW</span>
-                        <strong>Version 2.7.2 is here!</strong> Now with Auto MB Number generation and randomized Mate
-                        Names for eMB Entry.
+                        <strong>Version 2.7.2 is here!</strong> MIS Reports, Social Audit Report, and more.
                         <a href="#downloads" class="underline ml-2 hover:text-blue-200">Download Now &rarr;</a>
                     </p>
                 </div>
@@ -167,7 +164,6 @@
                     repetitive data entry. NREGA Bot handles your most tedious tasks so you can focus on what matters.
                 </p>
 
-                <!-- Download section -->
                 <div id="downloads" class="mt-10">
                     <p class="text-gray-600 mb-4 dark:text-gray-400">Download the app and start your 30-day free trial
                         instantly.</p>
@@ -224,7 +220,6 @@
                     </div>
                 </div>
             </section>
-            <!-- Price Section -->
             <section id="support" class="py-20 bg-gray-100 dark:bg-black/50">
                 <div class="container mx-auto px-6 text-center">
                     <h3 class="text-3xl font-bold text-gray-900 dark:text-white">Support the Project</h3>
@@ -520,7 +515,7 @@
             const mobileMenu = document.getElementById('mobile-menu');
             const menuOpenIcon = document.getElementById('menu-open-icon');
             const menuCloseIcon = document.getElementById('menu-close-icon');
-            const mobileLinks = document.querySelectorAll('.mobile-link');
+            const mobileLinks = document.querySelectorAll('#mobile-menu .mobile-link'); // <-- BUG FIX IS HERE
             function toggleMenu() { const isHidden = mobileMenu.classList.contains('hidden'); mobileMenu.classList.toggle('hidden'); menuOpenIcon.classList.toggle('hidden', !isHidden); menuCloseIcon.classList.toggle('hidden', isHidden); document.body.style.overflow = isHidden ? 'hidden' : ''; }
             mobileMenuButton.addEventListener('click', toggleMenu);
             mobileLinks.forEach(link => { link.addEventListener('click', () => { if (link.getAttribute('href').startsWith('#')) { toggleMenu(); } }); });

@@ -300,12 +300,23 @@ class NregaBotApp(ctk.CTk):
         else: self.destroy()
 
     def _ping_server_in_background(self):
-        if not self.license_info.get('key'): self.after(0, self.set_server_status, False); return
+        # This function now re-schedules itself to run periodically.
         def ping():
+            is_connected = False
             try:
-                requests.post(f"{config.LICENSE_SERVER_URL}/validate", json={"key": self.license_info['key'], "machine_id": self.machine_id}, timeout=10)
-                self.after(0, self.set_server_status, True)
-            except requests.exceptions.RequestException: self.after(0, self.set_server_status, False)
+                # Use a lightweight GET request just to check for connectivity.
+                requests.get(config.LICENSE_SERVER_URL, timeout=10)
+                is_connected = True
+            except requests.exceptions.RequestException:
+                is_connected = False
+            finally:
+                # Always update the UI and reschedule the next check.
+                self.after(0, self.set_server_status, is_connected)
+                # Reschedule this check to run again in 5 minutes (300,000 ms).
+                self.after(120000, self._ping_server_in_background)
+
+        # Start the first check in a separate thread to not block the UI.
+        # Subsequent checks are scheduled on the main thread's event loop via self.after().
         threading.Thread(target=ping, daemon=True).start()
 
     def _on_window_focus(self, event=None):
