@@ -26,6 +26,7 @@ The application works by securely controlling a web browser on your computer, al
 
 An intuitive, tab-based interface for every automation task:
 
+- ✨ **Demand Automation** - A brand new automation to demand labours from the csv file.
 - ✨ **Resend Rejected Wagelist** - A brand new automation to reprocess wagelist payments that have been rejected by the bank.
 - ✨ **Duplicate MR Print** – Find, save as PDF, and print all Muster Rolls for one or more work codes in a single batch operation.
 - ✨ **Update Estimated Outcome** – Quickly update the 'Estimated Outcome' for a list of work codes without manual entry.
