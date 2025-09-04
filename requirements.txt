@@ -16,5 +16,5 @@ humanize
 tkinterdnd2
 requests-toolbelt
 openpyxl
-#pandas
+pandas
 lxml
