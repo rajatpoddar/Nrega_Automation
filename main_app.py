@@ -498,10 +498,10 @@ class NregaBotApp(ctk.CTk):
 
     def _create_content_frames(self, for_activation=False):
         self.content_frames, self.tab_instances = {}, {}
-        tabs_to_create = {"Application": self.get_tabs_definition()["Application"]} if for_activation else self.get_tabs_definition()
-        for cat, tabs in tabs_to_create.items():
-            for name, data in tabs.items():
-                frame = ctk.CTkFrame(self.content_area); frame.grid(row=0, column=0, sticky="nsew"); self.content_frames[name] = frame
+        # We no longer create all frames here. They will be created on demand.
+        # We still need the 'About' tab to exist for the license check.
+        if for_activation:
+            self.show_frame("About", raise_frame=False)
 
     def get_tabs_definition(self):
         return {
@@ -542,17 +542,30 @@ class NregaBotApp(ctk.CTk):
         }
 
     def show_frame(self, page_name, raise_frame=True):
+        # Check if the frame has already been created
         if page_name not in self.tab_instances:
+            # If not, find its creation function from the tabs definition
             tabs = self.get_tabs_definition()
             for cat, tab_items in tabs.items():
                 if page_name in tab_items:
-                    instance = tab_items[page_name]["creation_func"](self.content_frames[page_name], self)
-                    instance.pack(expand=True, fill="both"); self.tab_instances[page_name] = instance
-                    self.update_idletasks(); break
+                    # Create the frame and the tab instance inside it
+                    frame = ctk.CTkFrame(self.content_area)
+                    frame.grid(row=0, column=0, sticky="nsew")
+                    self.content_frames[page_name] = frame
+
+                    # Create the actual tab content
+                    instance = tab_items[page_name]["creation_func"](frame, self)
+                    instance.pack(expand=True, fill="both")
+                    self.tab_instances[page_name] = instance
+                    break # Stop searching once found
+
+        # Now, raise the frame to the front
         if raise_frame:
-            if page_name in self.button_to_category_frame: self.button_to_category_frame[page_name].expand()
+            if page_name in self.button_to_category_frame:
+                self.button_to_category_frame[page_name].expand()
             self.content_frames[page_name].tkraise()
-            for name, btn in self.nav_buttons.items(): btn.configure(fg_color=("gray90", "gray28") if name == page_name else "transparent")
+            for name, btn in self.nav_buttons.items():
+                btn.configure(fg_color=("gray90", "gray28") if name == page_name else "transparent")
 
     def open_web_file_manager(self):
         if self.license_info.get('key'):

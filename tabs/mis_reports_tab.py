@@ -6,6 +6,7 @@ import time, os, json
 from datetime import datetime
 import pandas as pd
 import re
+from io import StringIO
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
@@ -65,22 +66,22 @@ class MisReportsTab(BaseAutomationTab):
         self.block_entry.grid(row=2, column=1, sticky='ew', padx=15, pady=5)
 
         # Checkbox list for reports
-        reports_frame = ctk.CTkFrame(settings_tab)
-        reports_frame.grid(row=1, column=0, sticky='nsew', padx=5, pady=10)
-        reports_frame.grid_columnconfigure(0, weight=1)
-        reports_frame.grid_rowconfigure(1, weight=1)
+        self.reports_frame = ctk.CTkFrame(settings_tab)
+        self.reports_frame.grid(row=1, column=0, sticky='nsew', padx=5, pady=10)
+        self.reports_frame.grid_columnconfigure(0, weight=1)
+        self.reports_frame.grid_rowconfigure(1, weight=1)
         
-        reports_header = ctk.CTkFrame(reports_frame, fg_color="transparent")
-        reports_header.grid(row=0, column=0, sticky='ew', padx=10, pady=(5,0))
+        self.reports_header = ctk.CTkFrame(self.reports_frame, fg_color="transparent")
+        self.reports_header.grid(row=0, column=0, sticky='ew', padx=10, pady=(5,0))
         
-        ctk.CTkLabel(reports_header, text="Reports to Download:", font=ctk.CTkFont(weight="bold")).pack(side="left")
+        ctk.CTkLabel(self.reports_header, text="Reports to Download:", font=ctk.CTkFont(weight="bold")).pack(side="left")
         
-        btn_frame = ctk.CTkFrame(reports_header, fg_color="transparent")
+        btn_frame = ctk.CTkFrame(self.reports_header, fg_color="transparent")
         btn_frame.pack(side="right")
         ctk.CTkButton(btn_frame, text="Select All", width=100, command=self._toggle_all_checkboxes).pack(side="left", padx=5)
         ctk.CTkButton(btn_frame, text="Deselect All", width=100, command=lambda: self._toggle_all_checkboxes(select=False)).pack(side="left")
         
-        scrollable_frame = ctk.CTkScrollableFrame(reports_frame, label_text="")
+        scrollable_frame = ctk.CTkScrollableFrame(self.reports_frame, label_text="")
         scrollable_frame.grid(row=1, column=0, sticky='nsew', padx=10, pady=5)
 
         self.report_list = [
@@ -116,15 +117,26 @@ class MisReportsTab(BaseAutomationTab):
             var.set(1 if select else 0)
     
     def set_ui_state(self, running: bool):
+        # This function correctly disables UI elements during automation
         self.set_common_ui_state(running)
         state = "disabled" if running else "normal"
+        
+        # Disable the individual text entry fields
         self.state_entry.configure(state=state)
         self.district_entry.configure(state=state)
         self.block_entry.configure(state=state)
-        for cb in self.winfo_descendants():
-            if isinstance(cb, ctk.CTkCheckBox) or isinstance(cb, ctk.CTkButton):
-                if cb != self.stop_button:
-                    cb.configure(state=state)
+
+        # Disable all widgets within the reports_frame (checkboxes, buttons)
+        # This is the corrected logic that avoids the winfo_descendants error.
+        if hasattr(self, 'reports_frame'):
+            # Loop through all direct children of the frame
+            for widget in self.reports_frame.winfo_children():
+                try:
+                    # Attempt to configure the state of each child widget
+                    widget.configure(state=state)
+                except Exception:
+                    # Failsafe for widgets that don't have a 'state' property (like sub-frames)
+                    pass
 
     def start_automation(self):
         for item in self.results_tree.get_children(): self.results_tree.delete(item)
@@ -207,7 +219,7 @@ class MisReportsTab(BaseAutomationTab):
                         time.sleep(2)
                         
                         try:
-                            df_list = pd.read_html(driver.page_source, header=[0, 1])
+                            df_list = pd.read_html(StringIO(driver.page_source), header=[0, 1])
                             report_df = df_list[-1]
                             report_df.columns = [col[1] for col in report_df.columns]
                             if not report_df.empty and str(report_df.iloc[0, 0]).strip() == '1' and str(report_df.iloc[0, 1]).strip().startswith('2'):
@@ -215,7 +227,7 @@ class MisReportsTab(BaseAutomationTab):
                                 report_df = report_df.iloc[1:].reset_index(drop=True)
                         except ValueError:
                             self.app.log_message(self.log_display, "Could not parse multi-level header. Trying single header.", "warning")
-                            df_list = pd.read_html(driver.page_source, header=0)
+                            df_list = pd.read_html(StringIO(driver.page_source), header=0)
                             report_df = df_list[-1]
 
                         sheet_name = re.sub(r'[\\/*?:\[\]]', '', report_name)[:30]

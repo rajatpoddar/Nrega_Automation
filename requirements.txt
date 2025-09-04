@@ -5,7 +5,7 @@ pyperclip
 appdirs
 getmac
 fpdf2
-pyinstaller
+#pyinstaller
 sentry-sdk
 ttkbootstrap
 darkdetect
@@ -16,5 +16,5 @@ humanize
 tkinterdnd2
 requests-toolbelt
 openpyxl
-pandas
+#pandas
 lxml
