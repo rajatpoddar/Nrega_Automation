@@ -44,6 +44,7 @@ from tabs.emb_verify_tab import EmbVerifyTab
 from tabs.resend_rejected_wg_tab import ResendRejectedWgTab
 from tabs.SA_report_tab import SAReportTab
 from tabs.mis_reports_tab import MisReportsTab
+from tabs.demand_tab import DemandTab
 
 from utils import resource_path, get_data_path, get_user_downloads_path, get_config, save_config
 
@@ -165,6 +166,8 @@ class NregaBotApp(ctk.CTk):
         self._load_icon("emoji_about", "assets/icons/emojis/about.png", size=(16,16))
         self._load_icon("emoji_social_audit", "assets/icons/emojis/social_audit.png", size=(16,16))
         self._load_icon("emoji_mis_reports", "assets/icons/emojis/mis_reports.png", size=(16,16))
+        self._load_icon("emoji_demand", "assets/icons/emojis/demand.png", size=(16,16))
+        
 
         self.bind("<FocusIn>", self._on_window_focus)
         self.after(0, self.start_app)
@@ -513,6 +516,7 @@ class NregaBotApp(ctk.CTk):
                 "Scheme Closing": {"creation_func": SchemeClosingTab, "icon": self.icon_images.get("emoji_scheme_closing"), "key": "scheme_close"},
                 "Del Work Alloc": {"creation_func": DelWorkAllocTab, "icon": self.icon_images.get("emoji_del_work_alloc"), "key": "del_work_alloc"},
                 "Duplicate MR Print": {"creation_func": DuplicateMrTab, "icon": self.icon_images.get("emoji_duplicate_mr"), "key": "dup_mr"},
+                "Demand": {"creation_func": DemandTab, "icon": self.icon_images.get("emoji_demand"), "key": "demand"},
             },
             "Records & Workcode": {
                 "WC Gen": {"creation_func": WcGenTab, "icon": self.icon_images.get("emoji_wc_gen"), "key": "wc_gen"},
@@ -884,11 +888,27 @@ class NregaBotApp(ctk.CTk):
         threading.Thread(target=_worker, daemon=True).start()
 
 def initialize_webdriver_manager():
-    def run():
-        try:
-            logging.info("Checking GeckoDriver..."); GeckoDriverManager().install(); logging.info("GeckoDriver is up to date.")
-        except Exception as e: logging.error(f"Could not update GeckoDriver: {e}")
-    threading.Thread(target=run, daemon=True).start()
+    """Downloads/updates drivers for Chrome and Firefox before the app starts."""
+    print("Initializing WebDriver Manager...")
+    try:
+        print("Checking for Chrome driver...")
+        from webdriver_manager.chrome import ChromeDriverManager
+        from selenium.webdriver.chrome.service import Service as ChromeService
+        ChromeService(ChromeDriverManager().install())
+        print("Chrome driver is up to date.")
+    except Exception as e:
+        print(f"Could not initialize ChromeDriver: {e}")
+
+    try:
+        print("Checking for Firefox driver (GeckoDriver)...")
+        from webdriver_manager.firefox import GeckoDriverManager
+        from selenium.webdriver.firefox.service import Service as FirefoxService
+        FirefoxService(GeckoDriverManager().install())
+        print("GeckoDriver is up to date.")
+    except Exception as e:
+        print(f"Could not initialize GeckoDriver: {e}")
+    print("WebDriver Manager initialization complete.")
+
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

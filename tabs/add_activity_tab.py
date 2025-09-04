@@ -182,14 +182,22 @@ class AddActivityTab(BaseAutomationTab):
             Select(driver.find_element(By.ID, work_name_dd_id)).select_by_index(1)
             self.app.log_message(self.log_display, "Work selected. Loading details...")
             
-            # --- NEW: Check if an activity already exists ---
-            existing_tables = driver.find_elements(By.ID, 'ctl00_ContentPlaceHolder1_grdDisplayAct')
-            if len(existing_tables) > 0 and existing_tables[0].is_displayed():
-                self.app.log_message(self.log_display, "Activity already exists. Skipping.", "warning")
-                self._log_result(work_key, "Skipped", "An activity is already present.")
-                return
-            else:
-                self.app.log_message(self.log_display, "No existing activity. Proceeding to add.")
+            # --- FIXED: Check if an activity already exists by inspecting table content ---
+            try:
+                # This table always exists, so we check its content.
+                activity_table = driver.find_element(By.ID, 'ctl00_ContentPlaceHolder1_grdDisplayAct')
+                
+                # If the "No Activity Found" text is present, we can proceed.
+                if "No Activity Found" in activity_table.text:
+                    self.app.log_message(self.log_display, "No existing activity. Proceeding to add.")
+                else:
+                    # Otherwise, a real activity is listed, so we skip.
+                    self.app.log_message(self.log_display, "Activity already exists. Skipping.", "warning")
+                    self._log_result(work_key, "Skipped", "An activity is already present.")
+                    return
+            except NoSuchElementException:
+                # If the table is missing for some reason, it's safe to proceed.
+                self.app.log_message(self.log_display, "Activity table not found. Assuming none exist and proceeding.")
 
             # 3. Select Activity
             activity_dd_id = 'ctl00_ContentPlaceHolder1_ddlAct'

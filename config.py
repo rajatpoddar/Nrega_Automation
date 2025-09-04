@@ -8,7 +8,7 @@ APP_TAGLINE = "Your NREGA Task Management Companion"
 APP_DESCRIPTION = "A comprehensive tool for managing NREGA tasks efficiently."
 APP_AUTHOR = "Rajat Poddar"
 APP_AUTHOR_EMAIL = "Rajatpoddar@outlook.com"
-APP_VERSION = "2.7.2"
+APP_VERSION = "2.7.3"
 LICENSE_SERVER_URL = "https://license.nregabot.com"
 MAIN_WEBSITE_URL = "https://nregabot.com"
 SUPPORT_EMAIL = "nregabot@gmail.com"
@@ -23,7 +23,7 @@ ICONS = {
     "Gen Wagelist": "📋", "Send Wagelist": "➡️", "Verify Jobcard": "✅",
     "eMB Entry": "✏️", "eMB Verify": "🔍", "WC Gen (Abua)": "🏗️", "IF Editor (Abua)": "🔧",
     "Add Activity": "🪄","Verify ABPS": "💳",  "Workcode Extractor": "✂️", "Scheme Closing": "🏁",
-    "Update Outcome": "📊", "Duplicate MR Print": "📠", "Feedback": "💬","File Manager": "📁", "Resend Rejected WG": "🔁", # <-- ADD THIS LINE
+    "Update Outcome": "📊", "Duplicate MR Print": "📠", "Feedback": "💬","File Manager": "📁", "Resend Rejected WG": "🔁", "Demand": "📝",# <-- ADD THIS LINE
     "About": "ℹ️", "Theme": {"light": "🌙", "dark": "☀️"}
 }
 
@@ -53,6 +53,10 @@ MSR_CONFIG = {
     "work_code_index": 1, "muster_roll_index": 1, "min_delay": 2, "max_delay": 6
 }
 
+DEMAND_CONFIG = {
+    "url": "https://nregade4.nic.in/Netnrega/demand_new.aspx"
+}
+
 WAGELIST_GEN_CONFIG = {
     "base_url": 'https://nregade4.nic.in/Netnrega/SendMSRtoPO.aspx',
 }
@@ -73,7 +77,6 @@ MB_ENTRY_CONFIG = {
     }
 }
 
-# In config.py
 
 IF_EDIT_CONFIG = {
     "url": "https://nregade4.nic.in/netnrega/IFEdit.aspx",
