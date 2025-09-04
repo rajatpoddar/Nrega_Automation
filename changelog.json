@@ -1,4 +1,8 @@
 {
+  "2.7.3": [
+      "✨ New Feature: Added 'Demand Automations' tab to demand labours with the csv file",
+      "🐞 Fix: Fixed bug on Add activity now it will skip if activity is already there."
+    ],
   "2.7.2": [
       "New Feature: Added 'MIS Reports' tab to download multiple reports into a single multi-sheet Excel file.",
       "New Feature: The MIS Reports tab now automatically solves the mathematical CAPTCHA.",

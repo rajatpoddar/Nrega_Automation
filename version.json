@@ -1,20 +1,11 @@
 {
-  "latest_version": "2.7.2",
-  "download_url_windows": "https://nregabot.com/updates/NREGABot-v2.7.2-Setup.exe",
-  "download_url_macos": "https://nregabot.com/updates/NREGABot-v2.7.2-macOS.dmg",
+  "latest_version": "2.7.3",
+  "download_url_windows": "https://nregabot.com/updates/NREGABot-v2.7.3-Setup.exe",
+  "download_url_macos": "https://nregabot.com/updates/NREGABot-v2.7.3-macOS.dmg",
   "changelog": {
-    "2.7.2": [
-      "✨ New Feature: Added 'MIS Reports' tab to download multiple reports into a single multi-sheet Excel file.",
-      "✨ New Feature: The MIS Reports tab now automatically solves the mathematical CAPTCHA.",
-      "✨ New Feature: Added a new 'Social Audit Report' automation for the SA View/Respond page.",
-      "⚙️ Enhancement: PDF exports for the Social Audit Report now have a dynamic title.",
-      "⚙️ Enhancement: Added a pop-up alert to notify users when automation tasks are complete.",
-      "⚙️ Enhancement: The MIS Reports tab now remembers the last used State, District, and Block.",
-      "⚙️ Enhancement: Add Activity: The automation now detects if an activity already exists and skips the work code to prevent errors.",
-      "🐞 Fix: Add Activity: Improved the stability of the automation by fixing a timing issue that prevented the 'Save' button from being clicked reliably.",
-      "🐞 Fix: Major improvements to web automation stability for handling page reloads and complex dynamic tables.",
-      "🐞 Fix: Resolved a crash during PDF export caused by special characters (e.g., Hindi text).",
-      "🐞 Fix: Fixed various bugs in the new report automations, including input persistence and navigation logic."
+    "2.7.3": [
+      "✨ New Feature: Added 'Demand Automations' tab to demand labours with the csv file",
+      "🐞 Fix: Fixed bug on Add activity now it will skip if activity is already there."
     ]
   }
 }
