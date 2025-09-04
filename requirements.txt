@@ -5,7 +5,7 @@ pyperclip
 appdirs
 getmac
 fpdf2
-#pyinstaller
+pyinstaller
 sentry-sdk
 ttkbootstrap
 darkdetect
