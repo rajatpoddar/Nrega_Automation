@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.get_version.outputs.version }}
+      tag: v${{ steps.get_version.outputs.version }}
       changelog: ${{ steps.get_changelog.outputs.changelog }}
     steps:
       - name: Checkout code
@@ -22,13 +23,13 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Read version.json
+      - name: Get version from version.json
         id: get_version
         run: |
-          VERSION=$(jq -r '.version' version.json)
+          VERSION=$(jq -r '.latest_version' version.json)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Read changelog
+      - name: Get changelog for the version
         id: get_changelog
         run: |
           VERSION="${{ steps.get_version.outputs.version }}"
@@ -36,6 +37,7 @@ jobs:
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGELOG_BODY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+
 
   # --- Build Job for Windows ---
   build-windows:
