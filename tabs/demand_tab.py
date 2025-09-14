@@ -88,6 +88,7 @@ class DemandTab(BaseAutomationTab):
         
         self.selection_summary_label = ctk.CTkLabel(applicant_header, text="0 applicants selected", text_color="gray", anchor="e")
         self.selection_summary_label.grid(row=0, column=2, padx=(10,0), pady=5, sticky="e")
+        
 
         self.search_entry = ctk.CTkEntry(applicant_header, placeholder_text="Load a CSV, then type here to search...")
         self.search_entry.grid(row=1, column=0, columnspan=3, pady=5, sticky="ew")
@@ -461,3 +462,15 @@ class DemandTab(BaseAutomationTab):
             self.panchayat_entry.insert(0, data.get('panchayat', ''))
             self.demand_date_entry.set_date(data.get('demand_date', ''))
         except Exception as e: print(f"Error loading demand inputs: {e}")
+
+    def _clear_checked_jobcards(self):
+        """Clears the selection in the checklist frame."""
+        if hasattr(self, 'checklist_frame') and self.checklist_frame:
+            self.checklist_frame.clear_selection()
+        else:
+            self.app.log_message(self.log_text, "No jobcards loaded to clear.", "warning")
+
+    def clear_selection(self):
+        """Deselects all checkboxes."""
+        for var in self.checkbox_vars:
+            var.set(0)
