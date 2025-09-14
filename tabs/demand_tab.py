@@ -83,15 +83,19 @@ class DemandTab(BaseAutomationTab):
         self.select_all_button = ctk.CTkButton(left_buttons_frame, text="Select All (≤100)", command=self._select_all_applicants)
         # Button is packed/unpacked dynamically in _select_csv_file
 
+        self.clear_selection_button = ctk.CTkButton(left_buttons_frame, text="Clear", command=self._clear_selection, fg_color="gray", hover_color="gray50")
+        # This button is also packed/unpacked dynamically
+
         self.file_label = ctk.CTkLabel(applicant_header, text="No file loaded.", text_color="gray", anchor="w")
         self.file_label.grid(row=0, column=1, pady=5, sticky="ew")
         
-        self.selection_summary_label = ctk.CTkLabel(applicant_header, text="0 applicants selected", text_color="gray", anchor="e")
-        self.selection_summary_label.grid(row=0, column=2, padx=(10,0), pady=5, sticky="e")
+        # --- Row 1: Selection Summary ---
+        self.selection_summary_label = ctk.CTkLabel(applicant_header, text="0 applicants selected", text_color="gray", anchor="w")
+        self.selection_summary_label.grid(row=1, column=0, columnspan=2, pady=(0, 5), sticky="w")
         
-
+        # --- Row 2: Search Entry ---
         self.search_entry = ctk.CTkEntry(applicant_header, placeholder_text="Load a CSV, then type here to search...")
-        self.search_entry.grid(row=1, column=0, columnspan=3, pady=5, sticky="ew")
+        self.search_entry.grid(row=2, column=0, columnspan=2, pady=5, sticky="ew")
         self.search_entry.bind("<KeyRelease>", self._update_applicant_display)
         
         self.applicant_scroll_frame = ctk.CTkScrollableFrame(applicant_frame, label_text="Select Applicants to Process")
@@ -132,10 +136,16 @@ class DemandTab(BaseAutomationTab):
             self.file_label.configure(text=f"{os.path.basename(path)} ({len(self.all_applicants_data)} loaded)", text_color=ctk.ThemeManager.theme.get("CTkLabel")["text_color"])
             self.search_entry.configure(placeholder_text="Type 3+ characters to search...")
             
-            if 0 < len(self.all_applicants_data) <= 100:
-                self.select_all_button.pack(side="left", pady=5)
+            # Show/hide buttons based on loaded data
+            if len(self.all_applicants_data) > 0:
+                if len(self.all_applicants_data) <= 100:
+                    self.select_all_button.pack(side="left", padx=(0, 10), pady=5)
+                else:
+                    self.select_all_button.pack_forget()
+                self.clear_selection_button.pack(side="left", pady=5)
             else:
                 self.select_all_button.pack_forget()
+                self.clear_selection_button.pack_forget()
             
             self._update_selection_summary()
         except Exception as e:
@@ -170,6 +180,7 @@ class DemandTab(BaseAutomationTab):
         self.days_entry.configure(state=state); self.select_csv_button.configure(state=state)
         self.search_entry.configure(state=state); self.demand_date_entry.configure(state=state)
         self.select_all_button.configure(state=state)
+        self.clear_selection_button.configure(state=state)
         for cb in self.displayed_checkboxes:
             if "*" not in cb.cget("text"): cb.configure(state=state)
 
@@ -223,6 +234,7 @@ class DemandTab(BaseAutomationTab):
         self.csv_path = None; self.all_applicants_data.clear()
         self.file_label.configure(text="No file loaded.", text_color="gray")
         self.select_all_button.pack_forget()
+        self.clear_selection_button.pack_forget()
         self._update_applicant_display(); self._update_selection_summary()
         for item in self.results_tree.get_children(): self.results_tree.delete(item)
         self.app.clear_log(self.log_display); self.app.after(0, self.update_status, "Ready", 0.0)
@@ -462,3 +474,18 @@ class DemandTab(BaseAutomationTab):
             self.panchayat_entry.insert(0, data.get('panchayat', ''))
             self.demand_date_entry.set_date(data.get('demand_date', ''))
         except Exception as e: print(f"Error loading demand inputs: {e}")
+
+    def _clear_selection(self):
+        """Clears all selected applicants."""
+        if not any(app.get('_selected', False) for app in self.all_applicants_data):
+            self.app.log_message(self.log_display, "No applicants were selected.", "info")
+            return
+
+        for applicant_data in self.all_applicants_data:
+            applicant_data['_selected'] = False
+
+        for checkbox in self.displayed_checkboxes:
+            checkbox.deselect()
+
+        self._update_selection_summary()
+        self.app.log_message(self.log_display, "Selection has been cleared.")
