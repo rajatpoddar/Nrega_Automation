@@ -17,7 +17,7 @@ SUPPORT_EMAIL = "nregabot@gmail.com"
 import platform
 OS_SYSTEM = platform.system()
 
-# --- Centralized Style and Icon Configuration ---
+# --- Centralized Style and Icon Configuration fix---
 ICONS = {
     "MR Gen": "📄", "MR Payment": "💳", "FTO Generation": "📤",
     "Gen Wagelist": "📋", "Send Wagelist": "➡️", "Verify Jobcard": "✅",
