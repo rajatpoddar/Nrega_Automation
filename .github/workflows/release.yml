@@ -41,54 +41,55 @@ jobs:
 
   # --- Build Job for Windows ---
   build-windows:
-    name: Build for Windows
-    needs: get-release-info
-    runs-on: windows-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Create .env file
-        run: echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" > .env
-        shell: bash
-
-      - name: Run Windows build script
-        run: |
-          set APP_VERSION=${{ needs.get-release-info.outputs.version }}
-          build_windows.bat
-        shell: cmd
-
-
-      - name: Upload Windows artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-builds
-          path: |
-            dist/installer/*.exe
-            dist/NREGABot-v${{ needs.get-release-info.outputs.version }}-Windows-Portable.zip
-      
-
-      - name: Create Portable ZIP archive
-        run: |
-          $version = "${{ needs.get-release-info.outputs.version }}"
-          Compress-Archive -Path dist/'NREGA Bot.exe' -DestinationPath dist/NREGABot-v$version-Windows-Portable.zip
-
-      - name: Upload Windows artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-builds
-          path: |
-            installer/*.exe
-            dist/NREGABot-v${{ needs.get-release-info.outputs.version }}-Windows-Portable.zip
-
+      name: Build for Windows
+      needs: get-release-info
+      runs-on: windows-latest
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+  
+        - name: Set up Python
+          uses: actions/setup-python@v5
+          with:
+            python-version: '3.11'
+  
+        - name: Install dependencies
+          run: pip install -r requirements.txt
+  
+        - name: Create .env file
+          run: echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" > .env
+          shell: bash
+  
+        # ✅ Install Inno Setup
+        - name: Install Inno Setup
+          run: |
+            choco install innosetup --yes
+          shell: powershell
+  
+        # ✅ Run build script with version env
+        - name: Run Windows build script
+          run: |
+            set APP_VERSION=${{ needs.get-release-info.outputs.version }}
+            build_windows.bat
+          shell: cmd
+  
+        - name: Debug - List dist/installer
+          run: dir dist\installer
+          shell: cmd
+  
+        - name: Create Portable ZIP archive
+          run: |
+            $version = "${{ needs.get-release-info.outputs.version }}"
+            Compress-Archive -Path dist/'NREGA Bot.exe' -DestinationPath dist/NREGABot-v$version-Windows-Portable.zip
+  
+        - name: Upload Windows artifacts
+          uses: actions/upload-artifact@v4
+          with:
+            name: windows-builds
+            path: |
+              dist/installer/*.exe
+              dist/NREGABot-v${{ needs.get-release-info.outputs.version }}-Windows-Portable.zip
+  
   # --- Build Job for macOS ---
   build-macos:
     name: Build for macOS (Universal)
