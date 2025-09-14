@@ -52,7 +52,8 @@ if not exist %INNO_SETUP_COMPILER% (
     goto End
 )
 
-%INNO_SETUP_COMPILER% "installer.iss"
+%INNO_SETUP_COMPILER% /dAppVersion=%APP_VERSION% "installer.iss"
+
 
 if errorlevel 1 (
     ECHO.
