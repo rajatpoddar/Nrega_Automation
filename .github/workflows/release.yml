@@ -63,7 +63,9 @@ jobs:
       - name: Run Windows build script
         run: |
           set APP_VERSION=${{ needs.get-release-info.outputs.version }}
-          call build_windows.bat
+          build_windows.bat
+        shell: cmd
+
 
       - name: Debug - List installer directory
         run: dir installer
