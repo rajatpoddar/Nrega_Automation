@@ -65,7 +65,7 @@ ECHO.
 ECHO =======================================================
 ECHO.
 ECHO  Build successful!
-ECHO  Find your installer in the 'installer' sub-folder.
+ECHO  Find your installer in the 'dist\installer' sub-folder.
 ECHO.
 ECHO =======================================================
 

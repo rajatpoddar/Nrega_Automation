@@ -67,8 +67,14 @@ jobs:
         shell: cmd
 
 
-      - name: Debug - List installer directory
-        run: dir installer
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-builds
+          path: |
+            dist/installer/*.exe
+            dist/NREGABot-v${{ needs.get-release-info.outputs.version }}-Windows-Portable.zip
+      
 
       - name: Create Portable ZIP archive
         run: |
