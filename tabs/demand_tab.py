@@ -462,15 +462,3 @@ class DemandTab(BaseAutomationTab):
             self.panchayat_entry.insert(0, data.get('panchayat', ''))
             self.demand_date_entry.set_date(data.get('demand_date', ''))
         except Exception as e: print(f"Error loading demand inputs: {e}")
-
-    def _clear_checked_jobcards(self):
-        """Clears the selection in the checklist frame."""
-        if hasattr(self, 'checklist_frame') and self.checklist_frame:
-            self.checklist_frame.clear_selection()
-        else:
-            self.app.log_message(self.log_text, "No jobcards loaded to clear.", "warning")
-
-    def clear_selection(self):
-        """Deselects all checkboxes."""
-        for var in self.checkbox_vars:
-            var.set(0)
