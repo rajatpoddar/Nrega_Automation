@@ -69,54 +69,57 @@ jobs:
 
   # --- Job: Windows Build ---
   build-windows:
-    name: Build for Windows
-    needs: get-release-info
-    runs-on: windows-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Create .env file
-        run: echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" > .env
-        shell: bash
-
-      - name: Build with PyInstaller
-        run: |
-          pyinstaller --noconfirm --windowed --onefile --name "NREGA Bot" `
-          --icon="assets/app_icon.ico" `
-          --add-data="logo.png;." `
-          --add-data="theme.json;." `
-          --add-data="changelog.json;." `
-          --add-data="assets;assets" `
-          --add-data=".env;." `
-          --add-data="jobcard.jpeg;." `
-          --add-data="tabs;tabs" `
-          --collect-data fpdf `
-          main_app.py
-
-      - name: Run Windows build script
-        run: .\build_windows.bat
-
-      - name: Create Portable ZIP archive
-        run: |
-          $version = "${{ needs.get-release-info.outputs.version }}"
-          Compress-Archive -Path dist/'NREGA Bot.exe' -DestinationPath dist/NREGABot-v$version-Windows-Portable.zip
-
-      - name: Upload Windows artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-builds
-          path: |
-            installer/NREGABot-v${{ needs.get-release-info.outputs.version }}-Setup.exe
-            dist/NREGABot-v${{ needs.get-release-info.outputs.version }}-Windows-Portable.zip
+      name: Build for Windows
+      needs: get-release-info
+      runs-on: windows-latest
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+  
+        - name: Set up Python
+          uses: actions/setup-python@v5
+          with:
+            python-version: '3.11'
+  
+        - name: Install dependencies
+          run: pip install -r requirements.txt
+  
+        - name: Create .env file
+          run: echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" > .env
+          shell: bash
+  
+        - name: Build with PyInstaller
+          run: |
+            pyinstaller --noconfirm --windowed --onefile --name "NREGA Bot" `
+            --icon="assets/app_icon.ico" `
+            --add-data="logo.png;." `
+            --add-data="theme.json;." `
+            --add-data="changelog.json;." `
+            --add-data="assets;assets" `
+            --add-data=".env;." `
+            --add-data="jobcard.jpeg;." `
+            --add-data="tabs;tabs" `
+            --collect-data fpdf `
+            main_app.py
+  
+        - name: Run Windows build script
+          run: .\build_windows.bat
+          env:
+            APP_VERSION: ${{ needs.get-release-info.outputs.version }}
+  
+        - name: Create Portable ZIP archive
+          run: |
+            $version = "${{ needs.get-release-info.outputs.version }}"
+            Compress-Archive -Path dist/'NREGA Bot.exe' -DestinationPath dist/NREGABot-v$version-Windows-Portable.zip
+  
+        - name: Upload Windows artifacts
+          uses: actions/upload-artifact@v4
+          with:
+            name: windows-builds
+            path: |
+              installer/NREGABot-v${{ needs.get-release-info.outputs.version }}-Setup.exe
+              dist/NREGABot-v${{ needs.get-release-info.outputs.version }}-Windows-Portable.zip
+  
 
   # --- Job: macOS Build ---
   build-macos:
