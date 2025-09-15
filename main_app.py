@@ -356,17 +356,33 @@ class NregaBotApp(ctk.CTk):
 
     def check_license(self):
         lic_file = get_data_path('license.dat')
-        if not os.path.exists(lic_file): return False
+        if not os.path.exists(lic_file):
+            return False
+        
         try:
-            with open(lic_file, 'r', encoding='utf-8') as f: self.license_info = json.load(f)
-            if 'key' not in self.license_info or 'expires_at' not in self.license_info: raise ValueError("Invalid license")
-            
-            # --- FIX: Directly use the server's validation result ---
-            # This ensures that if the server says the license is blocked or expired, the app will lock.
-            return self.validate_on_server(self.license_info.get('key'), is_startup_check=True)
-            
-        except Exception:
-            if os.path.exists(lic_file): os.remove(lic_file)
+            with open(lic_file, 'r', encoding='utf-8') as f:
+                self.license_info = json.load(f)
+
+            # 1. Quick local validation
+            if 'key' not in self.license_info or 'expires_at' not in self.license_info:
+                raise ValueError("Invalid license file format.")
+
+            expires_dt = datetime.fromisoformat(self.license_info['expires_at'].split('T')[0])
+            if datetime.now() > expires_dt:
+                # The local license is expired. Don't even try to start.
+                return False
+
+            # 2. Start a background thread to validate with the server.
+            #    This won't block the app from starting.
+            threading.Thread(target=self.validate_on_server, args=(self.license_info['key'], True), daemon=True).start()
+
+            # 3. Assume the local license is valid for this session.
+            return True
+
+        except Exception as e:
+            print(f"License check error, treating as unlicensed: {e}")
+            if os.path.exists(lic_file):
+                os.remove(lic_file)
             return False
 
     def _lock_app_to_about_tab(self):
@@ -700,21 +716,35 @@ class NregaBotApp(ctk.CTk):
     def validate_on_server(self, key, is_startup_check=False):
         try:
             resp = requests.post(f"{config.LICENSE_SERVER_URL}/api/validate", json={"key": key, "machine_id": self.machine_id}, timeout=10)
-            self.after(0, self.set_server_status, True); data = resp.json()
+            self.after(0, self.set_server_status, True)
+            data = resp.json()
+
             if resp.status_code == 200 and data.get("status") == "valid":
+                # Server confirms the license is valid, update the local file with the latest info.
                 self.license_info = {**data, 'key': key}
-                with open(get_data_path('license.dat'), 'w') as f: json.dump(self.license_info, f)
-                if not is_startup_check: messagebox.showinfo("License Valid", f"Activation successful!\nExpires on: {self.license_info['expires_at'].split('T')[0]}")
+                with open(get_data_path('license.dat'), 'w') as f:
+                    json.dump(self.license_info, f)
+                if not is_startup_check:
+                    messagebox.showinfo("License Valid", f"Activation successful!\nExpires on: {self.license_info['expires_at'].split('T')[0]}")
                 return True
             else:
-                if not is_startup_check: messagebox.showerror("Validation Failed", data.get('reason', 'Unknown error.'))
+                # Server says the license is invalid (expired, blocked, etc.).
+                # Delete the local license file so the app won't open next time.
+                lic_file = get_data_path('license.dat')
+                if os.path.exists(lic_file):
+                    os.remove(lic_file)
+                if not is_startup_check:
+                    messagebox.showerror("Validation Failed", data.get('reason', 'Unknown error.'))
                 return False
-        except (requests.exceptions.RequestException, json.JSONDecodeError) as e:
+
+        except requests.exceptions.RequestException:
             self.after(0, self.set_server_status, False)
-            # Only show error popup if it's an interactive check (not on startup)
+            # If the server is offline, we don't treat it as a failure.
+            # We just can't sync. Only show an error if it's an interactive check.
             if not is_startup_check:
-                messagebox.showerror("Connection Error", f"Could not connect to license server. Please check your internet connection.\n\nDetails: {e}")
-            return False
+                messagebox.showerror("Connection Error", "Could not connect to the license server. Please check your internet connection.")
+            # IMPORTANT: Return True here to allow offline use if the server is unreachable.
+            return True
 
     def send_wagelist_data_and_switch_tab(self, start, end):
         self.show_frame("Send Wagelist")
