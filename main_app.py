@@ -198,29 +198,22 @@ class NregaBotApp(ctk.CTk):
     def start_app(self):
         self.splash = self._create_splash_screen()
         # This thread will handle all the slow initialization tasks
-        threading.Thread(target=self._initialize_app_background, daemon=True).start()
-        # Setup the main UI immediately, which will show a loading state
-        self._setup_main_window()
-        # Transition from splash screen after a short delay
-        self.after(800, self._transition_from_splash)
+        threading.Thread(target=self._initialize_app, daemon=True).start()
 
-    def _initialize_app_background(self):
+    def _initialize_app(self):
         """
         Handles slow initialization tasks in a background thread to keep the UI responsive.
         """
-        # 1. Perform the license check
-        self.is_licensed = self.check_license()
+        # 1. Setup the main window structure immediately.
+        self.after(0, self._setup_main_window)
 
-        # 2. Once the check is done, schedule the appropriate UI setup on the main thread
-        if self.is_licensed:
-            self.after(0, self._setup_licensed_ui)
-            # Perform other background tasks for licensed users
-            self.check_for_updates_background()
-            self._ping_server_in_background()
-        else:
-            self.after(0, self._setup_unlicensed_ui)
+        # 2. Perform the license check.
+        self.perform_license_check_flow()
 
-        # 3. After the main UI is configured, run onboarding if needed
+        # 3. Transition from the splash screen.
+        self.after(800, self._transition_from_splash)
+
+        # 4. Run onboarding if it's the first time.
         self.after(1000, self.run_onboarding_if_needed)
 
 
@@ -291,6 +284,10 @@ class NregaBotApp(ctk.CTk):
         ctk.CTkLabel(splash, text=f"{config.APP_NAME}\nLoading...", font=("SF Pro Display", 14)).pack()
         splash.lift(); splash.attributes("-topmost", True)
         return splash
+    
+    def perform_license_check_flow(self):
+        self.is_licensed = self.check_license()
+        self.after(0, self._setup_licensed_ui if self.is_licensed else self._setup_unlicensed_ui)
 
     def _preload_and_update_about_tab(self):
         if "About" not in self.tab_instances: self.show_frame("About", raise_frame=False)
@@ -303,10 +300,11 @@ class NregaBotApp(ctk.CTk):
 
         is_expiring = self.check_expiry_and_notify()
         self._preload_and_update_about_tab()
-        self._unlock_app()
+        self._ping_server_in_background(); self._unlock_app()
         first_tab = list(list(self.get_tabs_definition().values())[0].keys())[0]
         self.show_frame("About" if is_expiring else first_tab)
-        self.set_status("Ready")
+        self.check_for_updates_background(); self.set_status("Ready")
+
 
     def _setup_unlicensed_ui(self):
         # App is already in the locked "about tab" state from _setup_main_window
