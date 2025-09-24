@@ -1,14 +1,11 @@
 {
-  "latest_version": "2.7.4",
-  "download_url_windows": "https://nregabot.com/updates/NREGABot-v2.7.4-Setup.exe",
-  "download_url_macos": "https://nregabot.com/updates/NREGABot-v2.7.4-macOS.dmg",
+  "latest_version": "2.7.5",
+  "download_url_windows": "https://nregabot.com/updates/NREGABot-v2.7.5-Setup.exe",
+  "download_url_macos": "https://nregabot.com/updates/NREGABot-v2.7.5-macOS.dmg",
   "changelog": {
-    "2.7.4": [
-      "🚀 Performance: App now launches significantly faster by checking the license in the background.",
-      "✨ UI: Redesigned the navigation menu with a persistent category filter.",
-      "✨ UI: Added a new 'JE & AE Automation' category for eMB Entry and eMB Verify.",
-      "✨ UI: Optimized the header with shorter button text for a cleaner look.",
-      "✨ UI: Removed the expand/collapse feature for a simpler, static navigation menu."
+    "2.7.5": [
+      "🐞 **Critical Bug Fix (IF Editor):** Completely overhauled the Page 3 material entry logic to resolve all known 'stale element' errors and duplicate entry bugs. The automation is now significantly more reliable, especially when re-running on partially completed work codes.",
+      "⚙️ **Improvement (IF Editor):** Material selection is now more precise, using 'startswith' matching to prevent incorrect selections from the dropdown."
     ]
   }
 }

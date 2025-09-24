@@ -23,8 +23,8 @@ class WcGenTab(BaseAutomationTab):
         self.profiles = {}
         self.profile_file = self.app.get_data_path("wc_gen_profiles.json")
         self.saved_config = {}
+        self.successful_wcs_data = [] # --- NEW: To store full data for export ---
 
-        # --- MODIFIED: Configure a single expanding row for the new tab view ---
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
@@ -32,27 +32,21 @@ class WcGenTab(BaseAutomationTab):
         self._load_profiles_from_file()
 
     def _create_widgets(self):
-        # --- NEW: Main tab view to organize Settings, Results, and Logs ---
         notebook = ctk.CTkTabview(self)
         notebook.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
         
         settings_tab = notebook.add("Settings")
         results_tab = notebook.add("Results")
-        # The 'Logs & Status' tab will be added by the helper method below
 
-        # --- Configure the layout for the tabs ---
         settings_tab.grid_rowconfigure(0, weight=1)
         settings_tab.grid_columnconfigure(0, weight=1)
         results_tab.grid_rowconfigure(1, weight=1)
         results_tab.grid_columnconfigure(0, weight=1)
 
-
-        # --- 1. Populate the "Settings" Tab ---
         settings_container = ctk.CTkScrollableFrame(settings_tab, label_text="Configuration & Actions")
         settings_container.grid(row=0, column=0, sticky="nsew")
         settings_container.grid_columnconfigure(0, weight=1)
         
-        # STEP 1: Initial Setup Frame
         step1_frame = ctk.CTkFrame(settings_container)
         step1_frame.grid(row=0, column=0, sticky='ew', pady=(0, 10))
         step1_frame.grid_columnconfigure(0, weight=1)
@@ -82,13 +76,16 @@ class WcGenTab(BaseAutomationTab):
         self.load_button = ctk.CTkButton(panchayat_frame, text="Load Categories from Website", command=self._start_category_loading_thread)
         self.load_button.grid(row=1, column=0, columnspan=2, padx=5, pady=(5,10), sticky="ew")
 
-        # --- MODIFIED: Action Buttons moved here ---
         action_frame = self._create_action_buttons(parent_frame=settings_container)
         action_frame.grid(row=1, column=0, sticky="ew", padx=0, pady=10)
+        
+        integration_frame = ctk.CTkFrame(settings_container)
+        integration_frame.grid(row=2, column=0, sticky='ew', pady=(0, 10))
+        self.send_to_if_edit_switch = ctk.CTkSwitch(integration_frame, text="Auto-send successful work codes to IF Editor")
+        self.send_to_if_edit_switch.grid(row=0, column=0, padx=15, pady=10)
 
-        # STEP 2: Configuration Frame
         self.step2_frame = ctk.CTkFrame(settings_container)
-        self.step2_frame.grid(row=2, column=0, sticky='ew', pady=(0, 10))
+        self.step2_frame.grid(row=3, column=0, sticky='ew', pady=(0, 10))
         self.step2_frame.grid_columnconfigure(1, weight=1)
         ctk.CTkLabel(self.step2_frame, text="Step 2: Configure Work Details", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, columnspan=2, padx=15, pady=(10, 5), sticky="w")
         self._create_field(self.step2_frame, "master_category", "Master Category", 1, is_dropdown=True)
@@ -107,9 +104,8 @@ class WcGenTab(BaseAutomationTab):
         self._create_field(self.step2_frame, "est_labour_cost", "Est. Labour Cost (Lakhs)", 10)
         self._create_field(self.step2_frame, "est_material_cost", "Est. Material Cost (Lakhs)", 11)
 
-         # --- STEP 3: Data Input Frame ---
         step3_frame = ctk.CTkFrame(settings_container)
-        step3_frame.grid(row=3, column=0, sticky='ew', pady=(0, 10))
+        step3_frame.grid(row=4, column=0, sticky='ew', pady=(0, 10))
         step3_frame.grid_columnconfigure(1, weight=1)
         ctk.CTkLabel(step3_frame, text="Step 3: Select Data File", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, columnspan=3, padx=15, pady=(10, 5), sticky="w")
         
@@ -129,27 +125,57 @@ class WcGenTab(BaseAutomationTab):
             if isinstance(child, (ctk.CTkEntry, ctk.CTkComboBox, DateEntry)):
                 child.configure(state="disabled")
 
-        # --- 2. Populate the "Results" Tab ---
         results_action_frame = ctk.CTkFrame(results_tab, fg_color="transparent")
         results_action_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(5, 10), padx=5)
-        self.export_csv_button = ctk.CTkButton(results_action_frame, text="Export to CSV", command=lambda: self.export_treeview_to_csv(self.results_tree, "wc_gen_results.csv"))
+        # --- MODIFIED: Changed button command to new export function ---
+        self.export_csv_button = ctk.CTkButton(results_action_frame, text="Export for IF Editor", command=self._export_wc_gen_results)
         self.export_csv_button.pack(side="left")
         
-        cols = ("Timestamp", "Generated Work Code")
+        # --- MODIFIED: Updated treeview columns ---
+        cols = ("Work Code", "Job Card", "Beneficiary Type")
         self.results_tree = ttk.Treeview(results_tab, columns=cols, show='headings')
         for col in cols: self.results_tree.heading(col, text=col)
-        self.results_tree.column("Timestamp", width=100, anchor="center")
+        self.results_tree.column("Work Code", width=180); self.results_tree.column("Job Card", width=180); self.results_tree.column("Beneficiary Type", width=150)
         self.results_tree.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
         scrollbar = ctk.CTkScrollbar(results_tab, command=self.results_tree.yview)
         self.results_tree.configure(yscroll=scrollbar.set); scrollbar.grid(row=1, column=1, sticky='ns')
         self.style_treeview(self.results_tree)
         
-        # --- 3. Create the "Logs & Status" Tab using the helper ---
         self._create_log_and_status_area(notebook)
 
-    def _log_result(self, work_code):
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        self.app.after(0, lambda: self.results_tree.insert("", "end", values=(timestamp, work_code)))
+    # --- MODIFIED: Log result now takes the full data dictionary ---
+    def _log_result(self, result_data):
+        self.app.after(0, lambda: self.results_tree.insert("", "end", values=(
+            result_data.get('work_code', 'N/A'),
+            result_data.get('job_card', 'N/A'),
+            result_data.get('beneficiary_type', 'N/A')
+        )))
+
+    # --- NEW: Function to export results in the correct format for IF Editor ---
+    def _export_wc_gen_results(self):
+        if not self.successful_wcs_data:
+            messagebox.showinfo("No Data", "There are no successful work codes to export.")
+            return
+        
+        path = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            filetypes=[("CSV files", "*.csv")],
+            initialfile="wc_gen_for_if_edit.csv",
+            title="Save Work Code Results for IF Editor"
+        )
+        if not path:
+            return
+        
+        try:
+            # These headers must match the keys in the dictionaries and IF Editor's needs
+            headers = ["work_code", "beneficiary_type", "job_card"]
+            with open(path, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.DictWriter(f, fieldnames=headers)
+                writer.writeheader()
+                writer.writerows(self.successful_wcs_data)
+            messagebox.showinfo("Success", f"Successfully exported {len(self.successful_wcs_data)} rows to\n{path}")
+        except Exception as e:
+            messagebox.showerror("Export Error", f"An error occurred while exporting:\n{e}")
 
     def _create_field(self, parent, key, text, row, is_dropdown=False):
         ctk.CTkLabel(parent, text=text).grid(row=row, column=0, sticky="w", padx=15, pady=5)
@@ -296,18 +322,15 @@ class WcGenTab(BaseAutomationTab):
             self.app.after(0, lambda: self.load_button.configure(state="normal", text="Load Categories from Website"))
 
     def _update_ui_after_load(self, master_cat_options, agency_options):
-        # Enable all fields in step 2
         for child in self.step2_frame.winfo_children():
              if isinstance(child, (ctk.CTkEntry, ctk.CTkComboBox, DateEntry)):
                 child.configure(state="normal")
 
-        # Now, populate the top-level dropdowns
         self.ui_fields['master_category'].configure(values=master_cat_options)
         self.ui_fields['executing_agency'].configure(values=agency_options)
 
         self.app.log_message(self.log_display, "Categories loaded. Restoring saved selections...")
         
-        # Restore saved selections from profile
         saved_master_cat = self.saved_config.get('master_category')
         if saved_master_cat and saved_master_cat in master_cat_options:
             self.ui_fields['master_category'].set(saved_master_cat)
@@ -380,10 +403,10 @@ class WcGenTab(BaseAutomationTab):
 
     def _process_single_row(self, driver, form_config, row_data):
         try:
-            (priority, work_name, khata_no, plot_no, village_name, total_plants, covered_area, area_plantation, total_saplings) = row_data
+            (priority, work_name, khata_no, plot_no, village_name, total_plants, covered_area, area_plantation, total_saplings, job_card, beneficiary_type_for_if_edit) = row_data
         except ValueError:
-            self.app.log_message(self.log_display, "ERROR: CSV row has incorrect number of columns. Expected 9.", "error")
-            return
+            self.app.log_message(self.log_display, "ERROR: CSV row has incorrect number of columns. Expected 11.", "error")
+            return None
 
         driver.get(config.WC_GEN_CONFIG["url"])
         wait = WebDriverWait(driver, 25)
@@ -403,21 +426,16 @@ class WcGenTab(BaseAutomationTab):
         select_and_wait("ContentPlaceHolder1_ddlproposed_work_type", form_config['work_type'])
         select_and_wait("ContentPlaceHolder1_ddlprostatus", form_config['pro_status'])
 
-        self.app.log_message(self.log_display, "Step 2: Filling Dynamic Plantation/Area Fields...")
+        self.app.log_message(self.log_display, "Step 2: Filling Dynamic Fields...")
         dynamic_fields = {
-            "ContentPlaceHolder1_txtdist": total_plants,
-            "ContentPlaceHolder1_txtAdd_dis": covered_area,
-            "ContentPlaceHolder1_txtEst_output": area_plantation,
-            "ContentPlaceHolder1_txtJSA_Inst_unit": total_saplings
+            "ContentPlaceHolder1_txtdist": total_plants, "ContentPlaceHolder1_txtAdd_dis": covered_area,
+            "ContentPlaceHolder1_txtEst_output": area_plantation, "ContentPlaceHolder1_txtJSA_Inst_unit": total_saplings
         }
         for field_id, value in dynamic_fields.items():
             if value.strip():
                 try:
-                    field = wait.until(EC.presence_of_element_located((By.ID, field_id)))
-                    field.clear()
-                    field.send_keys(value)
-                except (NoSuchElementException, TimeoutException):
-                    pass 
+                    field = wait.until(EC.presence_of_element_located((By.ID, field_id))); field.clear(); field.send_keys(value)
+                except (NoSuchElementException, TimeoutException): pass 
         
         self.app.log_message(self.log_display, "Step 3: Selecting Location...")
         select_and_wait("ContentPlaceHolder1_ddlpanch", form_config['panchayat_name'])
@@ -436,8 +454,7 @@ class WcGenTab(BaseAutomationTab):
         work_name_field = driver.find_element(By.ID, "ContentPlaceHolder1_txtworkname")
         pyperclip.copy(work_name)
         paste_key = Keys.COMMAND if sys.platform == "darwin" else Keys.CONTROL
-        work_name_field.send_keys(paste_key, 'v')
-        time.sleep(0.5)
+        work_name_field.send_keys(paste_key, 'v'); time.sleep(0.5)
 
         self.app.log_message(self.log_display, "Step 5: Selecting Agency and Saving...")
         Select(wait.until(EC.element_to_be_clickable((By.ID, "ContentPlaceHolder1_ddlExeAgency")))).select_by_visible_text(form_config['executing_agency'])
@@ -450,115 +467,116 @@ class WcGenTab(BaseAutomationTab):
             work_code = parse_qs(parsed_url.query).get('work_code', [None])[0]
             if work_code:
                 self.app.log_message(self.log_display, f"SUCCESS! Generated Work Code: {work_code}", "success")
-                self._log_result(work_code)
+                result_data = {
+                    "work_code": work_code,
+                    "beneficiary_type": beneficiary_type_for_if_edit.strip(),
+                    "job_card": job_card.strip()
+                }
+                self._log_result(result_data)
+                return result_data
             else:
                 self.app.log_message(self.log_display, "Row submitted, but could not extract work code from URL.", "warning")
         except TimeoutException:
             self.app.log_message(self.log_display, "Row submitted, but URL did not change to the success page.", "warning")
         
+        return None
+        
     def start_automation(self):
-        if not self.csv_path:
-            messagebox.showwarning("Missing File", "Please select a CSV data file first.")
-            return
-
+        if not self.csv_path: messagebox.showwarning("Missing File", "Please select a CSV data file first."); return
         form_config = {key: field.get() for key, field in self.ui_fields.items()}
         form_config["panchayat_name"] = self.panchayat_entry.get().strip()
-        
-        required_fields = [
-            "panchayat_name", "master_category", "work_category", "beneficiary_type", 
-            "activity_type", "work_type", "pro_status", "executing_agency", 
-            "proposal_date", "start_date", "est_labour_cost", "est_material_cost"
-        ]
-        
+        required_fields = ["panchayat_name", "master_category", "work_category", "beneficiary_type", "activity_type", "work_type", "pro_status", "executing_agency", "proposal_date", "start_date", "est_labour_cost", "est_material_cost"]
         if any(not form_config.get(key) for key in required_fields):
-            messagebox.showwarning("Input Error", "Please load categories and ensure all configuration fields are filled.")
-            return
-            
+            messagebox.showwarning("Input Error", "Please load categories and ensure all configuration fields are filled."); return
         self._save_profile(profile_name="Last Used Config", is_autosave=True)
         self.app.start_automation_thread(self.automation_key, self.run_automation_logic, args=(form_config,))
         
     def run_automation_logic(self, form_config):
         self.app.after(0, self.set_ui_state, True)
         self.app.clear_log(self.log_display)
-        for item in self.results_tree.get_children():
-            self.results_tree.delete(item)
+        for item in self.results_tree.get_children(): self.results_tree.delete(item)
+        
+        # --- MODIFIED: Clear previous results data ---
+        self.successful_wcs_data.clear()
+        
         self.app.log_message(self.log_display, "--- Starting Workcode Generation ---")
         self.app.after(0, self.app.set_status, "Running Workcode Generation...")
+        
+        # --- MODIFIED: Store results locally before assigning to class attribute ---
+        local_successful_wcs = [] 
         try:
             driver = self.app.get_driver()
-            if not driver:
-                return
+            if not driver: return
             with open(self.csv_path, mode='r', encoding='utf-8') as csvfile:
                 rows = list(csv.reader(csvfile))[1:]
                 total = len(rows)
                 for i, row in enumerate(rows):
                     if self.app.stop_events[self.automation_key].is_set():
-                        self.app.log_message(self.log_display, "Automation stopped by user.")
-                        break
-                    if not any(field.strip() for field in row):
-                        continue
+                        self.app.log_message(self.log_display, "Automation stopped by user."); break
+                    if not any(field.strip() for field in row): continue
+                    
                     self.app.log_message(self.log_display, f"--- Processing Row {i+1}/{total} ---")
                     try:
-                        self._process_single_row(driver, form_config, row)
+                        result_data = self._process_single_row(driver, form_config, row)
+                        if result_data:
+                            local_successful_wcs.append(result_data)
                     except Exception as e:
                         self.app.log_message(self.log_display, f"ERROR processing row {i+1}: {e}", "error")
 
-        except FileNotFoundError:
-            self.app.log_message(self.log_display, "ERROR: CSV file not found.", "error")
-        except Exception as e:
-            self.app.log_message(self.log_display, f"An unexpected error occurred: {e}", "error")
+        except FileNotFoundError: self.app.log_message(self.log_display, "ERROR: CSV file not found.", "error")
+        except Exception as e: self.app.log_message(self.log_display, f"An unexpected error occurred: {e}", "error")
         finally:
+            self.successful_wcs_data = local_successful_wcs # Assign results
             self.app.after(0, self.set_ui_state, False)
             self.app.log_message(self.log_display, "\n--- Automation Finished ---")
             messagebox.showinfo("Complete", "Workcode generation process has finished.")
             self.app.after(0, self.app.set_status, "Automation Finished")
+
+            if self.send_to_if_edit_switch.get() and self.successful_wcs_data:
+                self.app.log_message(self.log_display, f"Sending {len(self.successful_wcs_data)} successful work codes to IF Editor tab...")
+                self.app.after(0, self.app.switch_to_if_edit_with_data, self.successful_wcs_data)
             
     def select_csv_file(self):
         path = filedialog.askopenfilename(title="Select your CSV data file", filetypes=[("CSV files", "*.csv")])
-        if path:
-            self.csv_path = path
-            self.file_label.configure(text=os.path.basename(path))
+        if path: self.csv_path = path; self.file_label.configure(text=os.path.basename(path))
         
     def set_ui_state(self, running: bool):
         state = "disabled" if running else "normal"
-        # Common buttons
         self.start_button.configure(state=state)
         self.stop_button.configure(state="normal" if running else "disabled")
         self.reset_button.configure(state=state)
-        if hasattr(self, 'copy_logs_button'):
-            self.copy_logs_button.configure(state=state)
+        if hasattr(self, 'copy_logs_button'): self.copy_logs_button.configure(state=state)
 
-        # Step 1 widgets
         self.select_button.configure(state=state)
         self.panchayat_entry.configure(state=state)
         self.load_button.configure(state=state)
         self.save_profile_button.configure(state=state)
         self.delete_profile_button.configure(state=state)
         self.profile_combobox.configure(state=state)
+        self.send_to_if_edit_switch.configure(state=state)
 
-        # Step 2 widgets
         if running:
             for child in self.step2_frame.winfo_children():
-                if isinstance(child, (ctk.CTkEntry, ctk.CTkComboBox, DateEntry)):
-                    child.configure(state="disabled")
+                if isinstance(child, (ctk.CTkEntry, ctk.CTkComboBox, DateEntry)): child.configure(state="disabled")
         else:
-            # On stop, re-enable step 2 fields if categories have been loaded
             if self.ui_fields['master_category'].cget("values"):
                  for child in self.step2_frame.winfo_children():
-                    if isinstance(child, (ctk.CTkEntry, ctk.CTkComboBox, DateEntry)):
-                        child.configure(state="normal")
+                    if isinstance(child, (ctk.CTkEntry, ctk.CTkComboBox, DateEntry)): child.configure(state="normal")
+                        
     def reset_ui(self):
         if messagebox.askokcancel("Reset Form?", "Are you sure?"):
             self.panchayat_entry.delete(0, tkinter.END)
             self.file_label.configure(text="No file selected")
             self.csv_path = None
             self.app.clear_log(self.log_display)
+            self.send_to_if_edit_switch.deselect()
+            # --- NEW: Clear results data on reset ---
+            self.successful_wcs_data.clear()
+            for item in self.results_tree.get_children(): self.results_tree.delete(item)
             
-            # Reset and disable step 2 fields
             for child in self.step2_frame.winfo_children():
                 if isinstance(child, ctk.CTkComboBox):
-                    child.configure(values=[], state="disabled")
-                    child.set("")
+                    child.configure(values=[], state="disabled"); child.set("")
                 elif isinstance(child, (ctk.CTkEntry, DateEntry)):
                     child.configure(state="disabled")
 

@@ -655,6 +655,27 @@ class NregaBotApp(ctk.CTk):
         else:
             messagebox.showerror("Error", "License key not found. Please log in to use the web file manager.")
 
+    # --- NEW METHOD for WC Gen -> IF Edit integration ---
+    def switch_to_if_edit_with_data(self, data):
+        """Switches to the IF Editor tab and passes data from the WC Gen tab."""
+        if not data:
+            return
+        
+        # Ensure the IF Editor tab is created and visible
+        self.show_frame("IF Editor")
+        
+        if_edit_instance = self.tab_instances.get("IF Editor")
+        if if_edit_instance and hasattr(if_edit_instance, 'load_data_from_wc_gen'):
+            if_edit_instance.load_data_from_wc_gen(data)
+            messagebox.showinfo(
+                "Data Transferred",
+                f"{len(data)} work code(s) have been successfully transferred to the IF Editor tab.\n\n"
+                "You can now configure and start the IF Editor automation.",
+                parent=self
+            )
+        else:
+            messagebox.showerror("Error", "Could not find the IF Editor tab instance or it's missing the required method.")
+
     def _create_footer(self):
         footer = ctk.CTkFrame(self, height=40, corner_radius=0)
         footer.grid(row=2, column=0, sticky="ew", padx=20, pady=(10, 15))
