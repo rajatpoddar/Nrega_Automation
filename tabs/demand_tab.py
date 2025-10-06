@@ -68,38 +68,36 @@ class DemandTab(BaseAutomationTab):
         action_buttons = self._create_action_buttons(buttons_frame); action_buttons.pack(expand=True, fill="x")
         
         applicant_frame = ctk.CTkFrame(settings_tab); applicant_frame.grid(row=2, column=0, sticky="nsew", padx=10, pady=(0, 10))
-        applicant_frame.grid_columnconfigure(0, weight=1); applicant_frame.grid_rowconfigure(2, weight=1)
+        applicant_frame.grid_columnconfigure(0, weight=1); applicant_frame.grid_rowconfigure(3, weight=1)
 
         applicant_header = ctk.CTkFrame(applicant_frame, fg_color="transparent"); applicant_header.grid(row=0, column=0, sticky="ew", padx=10, pady=5)
         applicant_header.grid_columnconfigure(1, weight=1)
         
-        # **IMPROVEMENT**: Frame for left-aligned buttons
         left_buttons_frame = ctk.CTkFrame(applicant_header, fg_color="transparent")
         left_buttons_frame.grid(row=0, column=0, sticky="w")
         
         self.select_csv_button = ctk.CTkButton(left_buttons_frame, text="Load Applicants CSV", command=self._select_csv_file)
         self.select_csv_button.pack(side="left", padx=(0, 10), pady=5)
+
+        # --- NEW: DEMO CSV BUTTON ---
+        self.demo_csv_button = ctk.CTkButton(left_buttons_frame, text="Download Demo CSV", command=lambda: self.app.save_demo_csv("demand"), fg_color="#2E8B57", hover_color="#257247")
+        self.demo_csv_button.pack(side="left", padx=(0, 10), pady=5)
         
         self.select_all_button = ctk.CTkButton(left_buttons_frame, text="Select All (≤100)", command=self._select_all_applicants)
-        # Button is packed/unpacked dynamically in _select_csv_file
-
         self.clear_selection_button = ctk.CTkButton(left_buttons_frame, text="Clear", command=self._clear_selection, fg_color="gray", hover_color="gray50")
-        # This button is also packed/unpacked dynamically
-
+        
         self.file_label = ctk.CTkLabel(applicant_header, text="No file loaded.", text_color="gray", anchor="w")
         self.file_label.grid(row=0, column=1, pady=5, sticky="ew")
         
-        # --- Row 1: Selection Summary ---
         self.selection_summary_label = ctk.CTkLabel(applicant_header, text="0 applicants selected", text_color="gray", anchor="w")
         self.selection_summary_label.grid(row=1, column=0, columnspan=2, pady=(0, 5), sticky="w")
         
-        # --- Row 2: Search Entry ---
         self.search_entry = ctk.CTkEntry(applicant_header, placeholder_text="Load a CSV, then type here to search...")
         self.search_entry.grid(row=2, column=0, columnspan=2, pady=5, sticky="ew")
         self.search_entry.bind("<KeyRelease>", self._update_applicant_display)
         
         self.applicant_scroll_frame = ctk.CTkScrollableFrame(applicant_frame, label_text="Select Applicants to Process")
-        self.applicant_scroll_frame.grid(row=2, column=0, sticky="nsew", padx=10, pady=(0,10))
+        self.applicant_scroll_frame.grid(row=3, column=0, sticky="nsew", padx=10, pady=(0,10))
 
         cols = ("#", "Job Card No", "Applicant Name", "Status")
         self.results_tree = ttk.Treeview(results_tab, columns=cols, show='headings', style="Custom.Treeview")
@@ -122,6 +120,21 @@ class DemandTab(BaseAutomationTab):
 
         self._update_selection_summary()
         self.app.log_message(self.log_display, f"Selected all {len(self.all_applicants_data)} valid applicants.")
+
+    def _clear_processed_selection(self):
+        """Finds all selected applicants in the data model and sets them to unselected."""
+        self.app.log_message(self.log_display, "Clearing selection of processed applicants...", "info")
+        
+        for applicant_data in self.all_applicants_data:
+            if applicant_data.get('_selected', False):
+                applicant_data['_selected'] = False
+
+        # Refresh the currently displayed checkboxes to reflect the change
+        for checkbox in self.displayed_checkboxes:
+            if checkbox.get() == "on":
+                checkbox.deselect()
+
+        self._update_selection_summary()
 
     # **IMPROVEMENT**: Logic to show/hide "Select All" button
     def _select_csv_file(self):
@@ -325,7 +338,10 @@ class DemandTab(BaseAutomationTab):
             self.app.after(0, self.app.log_message, self.log_display, f"A critical error occurred: {e}")
             self.app.set_status(f"Critical error occurred.")
         finally:
-            if not self.stop_event.is_set(): self.app.after(100, lambda: messagebox.showinfo("Complete", "Work demand automation has finished."))
+            if not self.stop_event.is_set():
+                self.app.after(100, lambda: messagebox.showinfo("Complete", "Work demand automation has finished."))
+                # --- NEW: CALL TO CLEAR SELECTION ---
+                self.app.after(0, self._clear_processed_selection)
             self.app.after(0, self.set_ui_state, False)
 
     # **IMPROVEMENT**: Major overhaul for robust error handling
@@ -340,9 +356,49 @@ class DemandTab(BaseAutomationTab):
             self.app.after(0, self.app.log_message, self.log_display, f"Processing Job Card Suffix: {jc_suffix}")
             
             jc_dropdown_element = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, f"#{jobcard_ids[0]}, #{jobcard_ids[1]}")))
-            Select(jc_dropdown_element).select_by_visible_text(next(opt.text for opt in Select(jc_dropdown_element).options if opt.text.strip().startswith(f"{jc_suffix}-")))
+            select_obj = Select(jc_dropdown_element)
+            all_options_texts = [opt.text.strip() for opt in select_obj.options]
 
-            grid_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, f"#{grid_ids[0]}, #{grid_ids[1]}"))); grid_id_found = grid_element.get_attribute("id"); time.sleep(1.5)
+            # --- CORRECTED: More robust job card matching ---
+            options_to_try = [
+                f"{jc_suffix}-",
+                f"{jc_suffix.zfill(2)}-",
+                f"{jc_suffix.zfill(3)}-",
+            ]
+            options_to_try = list(dict.fromkeys(options_to_try))
+
+            found_option_text = None
+            for prefix in options_to_try:
+                for option_text in all_options_texts:
+                    if option_text.startswith(prefix):
+                        found_option_text = option_text
+                        break
+                if found_option_text:
+                    break
+            
+            if found_option_text:
+                self.app.after(0, self.app.log_message, self.log_display, f"   -> Found matching option: '{found_option_text}'")
+                select_obj.select_by_visible_text(found_option_text)
+            else:
+                raise NoSuchElementException(f"Could not find a matching job card for suffix '{jc_suffix}'")
+
+            try:
+                grid_element = WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.CSS_SELECTOR, f"#{grid_ids[0]}, #{grid_ids[1]}")))
+                grid_id_found = grid_element.get_attribute("id")
+                time.sleep(1.5)
+            except TimeoutException:
+                try:
+                    error_element = driver.find_element(By.XPATH, "//font[contains(text(), 'not yet issued')]")
+                    error_message = error_element.text.strip()
+                    self.app.after(0, self.app.log_message, self.log_display, f"   ERROR: {error_message}", "error")
+                    for app_data in applicants_in_jc:
+                        self.app.after(0, self._update_results_tree, (job_card, app_data.get('Name of Applicant'), "Skipped (Job Card Not Issued)"))
+                    return
+                except NoSuchElementException:
+                    self.app.after(0, self.app.log_message, self.log_display, "   ERROR: Applicant table did not load for an unknown reason.", "error")
+                    for app_data in applicants_in_jc:
+                         self.app.after(0, self._update_results_tree, (job_card, app_data.get('Name of Applicant'), "Skipped (Applicant table failed to load)"))
+                    return
 
             target_applicant_names_csv = [app.get('Name of Applicant', '').strip() for app in applicants_in_jc]
             processed_applicants_in_loop = []; filled_at_least_one = False
@@ -398,16 +454,21 @@ class DemandTab(BaseAutomationTab):
                 except TimeoutException:
                     self.app.after(0, self.app.log_message, self.log_display, "   -> No alert found, checking for on-page message...")
                     try:
-                        error_font = driver.find_element(By.XPATH, "//font[@color='red']")
-                        result_text = error_font.text.strip()
-                        self.app.after(0, self.app.log_message, self.log_display, f"   RESULT (On-Page): {result_text}")
+                        aadhaar_error_element = driver.find_element(By.XPATH, "//font[contains(text(), 'Aadhaar available')]")
+                        result_text = aadhaar_error_element.text.strip()
+                        self.app.after(0, self.app.log_message, self.log_display, f"   RESULT (On-Page Error): {result_text}", "error")
                     except NoSuchElementException:
                         try:
-                           msg_label = driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_lblmsg")
-                           result_text = msg_label.text.strip()
-                           self.app.after(0, self.app.log_message, self.log_display, f"   RESULT (On-Page): {result_text}")
+                            error_font = driver.find_element(By.XPATH, "//font[@color='red']")
+                            result_text = error_font.text.strip()
+                            self.app.after(0, self.app.log_message, self.log_display, f"   RESULT (On-Page): {result_text}")
                         except NoSuchElementException:
-                           result_text = "Unknown result (No message found)"
+                            try:
+                               msg_label = driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_lblmsg")
+                               result_text = msg_label.text.strip()
+                               self.app.after(0, self.app.log_message, self.log_display, f"   RESULT (On-Page): {result_text}")
+                            except NoSuchElementException:
+                               result_text = "Unknown result (No message found)"
 
                 is_specific_error = "is already there" in result_text.lower() and "demand of" in result_text.lower()
                 error_applicant_name = ""
@@ -443,10 +504,9 @@ class DemandTab(BaseAutomationTab):
             self.app.after(0, self.app.log_message, self.log_display, f"   INFO: Page reloaded for {job_card}, retrying...")
             self._process_single_job_card(driver, wait, job_card, applicants_in_jc, local_vars)
         except Exception as e:
-            self.app.after(0, self.app.log_message, self.log_display, f"ERROR processing {job_card}: {e}")
+            self.app.after(0, self.app.log_message, self.log_display, f"ERROR processing {job_card}: {e}", "error")
             for app_data in applicants_in_jc:
                 self.app.after(0, self._update_results_tree, (app_data.get('Job card number'), app_data.get('Name of Applicant'), f"CRASH: {e}"))
-
 
     def _update_results_tree(self, data):
         job_card, name, status = data; row_count = len(self.results_tree.get_children()) + 1

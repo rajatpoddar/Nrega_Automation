@@ -1,4 +1,8 @@
 {
+  "2.7.6": [
+      "🐞 **Critical Bug Fix (Demand Automation):** Added demo file for demand Automation, improve error handling in demand Automation.",
+      "⚙️ **Improvement (Renew Subscription):** Now Renew and Upgrade plans move to directly web view for easy handling the services and making seamless."
+    ],
   "2.7.5": [
       "🐞 **Critical Bug Fix (IF Editor):** Completely overhauled the Page 3 material entry logic to resolve all known 'stale element' errors and duplicate entry bugs. The automation is now significantly more reliable, especially when re-running on partially completed work codes.",
       "⚙️ **Improvement (IF Editor):** Material selection is now more precise, using 'startswith' matching to prevent incorrect selections from the dropdown."
