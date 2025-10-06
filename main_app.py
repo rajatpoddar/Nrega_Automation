@@ -90,6 +90,102 @@ class CollapsibleFrame(ctk.CTkFrame):
     def add_widget(self, widget, **pack_options):
         widget.pack(in_=self.content_frame, **pack_options)
         return widget
+    
+class OnboardingStep(ctk.CTkFrame):
+    """A single step frame for the onboarding guide."""
+    def __init__(self, parent, title, description, icon):
+        super().__init__(parent, fg_color="transparent")
+        self.pack(expand=True, fill="both", padx=20, pady=(10, 0))
+
+        if icon:
+            icon_label = ctk.CTkLabel(self, image=icon, text="")
+            icon_label.pack(pady=(10, 15))
+
+        title_label = ctk.CTkLabel(self, text=title, font=ctk.CTkFont(size=18, weight="bold"))
+        title_label.pack(pady=(0, 10))
+
+        desc_label = ctk.CTkLabel(self, text=description, wraplength=380, justify="center")
+        desc_label.pack(pady=(0, 20))
+
+
+class OnboardingGuide(ctk.CTkToplevel):
+    """A professional, step-by-step onboarding guide window."""
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.parent = parent
+        self.current_step = 0
+
+        self.title("Welcome to NREGA Bot!")
+        # --- Increased height slightly to better accommodate content ---
+        w, h = 450, 350
+        x = (self.winfo_screenwidth() // 2) - (w // 2)
+        y = (self.winfo_screenheight() // 2) - (h // 2)
+        self.geometry(f'{w}x{h}+{x}+{y}')
+        self.resizable(False, False)
+        self.transient(parent)
+        self.attributes("-topmost", True)
+        self.grab_set()
+
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
+        # --- NEW: Main container is now a scrollable frame ---
+        self.scrollable_container = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        self.scrollable_container.grid(row=0, column=0, sticky="nsew", padx=10, pady=(0, 10))
+
+        self.steps_data = [
+            {"title": "Step 1: Launch a Browser", "desc": "First, click one of the 'Chrome' buttons in the main app to open a special browser. We recommend Chrome.", "icon": self.parent.icon_images.get("onboarding_launch")},
+            {"title": "Step 2: Log In to the Portal", "desc": "In the new browser window, log in to the NREGA portal with your official credentials.", "icon": self.parent.icon_images.get("onboarding_login")},
+            {"title": "Step 3: Choose Your Task", "desc": "Once logged in, return to this app and select your desired automation task from the navigation menu on the left.", "icon": self.parent.icon_images.get("onboarding_select")},
+            {"title": "You're All Set!", "desc": "Fill in the required details for your chosen task and click 'Start Automation'. For more help, visit our website from the link in the footer.", "icon": self.parent.icon_images.get("onboarding_start")}
+        ]
+
+        self.step_frames = []
+        for i, step_info in enumerate(self.steps_data):
+            # --- Steps are now placed inside the scrollable_container ---
+            frame = OnboardingStep(self.scrollable_container, step_info["title"], step_info["desc"], step_info["icon"])
+            # We don't need to append to a list and hide/show, we will just clear and recreate
+            # but for this simple case, we will let them stack and tkraise will work fine.
+            self.step_frames.append(frame)
+
+
+        self.footer = ctk.CTkFrame(self)
+        self.footer.grid(row=1, column=0, sticky="ew", padx=20, pady=(10, 20))
+        self.footer.grid_columnconfigure(0, weight=1) # Makes the progress bar expand
+
+        self.progress_bar = ctk.CTkProgressBar(self.footer, height=10)
+        self.progress_bar.grid(row=0, column=0, sticky="ew", padx=(0, 15))
+
+        self.next_button = ctk.CTkButton(self.footer, text="Next", command=self.show_next_step, width=100)
+        self.next_button.grid(row=0, column=1)
+
+        self.show_step(0)
+        self.focus_force()
+
+    def show_step(self, step_index):
+        # This logic remains the same
+        for i, frame in enumerate(self.step_frames):
+            if i == step_index:
+                # Pack the frame if it's not already, and then raise it.
+                # This ensures it's visible inside the scrollable area.
+                frame.pack(expand=True, fill="both")
+                frame.tkraise()
+            else:
+                # Unpack other frames to ensure proper layout
+                frame.pack_forget()
+
+        progress_value = (step_index + 1) / len(self.steps_data)
+        self.progress_bar.set(progress_value)
+
+        if step_index == len(self.steps_data) - 1:
+            self.next_button.configure(text="Finish", command=self.destroy)
+        else:
+            self.next_button.configure(text="Next")
+
+    def show_next_step(self):
+        self.current_step += 1
+        if self.current_step < len(self.steps_data):
+            self.show_step(self.current_step)
 
 
 class NregaBotApp(ctk.CTk):
@@ -135,6 +231,12 @@ class NregaBotApp(ctk.CTk):
         self._load_icon("disclaimer_warning", "assets/icons/emojis/warning.png", size=(16,16))
         self._load_icon("disclaimer_thunder", "assets/icons/emojis/thunder.png", size=(16,16))
         self._load_icon("disclaimer_tools", "assets/icons/emojis/tools.png", size=(16,16))
+
+        # --- ADD THIS SECTION FOR ONBOARDING ICONS ---
+        self._load_icon("onboarding_launch", "assets/icons/emojis/thunder.png", size=(48, 48))
+        self._load_icon("onboarding_login", "assets/icons/emojis/verify_jobcard.png", size=(48, 48))
+        self._load_icon("onboarding_select", "assets/icons/emojis/wc_gen.png", size=(48, 48))
+        self._load_icon("onboarding_start", "assets/icons/emojis/fto_gen.png", size=(48, 48))
 
         self._load_icon("emoji_mr_gen", "assets/icons/emojis/mr_gen.png", size=(16,16))
         self._load_icon("emoji_mr_payment", "assets/icons/emojis/mr_payment.png", size=(16,16))
@@ -213,9 +315,6 @@ class NregaBotApp(ctk.CTk):
         # 3. Transition from the splash screen.
         self.after(800, self._transition_from_splash)
 
-        # 4. Run onboarding if it's the first time.
-        self.after(1000, self.run_onboarding_if_needed)
-
 
     def _transition_from_splash(self):
         if self.splash: self._fade_out_splash(self.splash, step=0)
@@ -260,17 +359,12 @@ class NregaBotApp(ctk.CTk):
     def run_onboarding_if_needed(self):
         flag_path = get_data_path('.first_run_complete')
         if not os.path.exists(flag_path):
-            self.show_onboarding_guide()
+            OnboardingGuide(self) # Launch the new onboarding window
             try:
                 with open(flag_path, 'w') as f: f.write(datetime.now().isoformat())
             except Exception as e: print(f"Could not write first run flag: {e}")
 
-    def show_onboarding_guide(self):
-        messagebox.showinfo("Welcome to NREGA Bot!", "This quick guide will show you how to get started.")
-        messagebox.showinfo("Step 1: Launch a Browser", "First, click one of the 'Launch' buttons to open a special browser.\nWe recommend Chrome.")
-        messagebox.showinfo("Step 2: Log In to the Portal", "In the new browser, log in to the NREGA portal with your credentials.")
-        messagebox.showinfo("Step 3: Choose Your Task", "Once logged in, return to this app and select your desired automation task.")
-        messagebox.showinfo("You're All Set!", "Fill in the required details and click 'Start Automation'.\nFor more, visit our website from the link in the footer.")
+
 
     def _create_splash_screen(self):
         splash = ctk.CTkToplevel(self); splash.overrideredirect(True)
@@ -304,6 +398,8 @@ class NregaBotApp(ctk.CTk):
         first_tab = list(list(self.get_tabs_definition().values())[0].keys())[0]
         self.show_frame("About" if is_expiring else first_tab)
         self.check_for_updates_background(); self.set_status("Ready")
+
+        self.after(500, self.run_onboarding_if_needed)
 
 
     def _setup_unlicensed_ui(self):
@@ -804,7 +900,11 @@ class NregaBotApp(ctk.CTk):
                     with open(get_data_path('license.dat'), 'w') as f: json.dump(self.license_info, f)
                     messagebox.showinfo("Success", f"Device activated!\nWelcome back, {data.get('user_name', 'User')}.")
                     activated.set(True); win.destroy()
-                else: messagebox.showerror("Activation Failed", data.get("reason", "Unknown error."), parent=win)
+                else:
+                    reason = data.get("reason", "Unknown error.")
+                    messagebox.showerror("Activation Failed", reason, parent=win)
+                    if data.get("action") == "redirect" and data.get("url"):
+                        webbrowser.open_new_tab(data["url"])
             except requests.exceptions.RequestException as e: messagebox.showerror("Connection Error", f"Could not connect: {e}", parent=win)
             finally:
                 if login_btn.winfo_exists(): login_btn.configure(state="normal", text="Login & Activate Device")
@@ -836,9 +936,42 @@ class NregaBotApp(ctk.CTk):
         ctk.CTkLabel(scroll, text="Please provide your details to begin.", text_color="gray50").pack(pady=(0, 15))
 
         entries = {}
-        for field in ["Full Name", "Email", "Mobile", "Block", "District", "State", "Pincode"]:
-            key = field.lower().replace(" ", "_"); ctk.CTkLabel(scroll, text=field, anchor="w").pack(fill="x", padx=10)
-            entry = ctk.CTkEntry(scroll); entry.pack(fill="x", padx=10, pady=(0, 10)); entries[key] = entry
+        # --- List of fields to create ---
+        fields = ["Full Name", "Email", "Mobile", "Block"]
+        for field in fields:
+            key = field.lower().replace(" ", "_")
+            ctk.CTkLabel(scroll, text=field, anchor="w").pack(fill="x", padx=10)
+            entry = ctk.CTkEntry(scroll)
+            entry.pack(fill="x", padx=10, pady=(0, 10))
+            entries[key] = entry
+
+        # --- State Dropdown (pre-filled and disabled) ---
+        ctk.CTkLabel(scroll, text="State", anchor="w").pack(fill="x", padx=10)
+        state_menu = ctk.CTkOptionMenu(scroll, values=["Jharkhand"])
+        state_menu.set("Jharkhand")
+        state_menu.configure(state="disabled")
+        state_menu.pack(fill="x", padx=10, pady=(0, 10))
+        entries['state'] = state_menu # Add to entries dict
+
+        # --- District Dropdown ---
+        jharkhand_districts = [
+            "Bokaro", "Chatra", "Deoghar", "Dhanbad", "Dumka", "East Singhbhum",
+            "Garhwa", "Giridih", "Godda", "Gumla", "Hazaribagh", "Jamtara",
+            "Khunti", "Koderma", "Latehar", "Lohardaga", "Pakur", "Palamu",
+            "Ramgarh", "Ranchi", "Sahebganj", "Saraikela Kharsawan", "Simdega",
+            "West Singhbhum", "Others"
+        ]
+        ctk.CTkLabel(scroll, text="District", anchor="w").pack(fill="x", padx=10)
+        district_menu = ctk.CTkOptionMenu(scroll, values=jharkhand_districts)
+        district_menu.set("Select a District") # Set a default placeholder
+        district_menu.pack(fill="x", padx=10, pady=(0, 10))
+        entries['district'] = district_menu # Add to entries dict
+
+        # --- Pincode Entry ---
+        ctk.CTkLabel(scroll, text="Pincode", anchor="w").pack(fill="x", padx=10)
+        pincode_entry = ctk.CTkEntry(scroll)
+        pincode_entry.pack(fill="x", padx=10, pady=(0, 10))
+        entries['pincode'] = pincode_entry
 
         successful = tkinter.BooleanVar(value=False)
         def submit_request():
@@ -847,7 +980,10 @@ class NregaBotApp(ctk.CTk):
             email, mobile = user_data.get('email', ''), user_data.get('mobile', '')
             if not re.match(r"[^@]+@[^@]+\.[^@]+", email): messagebox.showwarning("Invalid Input", "Valid email is required.", parent=win); return
             if not (mobile.isdigit() and len(mobile) == 10): messagebox.showwarning("Invalid Input", "Valid 10-digit mobile is required.", parent=win); return
-            user_data["name"] = user_data.pop("full_name"); user_data["machine_id"] = self.machine_id
+            if user_data.get('district') == "Select a District": messagebox.showwarning("Input Required", "Please select a district.", parent=win); return
+
+            user_data["name"] = user_data.pop("full_name")
+            user_data["machine_id"] = self.machine_id
             if not all(user_data.values()): messagebox.showwarning("Input Required", "All fields are required.", parent=win); return
 
             submit_btn.configure(state="disabled", text="Requesting...")
@@ -868,47 +1004,32 @@ class NregaBotApp(ctk.CTk):
         self.wait_window(win); return successful.get()
 
     def show_purchase_window(self, context='upgrade'):
-        win = ctk.CTkToplevel(self)
-        title = "Renew Subscription" if context == 'renew' else "Upgrade to Full License"
-        win.title(title); w, h = 480, 420; x, y = (self.winfo_screenwidth()//2) - (w//2), (self.winfo_screenheight()//2) - (h//2)
-        win.geometry(f'{w}x{h}+{x}+{y}'); win.resizable(False, False); win.transient(self); win.grab_set()
+        """
+        Opens the web browser directly to the purchase/renewal page,
+        pre-filling user data if available.
+        """
+        form = {k.replace('user_', ''): v for k, v in self.license_info.items() if k.startswith('user_')}
+        form['existing_key'] = self.license_info.get('key')
+        
+        # Pass current plan details to the web page as suggestions
+        form['plan_type'] = self.license_info.get('key_type', 'monthly')
+        form['max_devices'] = self.license_info.get('max_devices', 1)
 
-        main = ctk.CTkFrame(win, fg_color="transparent"); main.pack(expand=True, fill="both", padx=20, pady=20)
-        ctk.CTkLabel(main, text=title, font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(0, 15))
-        ctk.CTkLabel(main, text="1. Choose Your Plan", font=ctk.CTkFont(size=14, weight="bold"), anchor="w").pack(fill="x", padx=10, pady=(10,5))
+        if not form.get('existing_key'):
+            messagebox.showerror(
+                "License Error", 
+                "Cannot open purchase page because your license key is not available. Please restart the app or contact support.", 
+                parent=self
+            )
+            return
 
-        plans = ["Monthly (₹99)", "Quarterly (₹289)", "Half Yearly (₹569)", "Yearly (₹999)"]
-        plan_menu = ctk.CTkOptionMenu(main, values=plans); plan_menu.pack(fill="x", padx=10, pady=(0,5))
-        ctk.CTkLabel(main, text="Number of Devices:").pack(fill="x", padx=10, pady=(15, 5))
-        dev_input = ctk.CTkOptionMenu(main, values=[str(i) for i in range(1, 4)]); dev_input.set(str(self.license_info.get('max_devices', 1))); dev_input.pack(fill="x", padx=10)
-
-        prices = {"monthly": 99, "quarterly": 289, "half": 569, "yearly": 999}
-        total_label = ctk.CTkLabel(main, text="Total: ₹99", font=ctk.CTkFont(size=18, weight="bold")); total_label.pack(pady=25)
-
-        def update_price(*args):
-            plan_key = plan_menu.get().lower().split(' ')[0]
-            dev_count = int(dev_input.get())
-            total = prices[plan_key] * dev_count
-            total_label.configure(text=f"Total: ₹{total}")
-
-        plan_menu.configure(command=update_price); dev_input.configure(command=update_price); update_price()
-
-        def proceed():
-            submit_btn.configure(state="disabled", text="Initializing...")
-            form = {k.replace('user_', ''): v for k, v in self.license_info.items() if k.startswith('user_')}
-            form['existing_key'] = self.license_info.get('key')
-            if not all(form.get(k) for k in ['name', 'email', 'mobile']):
-                messagebox.showwarning("User Details Missing", "Please contact support.", parent=win); submit_btn.configure(state="normal", text="Proceed"); return
-            form.update({'plan_type': plan_menu.get().lower().split(' ')[0], 'max_devices': int(dev_input.get())})
-            try:
-                webbrowser.open_new_tab(f"{config.LICENSE_SERVER_URL}/buy?{urlencode({k: v for k, v in form.items() if v})}")
-                win.destroy()
-            except Exception as e:
-                messagebox.showerror("Error", f"Could not open payment page: {e}", parent=win)
-            finally:
-                if submit_btn.winfo_exists(): submit_btn.configure(state="normal", text="Proceed")
-
-        submit_btn = ctk.CTkButton(main, text="Proceed to Payment", command=proceed); submit_btn.pack(pady=20, ipady=5, fill='x', padx=10)
+        try:
+            # Filter out any keys with None values before encoding
+            url_params = {k: v for k, v in form.items() if v is not None}
+            buy_url = f"{config.LICENSE_SERVER_URL}/buy?{urlencode(url_params)}"
+            webbrowser.open_new_tab(buy_url)
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not open the purchase page: {e}", parent=self)
 
     def check_expiry_and_notify(self):
         expires_str = self.license_info.get('expires_at')
