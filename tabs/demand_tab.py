@@ -138,31 +138,55 @@ class DemandTab(BaseAutomationTab):
 
     # **IMPROVEMENT**: Logic to show/hide "Select All" button
     def _select_csv_file(self):
-        path = filedialog.askopenfilename(title="Select Applicants CSV File", filetypes=(("CSV Files", "*.csv"),))
+        path = filedialog.askopenfilename(title="Select your CSV data file for Demand", filetypes=[("CSV files", "*.csv")])
         if not path: return
-        self.csv_path = path; self.all_applicants_data.clear(); self._update_applicant_display()
+
+        self.csv_path = path
+        self.file_label.configure(text=os.path.basename(path))
+        self.all_applicants_data = [] # Clear previous data
+        
         try:
-            with open(self.csv_path, mode='r', encoding='utf-8') as infile:
-                for row in csv.DictReader(infile):
-                    row['_selected'] = False; self.all_applicants_data.append(row)
-            
-            self.file_label.configure(text=f"{os.path.basename(path)} ({len(self.all_applicants_data)} loaded)", text_color=ctk.ThemeManager.theme.get("CTkLabel")["text_color"])
-            self.search_entry.configure(placeholder_text="Type 3+ characters to search...")
-            
-            # Show/hide buttons based on loaded data
-            if len(self.all_applicants_data) > 0:
-                if len(self.all_applicants_data) <= 100:
-                    self.select_all_button.pack(side="left", padx=(0, 10), pady=5)
-                else:
-                    self.select_all_button.pack_forget()
-                self.clear_selection_button.pack(side="left", pady=5)
-            else:
-                self.select_all_button.pack_forget()
-                self.clear_selection_button.pack_forget()
-            
-            self._update_selection_summary()
+            with open(path, mode='r', encoding='utf-8-sig') as csvfile:
+                # --- NEW: Robust Header Detection Logic ---
+                reader = csv.reader(csvfile)
+                try:
+                    header = next(reader)
+                except StopIteration:
+                    raise ValueError("CSV file is empty.")
+
+                # Normalize headers to find the correct columns (case-insensitive)
+                normalized_headers = [h.lower().replace(" ", "").replace("_", "") for h in header]
+                
+                try:
+                    name_idx = normalized_headers.index("nameofapplicant")
+                    jc_idx = normalized_headers.index("jobcardnumber")
+                except ValueError:
+                    raise ValueError("Could not find required columns. Please ensure your CSV has headers like 'Name of Applicant' and 'Job card number'.")
+                
+                # --- END: New Logic ---
+
+                for row in reader:
+                    if not row or len(row) <= max(name_idx, jc_idx):
+                        continue # Skip empty or malformed rows
+                    
+                    name = row[name_idx].strip()
+                    job_card = row[jc_idx].strip()
+
+                    if name and job_card:
+                        self.all_applicants_data.append({
+                            'Name of Applicant': name,
+                            'Job card number': job_card,
+                            '_selected': False # Add our internal tracking state
+                        })
+
+            self.app.log_message(self.log_display, f"Loaded {len(self.all_applicants_data)} applicants from {os.path.basename(path)}.")
+            self._update_applicant_display() # Initial display
+            self.select_all_button.pack(side="left", padx=(0, 10), pady=5)
+            self.clear_selection_button.pack(side="left", pady=5)
         except Exception as e:
-            messagebox.showerror("CSV Error", f"Failed to read CSV.\nError: {e}"); self.file_label.configure(text="Failed to load file.", text_color="red")
+            messagebox.showerror("Error Reading CSV", f"Could not read the CSV file.\n\nError: {e}")
+            self.csv_path = None
+            self.file_label.configure(text="No file selected")
             
     def _update_applicant_display(self, event=None):
         for checkbox in self.displayed_checkboxes: checkbox.destroy()
@@ -352,35 +376,23 @@ class DemandTab(BaseAutomationTab):
         button_ids = ["ctl00_ContentPlaceHolder1_btnProceed", "ctl00_ContentPlaceHolder1_btnSave"]
         
         try:
+            # --- OPTIMIZED: Use XPath for faster job card selection ---
             jc_suffix = job_card.split('/')[-1]
             self.app.after(0, self.app.log_message, self.log_display, f"Processing Job Card Suffix: {jc_suffix}")
             
             jc_dropdown_element = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, f"#{jobcard_ids[0]}, #{jobcard_ids[1]}")))
-            select_obj = Select(jc_dropdown_element)
-            all_options_texts = [opt.text.strip() for opt in select_obj.options]
-
-            # --- CORRECTED: More robust job card matching ---
-            options_to_try = [
-                f"{jc_suffix}-",
-                f"{jc_suffix.zfill(2)}-",
-                f"{jc_suffix.zfill(3)}-",
-            ]
-            options_to_try = list(dict.fromkeys(options_to_try))
-
-            found_option_text = None
-            for prefix in options_to_try:
-                for option_text in all_options_texts:
-                    if option_text.startswith(prefix):
-                        found_option_text = option_text
-                        break
-                if found_option_text:
-                    break
             
-            if found_option_text:
+            prefixes_to_try = list(dict.fromkeys([f"{jc_suffix}-", f"{jc_suffix.zfill(2)}-", f"{jc_suffix.zfill(3)}-"]))
+            xpath_conditions = " or ".join([f"starts-with(normalize-space(.), '{p}')" for p in prefixes_to_try])
+            xpath_query = f".//option[{xpath_conditions}]"
+            
+            try:
+                option_to_select = jc_dropdown_element.find_element(By.XPATH, xpath_query)
+                found_option_text = option_to_select.text
                 self.app.after(0, self.app.log_message, self.log_display, f"   -> Found matching option: '{found_option_text}'")
-                select_obj.select_by_visible_text(found_option_text)
-            else:
-                raise NoSuchElementException(f"Could not find a matching job card for suffix '{jc_suffix}'")
+                Select(jc_dropdown_element).select_by_visible_text(found_option_text)
+            except NoSuchElementException:
+                raise NoSuchElementException(f"Could not find a matching job card for suffix '{jc_suffix}' using XPath.")
 
             try:
                 grid_element = WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.CSS_SELECTOR, f"#{grid_ids[0]}, #{grid_ids[1]}")))
@@ -401,46 +413,58 @@ class DemandTab(BaseAutomationTab):
                     return
 
             target_applicant_names_csv = [app.get('Name of Applicant', '').strip() for app in applicants_in_jc]
-            processed_applicants_in_loop = []; filled_at_least_one = False
+            processed_applicants_in_loop = []
+            filled_at_least_one = False
+            
             all_rows_on_page = driver.find_elements(By.CSS_SELECTOR, f"table[id='{grid_id_found}'] > tbody > tr")
-
             for i, row in enumerate(all_rows_on_page):
                 if i == 0: continue
                 try:
                     applicant_name_web_span = row.find_element(By.CSS_SELECTOR, "span[id*='_job']")
                     applicant_name_web = applicant_name_web_span.text.strip()
-                    normalized_web_name = "".join(applicant_name_web.lower().split())
-                    is_target_applicant = any("".join(csv_name.lower().split()) in normalized_web_name for csv_name in target_applicant_names_csv)
-                    row_id_prefix = f"{grid_id_found}_ctl{i+1:02d}_"; from_date_id, start_date_id, days_id, till_date_id = "dt_app", "dt_from", "d3", "dt_to"
+                    is_target_applicant = any("".join(csv_name.lower().split()) in "".join(applicant_name_web.lower().split()) for csv_name in target_applicant_names_csv)
+                    if not is_target_applicant:
+                        row_id_prefix = f"{grid_id_found}_ctl{i+1:02d}_"
+                        from_date_field_to_clear = row.find_element(By.ID, row_id_prefix + "dt_app")
+                        if from_date_field_to_clear.get_attribute('value') != '':
+                            from_date_field_to_clear.clear()
+                            self.app.after(0, self.app.log_message, self.log_display, f"   -> Cleared dates for non-selected applicant: {applicant_name_web}")
+                except Exception:
+                    continue
 
-                    if is_target_applicant:
-                        from_date_val, start_date_val, days_val = [row.find_element(By.ID, row_id_prefix + eid).get_attribute('value') for eid in [from_date_id, start_date_id, days_id]]
-                        is_fully_correct = (from_date_val == demand_from and start_date_val == work_start and days_val == days)
-                        is_partially_filled = (from_date_val == '' and start_date_val == work_start and days_val == days)
-
-                        if is_fully_correct: self.app.after(0, self.app.log_message, self.log_display, f"   -> Data for {applicant_name_web} is already correct.")
-                        elif is_partially_filled:
-                            self.app.after(0, self.app.log_message, self.log_display, f"   -> Partially filled. Completing data for {applicant_name_web}...")
-                            from_date_input = wait.until(EC.element_to_be_clickable((By.ID, row_id_prefix + from_date_id))); from_date_input.send_keys(demand_from); from_date_input.send_keys(Keys.TAB); time.sleep(2)
-                        else:
-                            self.app.after(0, self.app.log_message, self.log_display, f"   -> Filling all data for {applicant_name_web}...")
-                            from_date_input = wait.until(EC.element_to_be_clickable((By.ID, row_id_prefix + from_date_id))); from_date_input.send_keys(demand_from); from_date_input.send_keys(Keys.TAB)
-                            start_date_input = wait.until(EC.element_to_be_clickable((By.ID, row_id_prefix + start_date_id))); start_date_input.send_keys(work_start); start_date_input.send_keys(Keys.TAB); time.sleep(2)
-                            days_input = wait.until(EC.element_to_be_clickable((By.ID, row_id_prefix + days_id))); days_input.click(); time.sleep(0.5); days_input.clear(); days_input.send_keys(days); days_input.send_keys(Keys.TAB)
-                        
-                        wait.until(lambda d: d.find_element(By.ID, row_id_prefix + till_date_id).get_attribute("value") != "")
-                        self.app.after(0, self.app.log_message, self.log_display, f"   SUCCESS: Filled data for {applicant_name_web}.")
-                        filled_at_least_one = True; processed_applicants_in_loop.append(applicant_name_web)
-                    else:
-                        demand_date_field_to_clear = row.find_element(By.ID, row_id_prefix + from_date_id)
-                        if demand_date_field_to_clear.get_attribute('value') != '': demand_date_field_to_clear.clear()
-                except Exception as e:
-                    self.app.after(0, self.app.log_message, self.log_display, f"   -> Warning: Skipped one row due to an error: {e}"); continue
-
-            unprocessed_applicants = [name for name in target_applicant_names_csv if not any("".join(name.lower().split()) in "".join(p_name.lower().split()) for p_name in processed_applicants_in_loop)]
-            for name in unprocessed_applicants:
-                self.app.after(0, self.app.log_message, self.log_display, f"   ERROR: Could not find {name} in the grid.")
-                self.app.after(0, self._update_results_tree, (job_card, name, "Skipped (Not Found on Page)"))
+            for target_name in target_applicant_names_csv:
+                if self.stop_event.is_set(): break
+                found_and_filled = False
+                all_rows_on_page = driver.find_elements(By.CSS_SELECTOR, f"table[id='{grid_id_found}'] > tbody > tr")
+                for i, row in enumerate(all_rows_on_page):
+                    if i == 0: continue
+                    try:
+                        applicant_name_web_span = row.find_element(By.CSS_SELECTOR, "span[id*='_job']")
+                        applicant_name_web = applicant_name_web_span.text.strip()
+                        if "".join(target_name.lower().split()) in "".join(applicant_name_web.lower().split()):
+                            row_id_prefix = f"{grid_id_found}_ctl{i+1:02d}_"
+                            from_date_id, start_date_id, days_id, till_date_id = "dt_app", "dt_from", "d3", "dt_to"
+                            
+                            from_date_val, start_date_val, days_val = [row.find_element(By.ID, row_id_prefix + eid).get_attribute('value') for eid in [from_date_id, start_date_id, days_id]]
+                            if (from_date_val == demand_from and start_date_val == work_start and days_val == days):
+                                self.app.after(0, self.app.log_message, self.log_display, f"   -> Data for {applicant_name_web} is already correct.")
+                            else:
+                                self.app.after(0, self.app.log_message, self.log_display, f"   -> Filling data for {applicant_name_web}...")
+                                from_date_input = wait.until(EC.element_to_be_clickable((By.ID, row_id_prefix + from_date_id))); from_date_input.send_keys(demand_from); from_date_input.send_keys(Keys.TAB)
+                                start_date_input = wait.until(EC.element_to_be_clickable((By.ID, row_id_prefix + start_date_id))); start_date_input.send_keys(work_start); start_date_input.send_keys(Keys.TAB); time.sleep(1.5)
+                                days_input = wait.until(EC.element_to_be_clickable((By.ID, row_id_prefix + days_id))); days_input.click(); time.sleep(0.5); days_input.clear(); days_input.send_keys(days); days_input.send_keys(Keys.TAB)
+                                wait.until(lambda d: d.find_element(By.ID, row_id_prefix + till_date_id).get_attribute("value") != "")
+                                self.app.after(0, self.app.log_message, self.log_display, f"   SUCCESS: Filled data for {applicant_name_web}.")
+                            
+                            filled_at_least_one = True
+                            processed_applicants_in_loop.append(target_name)
+                            found_and_filled = True
+                            break
+                    except Exception as e:
+                        self.app.after(0, self.app.log_message, self.log_display, f"   -> Warning: Error processing row for {target_name}: {e}")
+                        continue
+                if not found_and_filled:
+                     self.app.after(0, self.app.log_message, self.log_display, f"   ERROR: Could not find {target_name} in the grid.")
 
             if filled_at_least_one:
                 self.app.after(0, self.app.log_message, self.log_display, f"Submitting demand for Job Card {jc_suffix}...")
@@ -486,14 +510,11 @@ class DemandTab(BaseAutomationTab):
 
                 for applicant_data in applicants_in_jc:
                     applicant_name_csv = applicant_data.get('Name of Applicant', 'N/A')
-                    if applicant_name_csv in unprocessed_applicants: continue
+                    if applicant_name_csv not in processed_applicants_in_loop: continue
+                    
                     status_to_display = result_text 
-
                     if is_specific_error and error_applicant_name:
-                        normalized_error_name = "".join(error_applicant_name.lower().split())
-                        normalized_csv_name = "".join(applicant_name_csv.lower().split())
-                        
-                        if normalized_error_name in normalized_csv_name:
+                        if "".join(error_applicant_name.lower().split()) in "".join(applicant_name_csv.lower().split()):
                             status_to_display = result_text
                         else:
                             status_to_display = "Success (Processed in batch)"
