@@ -199,7 +199,8 @@ class BaseAutomationTab(ctk.CTkFrame):
         if not file_path: return
         
         try:
-            with open(file_path, "w", newline="", encoding="utf-8") as f:
+            # FIX: Changed encoding to 'utf-8-sig' to support Hindi/Unicode in Windows Excel
+            with open(file_path, "w", newline="", encoding="utf-8-sig") as f:
                 writer = csv.writer(f)
                 writer.writerow(tree["columns"])
                 for item_id in tree.get_children():
