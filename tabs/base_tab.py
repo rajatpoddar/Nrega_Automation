@@ -44,7 +44,6 @@ class BaseAutomationTab(ctk.CTkFrame):
         try:
             pdf = FPDF(orientation='L', unit='mm', format='A4')
             pdf.add_page()
-            # Add a font that supports a wider range of characters, including Hindi
             try:
                 font_path = self.app.resource_path("assets/fonts/DejaVuSans.ttf")
                 pdf.add_font('DejaVu', '', font_path, uni=True)
@@ -67,25 +66,39 @@ class BaseAutomationTab(ctk.CTkFrame):
 
             pdf.set_font('DejaVu' if 'font_path' in locals() else 'Arial', '', 7)
             for row in data:
-                # Determine max number of lines in the row
+                # Determine max number of lines in the row to calculate row height
                 max_lines = 1
-                for item in row:
-                    lines = len(pdf.multi_cell(0, 6, str(item), split_only=True))
+                for i, item in enumerate(row):
+                    # Use the correct width for split_only calculation
+                    lines = len(pdf.multi_cell(col_widths[i], 6, str(item), split_only=True))
                     if lines > max_lines:
                         max_lines = lines
                 
-                # Get current Y position
+                cell_height = 6 * max_lines
+
+                # Check for page break BEFORE drawing the row
+                if pdf.get_y() + cell_height > pdf.page_break_trigger:
+                    pdf.add_page()
+                    # Redraw headers on new page
+                    pdf.set_font('DejaVu' if 'font_path' in locals() else 'Arial', 'B', 8)
+                    pdf.set_fill_color(240, 240, 240)
+                    for i, header in enumerate(headers):
+                        pdf.cell(col_widths[i], 8, str(header), 1, 0, 'C', 1)
+                    pdf.ln()
+                    pdf.set_font('DejaVu' if 'font_path' in locals() else 'Arial', '', 7)
+
+                # Get starting position of the row
                 y_pos = pdf.get_y()
                 x_pos = pdf.get_x()
 
-                # Draw cells with manual height
-                cell_height = 6 * max_lines
+                # Draw each cell of the row explicitly, managing x/y positions manually
                 for i, item in enumerate(row):
-                    pdf.multi_cell(col_widths[i], 6, str(item), 1, 'L')
-                    # Move to the start of the next cell
-                    pdf.set_xy(x_pos + sum(col_widths[:i+1]), y_pos)
-
-                pdf.ln(cell_height)
+                    current_x = x_pos + sum(col_widths[:i])
+                    pdf.set_xy(current_x, y_pos)
+                    pdf.multi_cell(col_widths[i], 6, str(item), border=1, align='L')
+                
+                # Move cursor to the start of the next line, below the row we just drew
+                pdf.set_xy(pdf.l_margin, y_pos + cell_height)
 
             pdf.output(file_path)
             return True
