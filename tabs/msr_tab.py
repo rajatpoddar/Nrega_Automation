@@ -230,8 +230,18 @@ class MsrTab(BaseAutomationTab):
     # --- NEW: Central Export Function ---
     def export_report(self):
         export_format = self.export_format_menu.get()
+        panchayat_name = self.panchayat_entry.get().strip()
+
+        # Ensure Panchayat name is provided for the filename
+        if not panchayat_name:
+            messagebox.showwarning("Input Needed", "Please enter a Panchayat Name to include in the report filename.", parent=self)
+            return
+
         if "CSV" in export_format:
-            self.export_treeview_to_csv(self.results_tree, "msr_payment_results.csv")
+            safe_name = "".join(c for c in panchayat_name if c.isalnum() or c in (' ', '_')).rstrip()
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            default_filename = f"MSR_Report_{safe_name}_{timestamp}.csv"
+            self.export_treeview_to_csv(self.results_tree, default_filename)
             return
             
         data, file_path = self._get_filtered_data_and_filepath(export_format)
