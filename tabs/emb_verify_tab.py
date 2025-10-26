@@ -1,4 +1,6 @@
 # tabs/emb_verify_tab.py
+import subprocess
+import sys
 import tkinter
 from tkinter import ttk, messagebox, filedialog
 import customtkinter as ctk
