@@ -57,9 +57,22 @@ class AddActivityTab(BaseAutomationTab):
 
         # Work Keys Tab
         work_codes_frame.grid_columnconfigure(0, weight=1)
-        work_codes_frame.grid_rowconfigure(0, weight=1)
+        work_codes_frame.grid_rowconfigure(1, weight=1) # <-- CORRECTED THIS LINE
+
+        # --- NEW: Controls frame for buttons ---
+        wc_controls_frame = ctk.CTkFrame(work_codes_frame, fg_color="transparent")
+        wc_controls_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=(5,0))
+        
+        clear_button = ctk.CTkButton(wc_controls_frame, text="Clear", width=80, command=lambda: self.work_keys_text.delete("1.0", tkinter.END))
+        clear_button.pack(side='right', padx=(0, 5))
+        
+        extract_button = ctk.CTkButton(wc_controls_frame, text="Extract from Text", width=120,
+                                       command=lambda: self._extract_and_update_workcodes(self.work_keys_text))
+        extract_button.pack(side='right', padx=(0, 5))
+        # --- END NEW ---
+
         self.work_keys_text = ctk.CTkTextbox(work_codes_frame, wrap=tkinter.WORD)
-        self.work_keys_text.grid(row=0, column=0, sticky='nsew', padx=5, pady=5)
+        self.work_keys_text.grid(row=1, column=0, sticky='nsew', padx=5, pady=5) # <-- Changed to row 1
 
         # Results Tab
         results_frame.grid_columnconfigure(0, weight=1)

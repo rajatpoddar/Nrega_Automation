@@ -2,7 +2,7 @@
 import tkinter
 from tkinter import ttk, messagebox, filedialog
 import customtkinter as ctk
-import time, csv, sys, os, subprocess
+import time, csv, sys, os, subprocess, re  # <-- ADD 're'
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -49,9 +49,18 @@ class UpdateEstimateTab(BaseAutomationTab):
         work_codes_frame.grid_rowconfigure(1, weight=1)
         wc_controls_frame = ctk.CTkFrame(work_codes_frame, fg_color="transparent")
         wc_controls_frame.grid(row=0, column=0, sticky='ew')
+        
         ctk.CTkLabel(wc_controls_frame, text="Enter one Work Code per line.", text_color="gray50").pack(side='left', padx=5)
+        
         clear_button = ctk.CTkButton(wc_controls_frame, text="Clear", width=80, command=lambda: self.work_key_text.delete("1.0", tkinter.END))
         clear_button.pack(side='right', pady=(5,0), padx=(0,5))
+        
+        # --- NEW: Extract Button (points to a new local method) ---
+        extract_button = ctk.CTkButton(wc_controls_frame, text="Extract from Text", width=120,
+                                       command=self._extract_full_workcodes)
+        extract_button.pack(side='right', pady=(5,0), padx=(0, 5))
+        # ---
+        
         self.work_key_text = ctk.CTkTextbox(work_codes_frame, wrap=tkinter.WORD)
         self.work_key_text.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
 
@@ -200,6 +209,37 @@ class UpdateEstimateTab(BaseAutomationTab):
             self._log_result(work_code, outcome, "Failed", error_msg, is_error=True)
         except Exception as e:
             self._log_result(work_code, outcome, "Failed", f"An unexpected error occurred: {e}", is_error=True)
+
+    # --- NEW: Local extractor for FULL work codes ---
+    def _extract_full_workcodes(self):
+        """
+        Extracts full work codes (e.g., 34.../.../123) from the textbox content.
+        This is a local method because this tab requires the FULL work code,
+        not the 6-digit suffix from the base tab's extractor.
+        """
+        try:
+            input_content = self.work_key_text.get("1.0", tkinter.END)
+            if not input_content.strip():
+                return
+
+            # Pattern for full work codes (e.g., 3404003009/IF/123456)
+            work_code_pattern = re.compile(r'\b(34\d{8}(?:/\w+)+/\d+)\b')
+            
+            found_work_codes = work_code_pattern.findall(input_content)
+
+            # Remove duplicates while preserving order
+            final_results = list(dict.fromkeys(found_work_codes))
+
+            if final_results:
+                self.work_key_text.configure(state="normal")
+                self.work_key_text.delete("1.0", tkinter.END)
+                self.work_key_text.insert("1.0", "\n".join(final_results))
+                messagebox.showinfo("Extraction Complete", f"Found and extracted {len(final_results)} unique full work codes.", parent=self)
+            else:
+                messagebox.showinfo("No Codes Found", "Could not find any matching full work codes (e.g., 34.../.../...).", parent=self)
+        
+        except Exception as e:
+            messagebox.showerror("Extraction Error", f"An error occurred during extraction: {e}", parent=self)
 
     def _log_result(self, work_code, outcome, status, details, is_error=False):
         """Logs the result to the UI."""

@@ -59,6 +59,11 @@ class MsrTab(BaseAutomationTab):
         wc_controls_frame.grid(row=0, column=0, sticky='ew')
         clear_button = ctk.CTkButton(wc_controls_frame, text="Clear", width=80, command=lambda: self.work_key_text.delete("1.0", tkinter.END))
         clear_button.pack(side='right', pady=(5,0), padx=(0,5))
+        # --- MODIFIED: Update the command to use the base method ---
+        extract_button = ctk.CTkButton(wc_controls_frame, text="Extract from Text", width=120,
+                                       command=lambda: self._extract_and_update_workcodes(self.work_key_text))
+        extract_button.pack(side='right', pady=(5,0), padx=(0, 5))
+        # ---
         self.work_key_text = ctk.CTkTextbox(work_codes_frame, wrap=tkinter.WORD)
         self.work_key_text.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
 

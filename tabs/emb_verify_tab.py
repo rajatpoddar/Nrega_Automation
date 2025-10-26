@@ -63,9 +63,14 @@ class EmbVerifyTab(BaseAutomationTab):
         
         ctk.CTkLabel(wc_header_frame, text="Enter Work Codes (one per line). Leave blank to process all.").pack(side="left", padx=5)
         
-        # --- NEW: Clear Button ---
         clear_wc_button = ctk.CTkButton(wc_header_frame, text="Clear", width=80, command=lambda: self.work_codes_text.delete("1.0", "end"))
-        clear_wc_button.pack(side="right")
+        clear_wc_button.pack(side="right", padx=(0, 5))
+        
+        # --- NEW: Added the Extract from Text button (using correct frame name) ---
+        extract_button = ctk.CTkButton(wc_header_frame, text="Extract from Text", width=120,
+                                       command=lambda: self._extract_and_update_workcodes(self.work_codes_text))
+        extract_button.pack(side='right', padx=(0, 5))
+        # ---
         
         self.work_codes_text = ctk.CTkTextbox(work_codes_tab, height=150)
         self.work_codes_text.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)

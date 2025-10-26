@@ -84,12 +84,17 @@ class DuplicateMrTab(BaseAutomationTab):
         work_codes_tab.grid_columnconfigure(0, weight=1)
         work_codes_tab.grid_rowconfigure(1, weight=1) # Allow textbox to expand
         
-        # --- ADDED: Frame with a Clear button for the textbox ---
         wc_controls = ctk.CTkFrame(work_codes_tab, fg_color="transparent")
         wc_controls.grid(row=0, column=0, sticky='ew', padx=5, pady=(5,0))
+        
         clear_button = ctk.CTkButton(wc_controls, text="Clear", width=80, command=lambda: self.work_codes_textbox.delete("1.0", tkinter.END))
-        clear_button.pack(side='right')
-        # --- END ADDED ---
+        clear_button.pack(side='right', padx=(0, 5))
+        
+        # --- NEW: Added the Extract from Text button ---
+        extract_button = ctk.CTkButton(wc_controls, text="Extract from Text", width=120,
+                                       command=lambda: self._extract_and_update_workcodes(self.work_codes_textbox))
+        extract_button.pack(side='right', padx=(0, 5))
+        # --- END NEW ---
 
         self.work_codes_textbox = ctk.CTkTextbox(work_codes_tab, height=150)
         self.work_codes_textbox.grid(row=1, column=0, sticky="nsew", padx=5, pady=5) # Changed row from 0 to 1

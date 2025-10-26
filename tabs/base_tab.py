@@ -2,7 +2,7 @@
 import tkinter
 from tkinter import ttk, messagebox, filedialog
 import customtkinter as ctk
-import os, sys, subprocess, csv, platform
+import os, sys, subprocess, csv, platform, re
 from datetime import datetime
 from fpdf import FPDF
 
@@ -221,3 +221,49 @@ class BaseAutomationTab(ctk.CTkFrame):
             messagebox.showinfo("Success", f"Report successfully exported to\n{file_path}", parent=self)
         except Exception as e:
             messagebox.showerror("Export Failed", f"An error occurred while saving the CSV file:\n{e}", parent=self)
+
+    # --- NEW: Add this reusable method to the base class ---
+    def _extract_and_update_workcodes(self, textbox_widget):
+        """
+        Extracts work codes (6-digit) and wagelist IDs from the
+        provided textbox widget, removes duplicates, and updates the widget.
+        """
+        try:
+            input_content = textbox_widget.get("1.0", tkinter.END)
+            if not input_content.strip():
+                return
+
+            # Pattern for full work codes (e.g., 3404003009/IF/123456)
+            work_code_pattern = re.compile(r'\b(34\d{8}(?:/\w+)+/\d+)\b')
+            # Pattern for wagelist IDs (e.g., 3422003WL031552)
+            wagelist_pattern = re.compile(r'\b\d+WL\d+\b', re.IGNORECASE)
+
+            found_work_codes = work_code_pattern.findall(input_content)
+            found_wagelists = wagelist_pattern.findall(input_content)
+
+            processed_work_codes = []
+            for code in found_work_codes:
+                last_part = code.split('/')[-1]
+                if len(last_part) > 7:
+                    # Extracts the last 6 digits from longer codes like /123456
+                    processed_work_codes.append(last_part[-6:])
+                else:
+                    # Assumes the last part is the 6-digit code
+                    processed_work_codes.append(last_part)
+            
+            # Combine results and make wagelists uppercase
+            results = processed_work_codes + [wl.upper() for wl in found_wagelists]
+
+            # Remove duplicates while preserving order
+            final_results = list(dict.fromkeys(results))
+
+            if final_results:
+                textbox_widget.configure(state="normal")
+                textbox_widget.delete("1.0", tkinter.END)
+                textbox_widget.insert("1.0", "\n".join(final_results))
+                messagebox.showinfo("Extraction Complete", f"Found and extracted {len(final_results)} unique codes.", parent=self)
+            else:
+                messagebox.showinfo("No Codes Found", "Could not find any matching work codes or wagelist IDs in the text.", parent=self)
+        
+        except Exception as e:
+            messagebox.showerror("Extraction Error", f"An error occurred during extraction: {e}", parent=self)
