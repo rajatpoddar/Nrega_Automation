@@ -14,7 +14,7 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 import config
 from .base_tab import BaseAutomationTab
 from .date_entry_widget import DateEntry
-
+from .autocomplete_widget import AutocompleteEntry
 class WcGenTab(BaseAutomationTab):
     def __init__(self, parent, app_instance):
         super().__init__(parent, app_instance, automation_key="wc_gen")
@@ -71,7 +71,12 @@ class WcGenTab(BaseAutomationTab):
         panchayat_frame.grid(row=2, column=0, columnspan=2, sticky='ew', padx=10, pady=(0,10))
         panchayat_frame.grid_columnconfigure(1, weight=1)
         ctk.CTkLabel(panchayat_frame, text="Panchayat:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
-        self.panchayat_entry = ctk.CTkEntry(panchayat_frame)
+        self.panchayat_entry = AutocompleteEntry(
+            panchayat_frame,
+            suggestions_list=self.app.history_manager.get_suggestions("panchayat_name"),
+            app_instance=self.app,
+            history_key="panchayat_name"
+        )
         self.panchayat_entry.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
         self.load_button = ctk.CTkButton(panchayat_frame, text="Load Categories from Website", command=self._start_category_loading_thread)
         self.load_button.grid(row=1, column=0, columnspan=2, padx=5, pady=(5,10), sticky="ew")
@@ -232,7 +237,6 @@ class WcGenTab(BaseAutomationTab):
             return
 
         config_data = {key: field.get() for key, field in self.ui_fields.items()}
-        config_data["panchayat_name"] = self.panchayat_entry.get().strip()
         self.profiles[profile_name] = config_data
         
         try:
@@ -256,9 +260,6 @@ class WcGenTab(BaseAutomationTab):
         self.saved_config = self.profiles.get(profile_name, {})
         if not self.saved_config:
             return
-        
-        self.panchayat_entry.delete(0, tkinter.END)
-        self.panchayat_entry.insert(0, self.saved_config.get("panchayat_name", ""))
         
         for key in ["proposal_date", "start_date", "est_labour_cost", "est_material_cost"]:
             if key in self.saved_config and key in self.ui_fields:
@@ -300,6 +301,7 @@ class WcGenTab(BaseAutomationTab):
         if not panchayat:
             messagebox.showwarning("Input Required", "Please enter a Panchayat Name first.")
             return
+        self.app.update_history("panchayat_name", panchayat)
         self.load_button.configure(state="disabled", text="Loading...")
         threading.Thread(target=self._load_initial_categories, daemon=True).start()
 

@@ -26,7 +26,9 @@ class WagelistGenTab(BaseAutomationTab):
         controls_frame.grid_columnconfigure(1, weight=1)
         
         ctk.CTkLabel(controls_frame, text=f"Agency Name ({config.AGENCY_PREFIX}...):").grid(row=0, column=0, sticky='w', padx=15, pady=(15,0))
-        self.agency_entry = AutocompleteEntry(controls_frame, suggestions_list=self.app.history_manager.get_suggestions("panchayat_name"))
+        self.agency_entry = AutocompleteEntry(controls_frame, suggestions_list=self.app.history_manager.get_suggestions("panchayat_name"),
+            app_instance=self.app, # <-- ADD THIS LINE
+            history_key="panchayat_name")
         self.agency_entry.grid(row=0, column=1, sticky='ew', padx=15, pady=(15,0))
         ctk.CTkLabel(controls_frame, text="Enter only the Panchayat name (e.g., Palojori).", text_color="gray50").grid(row=1, column=1, sticky='w', padx=15)
 

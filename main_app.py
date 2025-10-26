@@ -1108,6 +1108,13 @@ class NregaBotApp(ctk.CTk):
 
     def update_history(self, key, val): self.history_manager.save_entry(key, val)
 
+    def remove_history(self, key, val):
+        """Asks the HistoryManager to remove a specific entry."""
+        if hasattr(self.history_manager, 'remove_entry'):
+            self.history_manager.remove_entry(key, val)
+        else:
+            print(f"Warning: HistoryManager is missing the 'remove_entry' method.")
+
     def download_and_install_update(self, url, version):
         about = self.tab_instances.get("About")
         if not about: messagebox.showerror("Error", "Could not find About Tab."); return

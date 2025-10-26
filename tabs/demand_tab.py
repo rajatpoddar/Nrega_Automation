@@ -57,7 +57,9 @@ class DemandTab(BaseAutomationTab):
         self.state_menu.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
 
         ctk.CTkLabel(controls_frame, text="Panchayat:").grid(row=1, column=0, padx=(10, 5), pady=5, sticky="w")
-        self.panchayat_entry = AutocompleteEntry(controls_frame, suggestions_list=self.app.history_manager.get_suggestions("panchayat"))
+        self.panchayat_entry = AutocompleteEntry(controls_frame, suggestions_list=self.app.history_manager.get_suggestions("panchayat"),
+            app_instance=self.app, # <-- ADD THIS LINE
+            history_key="panchayat_name")
         self.panchayat_entry.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
 
         ctk.CTkLabel(controls_frame, text="Village (Optional):").grid(row=2, column=0, padx=(10, 5), pady=5, sticky="w")

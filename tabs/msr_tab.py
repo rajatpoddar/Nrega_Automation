@@ -27,7 +27,12 @@ class MsrTab(BaseAutomationTab):
         panchayat_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
         panchayat_frame.grid(row=0, column=0, sticky='ew', padx=15, pady=(10,0))
         ctk.CTkLabel(panchayat_frame, text="Panchayat Name", font=ctk.CTkFont(weight="bold")).pack(anchor='w')
-        self.panchayat_entry = AutocompleteEntry(panchayat_frame, suggestions_list=self.app.history_manager.get_suggestions("panchayat_name"))
+        self.panchayat_entry = AutocompleteEntry(
+            panchayat_frame, 
+            suggestions_list=self.app.history_manager.get_suggestions("panchayat_name"),
+            app_instance=self.app, # <-- ADD THIS LINE
+            history_key="panchayat_name" # <-- ADD THIS LINE
+        )
         self.panchayat_entry.pack(fill='x', pady=(5,0))
         ctk.CTkLabel(panchayat_frame, text="e.g., Palojori (must exactly match the name on the website)", text_color="gray50").pack(anchor='w')
         

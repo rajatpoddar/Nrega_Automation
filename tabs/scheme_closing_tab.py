@@ -41,7 +41,13 @@ class SchemeClosingTab(BaseAutomationTab):
 
         # Row 0: Panchayat
         ctk.CTkLabel(input_frame, text="Panchayat Name:").grid(row=0, column=0, padx=15, pady=(15, 5), sticky="w")
-        self.panchayat_entry = AutocompleteEntry(input_frame, placeholder_text="Enter the Panchayat name as it appears on the website")
+        self.panchayat_entry = AutocompleteEntry(
+            input_frame, 
+            placeholder_text="Enter the Panchayat name as it appears on the website",
+            suggestions_list=self.app.history_manager.get_suggestions("panchayat_name"),
+            app_instance=self.app,
+            history_key="panchayat_name"
+        )
         self.panchayat_entry.grid(row=0, column=1, columnspan=3, padx=15, pady=(15, 5), sticky="ew")
 
         # Row 1: Work Category
@@ -75,7 +81,13 @@ class SchemeClosingTab(BaseAutomationTab):
 
         # Row 4: Measured By (Name)
         ctk.CTkLabel(input_frame, text="Measured by (Name):").grid(row=4, column=0, padx=15, pady=5, sticky="w")
-        self.measured_name_entry = AutocompleteEntry(input_frame, placeholder_text="e.g., AKHILESH KUMAR")
+        self.measured_name_entry = AutocompleteEntry(
+            input_frame, 
+            placeholder_text="e.g., AKHILESH KUMAR",
+            suggestions_list=self.app.history_manager.get_suggestions("staff_name"),
+            app_instance=self.app,
+            history_key="staff_name"
+        )
         self.measured_name_entry.grid(row=4, column=1, padx=15, pady=5, sticky="ew")
         
         # Row 5: Completion Certificate Start No
@@ -199,6 +211,12 @@ class SchemeClosingTab(BaseAutomationTab):
             return
 
         self._save_inputs(inputs)
+        
+        # --- ADDED: Save inputs to history ---
+        self.app.update_history("panchayat_name", inputs["panchayat"])
+        self.app.update_history("staff_name", inputs["measured_name"])
+        # ---
+        
         self.app.start_automation_thread(self.automation_key, self.run_automation_logic, args=(inputs,))
 
     def run_automation_logic(self, inputs):

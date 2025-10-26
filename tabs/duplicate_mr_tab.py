@@ -44,7 +44,9 @@ class DuplicateMrTab(BaseAutomationTab):
         input_frame.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(input_frame, text="Panchayat Name:").grid(row=0, column=0, padx=15, pady=10, sticky="w")
-        self.panchayat_entry = AutocompleteEntry(input_frame, placeholder_text="Start typing Panchayat name...")
+        self.panchayat_entry = AutocompleteEntry(input_frame, placeholder_text="Start typing Panchayat name...",
+            app_instance=self.app, # <-- ADD THIS LINE
+            history_key="panchayat_name")
         self.panchayat_entry.grid(row=0, column=1, padx=15, pady=10, sticky="ew")
 
         ctk.CTkLabel(input_frame, text="Output Action:").grid(row=1, column=0, padx=15, pady=10, sticky="w")

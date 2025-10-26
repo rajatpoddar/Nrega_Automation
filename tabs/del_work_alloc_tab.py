@@ -35,7 +35,9 @@ class DelWorkAllocTab(BaseAutomationTab):
 
         # Panchayat Name Input
         ctk.CTkLabel(controls_frame, text="Panchayat Name:").grid(row=0, column=0, sticky='w', padx=15, pady=15)
-        self.panchayat_entry = AutocompleteEntry(controls_frame, suggestions_list=self.app.history_manager.get_suggestions("panchayat_name"))
+        self.panchayat_entry = AutocompleteEntry(controls_frame, suggestions_list=self.app.history_manager.get_suggestions("panchayat_name"),
+            app_instance=self.app, # <-- ADD THIS LINE
+            history_key="panchayat_name")
         self.panchayat_entry.grid(row=0, column=1, sticky='ew', padx=15, pady=15)
         
         # --- Section 2: Action buttons ---

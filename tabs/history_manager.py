@@ -35,11 +35,27 @@ class HistoryManager:
                 self.history_data[field_key].append(value)
                 self.history_data[field_key].sort()
                 
-                try:
-                    with open(self.history_file, 'w') as f:
-                        json.dump(self.history_data, f, indent=4)
-                except IOError as e:
-                    print(f"Error saving history: {e}")
+                self._save_data_locked()
+
+    # --- NEW METHOD TO REMOVE AN ENTRY ---
+    def remove_entry(self, field_key: str, value: str):
+        """Removes a specific value from a history key."""
+        if not value or not field_key:
+            return
+            
+        with self.lock:
+            if field_key in self.history_data and value in self.history_data[field_key]:
+                self.history_data[field_key].remove(value)
+                self._save_data_locked()
+
+    def _save_data_locked(self):
+        """Internal method to save data while lock is acquired."""
+        try:
+            with open(self.history_file, 'w') as f:
+                json.dump(self.history_data, f, indent=4)
+        except IOError as e:
+            print(f"Error saving history: {e}")
+    # --- END OF NEW METHOD ---
 
     # --- NEW: Methods for tracking usage ---
     def increment_usage(self, automation_key: str):
@@ -51,11 +67,7 @@ class HistoryManager:
             stats = self.history_data["_usage_stats"]
             stats[automation_key] = stats.get(automation_key, 0) + 1
             
-            try:
-                with open(self.history_file, 'w') as f:
-                    json.dump(self.history_data, f, indent=4)
-            except IOError as e:
-                print(f"Error saving usage stats: {e}")
+            self._save_data_locked()
 
     def get_most_used_keys(self, count: int = 5) -> list:
         """Gets a sorted list of the most used automation keys."""
