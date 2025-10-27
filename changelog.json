@@ -1,4 +1,11 @@
 {
+  "2.7.7": [
+      "✨ **New Feature (Workflow):** Added an 'Extract from Text' button to all automation tabs to simplify pasting work codes.",
+      "🚀 **Enhancement (Demand):** Demand automation now supports Rajasthan and includes minor bug fixes.",
+      "🚀 **Enhancement (UI):** Autocomplete for Panchayat names now properly supports arrow key navigation and fixes freezing issues.",
+      "🐞 **Bug Fix (Reports):** Fixed CSV and PDF exports to properly support Hindi fonts and improve PDF data organization.",
+      "🐞 **Bug Fix (eMB Verify):** Added missing imports to resolve errors in the eMB Verify tab."
+    ],
   "2.7.6": [
       "🐞 **Critical Bug Fix (Demand Automation):** Added demo file for demand Automation, improve error handling in demand Automation.",
       "⚙️ **Improvement (Renew Subscription):** Now Renew and Upgrade plans move to directly web view for easy handling the services and making seamless."
