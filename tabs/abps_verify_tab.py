@@ -103,6 +103,7 @@ class AbpsVerifyTab(BaseAutomationTab):
         self.app.log_message(self.log_display, "Starting ABPS Verification...")
         self.app.after(0, self.app.set_status, "Running ABPS Verification...")
 
+        # This set will now store tuples: (job_card, applicant_name)
         session_processed_jobcards = set()
 
         try:
@@ -138,7 +139,6 @@ class AbpsVerifyTab(BaseAutomationTab):
                     
                     table_id = "ctl00_ContentPlaceHolder1_gvData"
                     
-                    # --- NEW: Robustly check if the records table exists ---
                     try:
                         short_wait.until(EC.presence_of_element_located((By.ID, table_id)))
                     except TimeoutException:
@@ -160,11 +160,23 @@ class AbpsVerifyTab(BaseAutomationTab):
                             potential_rows = driver.find_elements(By.XPATH, unprocessed_rows_xpath)
                             
                             row_to_process = None
+                            # --- FIX: These variables will store the unique key ---
+                            job_card, app_name = "N/A", "N/A"
+                            unique_key = None
+                            
                             for row in potential_rows:
                                 try:
+                                    # --- FIX: Get both job card and name to create a unique key ---
                                     jc_num = row.find_element(By.XPATH, ".//td[2]").text
-                                    if jc_num not in session_processed_jobcards:
+                                    ap_name = row.find_element(By.XPATH, ".//td[4]").text
+                                    key = (jc_num, ap_name) # The unique tuple
+
+                                    if key not in session_processed_jobcards:
                                         row_to_process = row
+                                        # --- Store the values we found ---
+                                        job_card = jc_num
+                                        app_name = ap_name
+                                        unique_key = key
                                         break
                                 except StaleElementReferenceException: continue
                             
@@ -172,29 +184,28 @@ class AbpsVerifyTab(BaseAutomationTab):
                                 self.app.log_message(self.log_display, "No new unprocessed records found on this page view.")
                                 break
 
-                            job_card, app_name = "N/A", "N/A"
+                            # --- We now have job_card and app_name from the loop above ---
                             try:
-                                job_card = row_to_process.find_element(By.XPATH, ".//td[2]").text
-                                app_name = row_to_process.find_element(By.XPATH, ".//td[4]").text
                                 self.app.after(0, self.update_status, f"Page {page_number}, Processing: {app_name}", 0.5)
 
                                 row_to_process.find_element(By.XPATH, ".//input[contains(@id, 'btn_showuid')]").click()
                                 wait.until(EC.staleness_of(row_to_process))
 
-                                refreshed_row = wait.until(EC.presence_of_element_located((By.XPATH, f"//tr[contains(., '{job_card}')]")))
+                                refreshed_row = wait.until(EC.presence_of_element_located((By.XPATH, f"//tr[contains(., '{job_card}') and contains(., '{app_name}')]")))
                                 check_npci_btn = wait.until(EC.element_to_be_clickable(refreshed_row.find_element(By.XPATH, ".//input[contains(@id, 'btn_verifyuid')]")))
                                 check_npci_btn.click()
                                 wait.until(EC.staleness_of(refreshed_row))
 
-                                final_row = wait.until(EC.presence_of_element_located((By.XPATH, f"//tr[contains(., '{job_card}')]")))
+                                final_row = wait.until(EC.presence_of_element_located((By.XPATH, f"//tr[contains(., '{job_card}') and contains(., '{app_name}')]")))
                                 status_msg = final_row.find_element(By.XPATH, ".//td[9]/span").text
                                 self._log_result(job_card, app_name, status_msg or "Checked")
                                 
                             except (TimeoutException, StaleElementReferenceException, NoSuchElementException) as e:
                                 self._log_result(job_card, app_name, f"Error: {type(e).__name__}")
                             finally:
-                                if job_card != "N/A":
-                                    session_processed_jobcards.add(job_card)
+                                # --- FIX: Add the unique_key (tuple) to the set ---
+                                if unique_key:
+                                    session_processed_jobcards.add(unique_key)
                                     page_processed_count += 1
                         
                         if self.app.stop_events[self.automation_key].is_set(): break
