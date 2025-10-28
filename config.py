@@ -53,10 +53,6 @@ MSR_CONFIG = {
     "work_code_index": 1, "muster_roll_index": 1, "min_delay": 2, "max_delay": 6
 }
 
-DEMAND_CONFIG = {
-    "url": "https://nregade4.nic.in/Netnrega/demand_new.aspx"
-}
-
 WAGELIST_GEN_CONFIG = {
     "base_url": 'https://nregade4.nic.in/Netnrega/SendMSRtoPO.aspx',
 }
@@ -140,6 +136,22 @@ DEL_WORK_ALLOC_CONFIG = {
 # --- Update Estimate Configuration ---
 UPDATE_ESTIMATE_CONFIG = {
     "url": "https://nregade4.nic.in/Netnrega/Update_proposedstatus.aspx"
+}
+
+# --- ADD THIS NEW DICTIONARY ---
+# Config for state-specific demand URLs and logic
+STATE_DEMAND_CONFIG = {
+    "Jharkhand": {
+        "base_url": "https://nregade4.nic.in/netnrega/demand_new.aspx",
+        # Logic to parse village code from 'JH-01-001-001-001/123' -> '001'
+        "village_code_logic": "jh"
+    },
+    "Rajasthan": {
+        "base_url": "https://nregade2.nic.in/netnrega/demand_new.aspx",
+        # Logic to parse village code from 'RJ-270200209000394400/00022652' -> '400'
+        "village_code_logic": "rj"
+    }
+    # You can add more states here
 }
 
 

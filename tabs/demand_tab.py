@@ -2,7 +2,7 @@
 import tkinter
 from tkinter import ttk, messagebox, filedialog
 import customtkinter as ctk
-import os, csv, time, threading, json
+import os, csv, time, threading, json, re
 from datetime import datetime
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
@@ -48,31 +48,24 @@ class DemandTab(BaseAutomationTab):
         # 1. Populate the "Settings" Tab
         controls_frame = ctk.CTkFrame(settings_tab)
         controls_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
-        controls_frame.grid_columnconfigure(1, weight=1) # Configure for multiple columns
+        controls_frame.grid_columnconfigure(1, weight=1) # Configure for 2 columns
         
         # --- NEW: State Selection ---
-        ctk.CTkLabel(controls_frame, text="Select State:").grid(row=0, column=0, padx=(10, 5), pady=5, sticky="w")
-        self.state_options = ["Jharkhand", "Rajasthan"]
-        self.state_menu = ctk.CTkOptionMenu(controls_frame, values=self.state_options)
-        self.state_menu.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
-
+        ctk.CTkLabel(controls_frame, text="State:").grid(row=0, column=0, padx=(10, 5), pady=5, sticky="w")
+        self.state_combobox = ctk.CTkComboBox(controls_frame, values=list(config.STATE_DEMAND_CONFIG.keys()))
+        self.state_combobox.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+        
         ctk.CTkLabel(controls_frame, text="Panchayat:").grid(row=1, column=0, padx=(10, 5), pady=5, sticky="w")
-        self.panchayat_entry = AutocompleteEntry(controls_frame, suggestions_list=self.app.history_manager.get_suggestions("panchayat"),
-            app_instance=self.app, # <-- ADD THIS LINE
-            history_key="panchayat_name")
+        self.panchayat_entry = AutocompleteEntry(controls_frame, suggestions_list=self.app.history_manager.get_suggestions("panchayat"))
         self.panchayat_entry.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
 
-        ctk.CTkLabel(controls_frame, text="Village (Optional):").grid(row=2, column=0, padx=(10, 5), pady=5, sticky="w")
-        self.village_entry = ctk.CTkEntry(controls_frame, placeholder_text="Enter village name to override auto-detection")
-        self.village_entry.grid(row=2, column=1, padx=5, pady=5, sticky="ew")
-
-        ctk.CTkLabel(controls_frame, text="Demand/Work Date:").grid(row=3, column=0, padx=(10, 5), pady=5, sticky="w")
+        ctk.CTkLabel(controls_frame, text="Demand/Work Date:").grid(row=2, column=0, padx=(10, 5), pady=5, sticky="w")
         self.demand_date_entry = DateEntry(controls_frame)
-        self.demand_date_entry.grid(row=3, column=1, padx=5, pady=5, sticky="ew")
+        self.demand_date_entry.grid(row=2, column=1, padx=5, pady=5, sticky="ew")
 
-        ctk.CTkLabel(controls_frame, text="Days:").grid(row=4, column=0, padx=(10, 5), pady=5, sticky="w")
+        ctk.CTkLabel(controls_frame, text="Days:").grid(row=3, column=0, padx=(10, 5), pady=5, sticky="w")
         self.days_entry = ctk.CTkEntry(controls_frame, validate="key", validatecommand=(self.register(lambda P: P.isdigit() or P == ""), '%P'))
-        self.days_entry.grid(row=4, column=1, padx=5, pady=5, sticky="ew")
+        self.days_entry.grid(row=3, column=1, padx=5, pady=5, sticky="ew")
         self.days_entry.insert(0, self.app.history_manager.get_suggestions("demand_days")[0] if self.app.history_manager.get_suggestions("demand_days") else "14")
         
         buttons_frame = ctk.CTkFrame(settings_tab); buttons_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 10))
@@ -91,6 +84,7 @@ class DemandTab(BaseAutomationTab):
         self.select_csv_button = ctk.CTkButton(left_buttons_frame, text="Load Applicants CSV", command=self._select_csv_file)
         self.select_csv_button.pack(side="left", padx=(0, 10), pady=5)
 
+        # --- NEW: DEMO CSV BUTTON ---
         self.demo_csv_button = ctk.CTkButton(left_buttons_frame, text="Download Demo CSV", command=lambda: self.app.save_demo_csv("demand"), fg_color="#2E8B57", hover_color="#257247")
         self.demo_csv_button.pack(side="left", padx=(0, 10), pady=5)
         
@@ -116,6 +110,7 @@ class DemandTab(BaseAutomationTab):
         vsb = ttk.Scrollbar(results_tab, orient="vertical", command=self.results_tree.yview); vsb.grid(row=0, column=1, sticky='ns'); self.results_tree.configure(yscrollcommand=vsb.set)
         self._setup_results_treeview()
 
+    # **IMPROVEMENT**: New "Select All" method
     def _select_all_applicants(self):
         if not self.all_applicants_data or len(self.all_applicants_data) > 100: return
         
@@ -132,40 +127,71 @@ class DemandTab(BaseAutomationTab):
         self.app.log_message(self.log_display, f"Selected all {len(self.all_applicants_data)} valid applicants.")
 
     def _clear_processed_selection(self):
+        """Finds all selected applicants in the data model and sets them to unselected."""
         self.app.log_message(self.log_display, "Clearing selection of processed applicants...", "info")
+        
         for applicant_data in self.all_applicants_data:
-            if applicant_data.get('_selected', False): applicant_data['_selected'] = False
+            if applicant_data.get('_selected', False):
+                applicant_data['_selected'] = False
+
+        # Refresh the currently displayed checkboxes to reflect the change
         for checkbox in self.displayed_checkboxes:
-            if checkbox.get() == "on": checkbox.deselect()
+            if checkbox.get() == "on":
+                checkbox.deselect()
+
         self._update_selection_summary()
 
+    # **IMPROVEMENT**: Logic to show/hide "Select All" button
     def _select_csv_file(self):
         path = filedialog.askopenfilename(title="Select your CSV data file for Demand", filetypes=[("CSV files", "*.csv")])
         if not path: return
-        self.csv_path = path; self.file_label.configure(text=os.path.basename(path)); self.all_applicants_data = []
+
+        self.csv_path = path
+        self.file_label.configure(text=os.path.basename(path))
+        self.all_applicants_data = [] # Clear previous data
+        
         try:
             with open(path, mode='r', encoding='utf-8-sig') as csvfile:
+                # --- NEW: Robust Header Detection Logic ---
                 reader = csv.reader(csvfile)
-                try: header = next(reader)
-                except StopIteration: raise ValueError("CSV file is empty.")
+                try:
+                    header = next(reader)
+                except StopIteration:
+                    raise ValueError("CSV file is empty.")
+
+                # Normalize headers to find the correct columns (case-insensitive)
                 normalized_headers = [h.lower().replace(" ", "").replace("_", "") for h in header]
+                
                 try:
                     name_idx = normalized_headers.index("nameofapplicant")
                     jc_idx = normalized_headers.index("jobcardnumber")
-                except ValueError: raise ValueError("CSV headers must include 'Name of Applicant' and 'Job card number'.")
+                except ValueError:
+                    raise ValueError("Could not find required columns. Please ensure your CSV has headers like 'Name of Applicant' and 'Job card number'.")
                 
+                # --- END: New Logic ---
+
                 for row in reader:
-                    if not row or len(row) <= max(name_idx, jc_idx): continue
-                    name, job_card = row[name_idx].strip(), row[jc_idx].strip()
+                    if not row or len(row) <= max(name_idx, jc_idx):
+                        continue # Skip empty or malformed rows
+                    
+                    name = row[name_idx].strip()
+                    job_card = row[jc_idx].strip()
+
                     if name and job_card:
-                        self.all_applicants_data.append({'Name of Applicant': name, 'Job card number': job_card, '_selected': False})
+                        self.all_applicants_data.append({
+                            'Name of Applicant': name,
+                            'Job card number': job_card,
+                            '_selected': False # Add our internal tracking state
+                        })
+
             self.app.log_message(self.log_display, f"Loaded {len(self.all_applicants_data)} applicants from {os.path.basename(path)}.")
-            self._update_applicant_display()
+            self._update_applicant_display() # Initial display
             self.select_all_button.pack(side="left", padx=(0, 10), pady=5)
             self.clear_selection_button.pack(side="left", pady=5)
         except Exception as e:
             messagebox.showerror("Error Reading CSV", f"Could not read the CSV file.\n\nError: {e}")
-            self.csv_path = None; self.file_label.configure(text="No file selected")
+            self.csv_path = None
+            self.file_label.configure(text="No file selected")
             
     def _update_applicant_display(self, event=None):
         for checkbox in self.displayed_checkboxes: checkbox.destroy()
@@ -192,9 +218,8 @@ class DemandTab(BaseAutomationTab):
     
     def set_ui_state(self, running: bool):
         self.set_common_ui_state(running); state = "disabled" if running else "normal"
-        self.state_menu.configure(state=state)
+        self.state_combobox.configure(state=state) # <-- ADDED
         self.panchayat_entry.configure(state=state)
-        self.village_entry.configure(state=state)
         self.days_entry.configure(state=state); self.select_csv_button.configure(state=state)
         self.search_entry.configure(state=state); self.demand_date_entry.configure(state=state)
         self.select_all_button.configure(state=state)
@@ -202,19 +227,56 @@ class DemandTab(BaseAutomationTab):
         for cb in self.displayed_checkboxes:
             if "*" not in cb.cget("text"): cb.configure(state=state)
 
+    # --- NEW HELPER FUNCTION ---
+    def _get_village_code(self, job_card, state_logic_key):
+        """Extracts the village code from a job card string based on state logic."""
+        try:
+            jc_main_part = job_card.split('/')[0]
+            
+            if state_logic_key == "jh":
+                # Logic: JH-01-001-001-001 -> "001"
+                return jc_main_part.split('-')[-1]
+            
+            elif state_logic_key == "rj":
+                # Logic: RJ-270200209000394400 -> "400" (last 3 digits)
+                return jc_main_part[-3:]
+                
+            # Add other state logic keys here
+            
+            else:
+                # Default fallback (e.g., Jharkhand's logic)
+                self.app.log_message(self.log_display, f"Warning: Unknown state logic '{state_logic_key}', defaulting to Jharkhand style.")
+                return jc_main_part.split('-')[-1]
+        
+        except IndexError:
+            return None
+
     def start_automation(self):
-        selected_state = self.state_menu.get()
+        # --- MODIFIED: Get state and config ---
+        selected_state = self.state_combobox.get()
+        if not selected_state:
+            messagebox.showerror("Input Error", "Please select a state.")
+            return
+            
+        try:
+            state_config = config.STATE_DEMAND_CONFIG[selected_state]
+            state_logic_key = state_config["village_code_logic"]
+        except KeyError:
+            messagebox.showerror("Config Error", f"No demand configuration found for state: {selected_state}")
+            return
+        # --- END MODIFICATION ---
+
         selected_applicants = [row for row in self.all_applicants_data if row.get('_selected', False)]
         panchayat = self.panchayat_entry.get().strip()
-        village_name = self.village_entry.get().strip()
         days = self.days_entry.get().strip()
         
-        if not selected_state or selected_state not in self.state_options:
-            messagebox.showerror("Missing Info", "Please select a state.")
+        try:
+            demand_date = self.demand_date_entry.get()
+            demand_from = datetime.strptime(demand_date, '%d/%m/%Y').strftime('%d/%m/%Y')
+            work_start = demand_from
+        except ValueError:
+            messagebox.showerror("Invalid Date", "Date must be in DD/MM/YYYY format.")
             return
-
-        try: demand_from = datetime.strptime(self.demand_date_entry.get(), '%d/%m/%Y').strftime('%d/%m/%Y'); work_start = demand_from
-        except ValueError: messagebox.showerror("Invalid Date", "Date must be in DD/MM/YYYY format."); return
 
         if not days: messagebox.showerror("Missing Info", "Days field is required."); return
         if not self.csv_path: messagebox.showerror("Missing Info", "Please load an Applicants CSV file."); return
@@ -222,36 +284,42 @@ class DemandTab(BaseAutomationTab):
             
         self.stop_event.clear(); self.app.clear_log(self.log_display)
         for i in self.results_tree.get_children(): self.results_tree.delete(i)
-        self.app.log_message(self.log_display, f"Starting work demand for {len(selected_applicants)} selected applicant(s)...")
+        self.app.log_message(self.log_display, f"Starting work demand for {len(selected_applicants)} selected applicant(s) in {selected_state}...")
         self.app.set_status("Work demand automation is running..."); self.set_ui_state(running=True)
 
         self.app.history_manager.save_entry("panchayat", panchayat); self.app.history_manager.save_entry("demand_days", days)
-        self.save_inputs({"state": selected_state, "panchayat": panchayat, "village": village_name, "demand_date": self.demand_date_entry.get()})
+        self.save_inputs({"state": selected_state, "panchayat": panchayat, "demand_date": self.demand_date_entry.get()})
 
+        # --- MODIFIED: Use new helper function for village code ---
         grouped_by_village = {}
         for app in selected_applicants:
             job_card = app.get('Job card number', '').strip()
             if not job_card: continue
-            try:
-                village_code = "manual_selection" if village_name else job_card.split('/')[0].split('-')[-1]
-                if village_code not in grouped_by_village: grouped_by_village[village_code] = {}
-                if job_card not in grouped_by_village[village_code]: grouped_by_village[village_code][job_card] = []
-                grouped_by_village[village_code][job_card].append(app)
-            except IndexError:
-                self.app.log_message(self.log_display, f"Warning: Malformed Job Card number skipped: {job_card}")
+            
+            village_code = self._get_village_code(job_card, state_logic_key) # <-- MODIFIED
+            
+            if not village_code:
+                self.app.log_message(self.log_display, f"Warning: Malformed Job Card number skipped (could not find village code): {job_card}")
                 continue
 
-        self.worker_thread = threading.Thread(target=self._process_demand, args=(selected_state, panchayat, village_name, days, demand_from, work_start, grouped_by_village), daemon=True)
+            if village_code not in grouped_by_village:
+                grouped_by_village[village_code] = {}
+            if job_card not in grouped_by_village[village_code]:
+                grouped_by_village[village_code][job_card] = []
+            grouped_by_village[village_code][job_card].append(app)
+
+        self.worker_thread = threading.Thread(target=self._process_demand, args=(selected_state, panchayat, days, demand_from, work_start, grouped_by_village), daemon=True) # <-- MODIFIED
         self.worker_thread.start()
 
     def reset_ui(self):
         if not messagebox.askokcancel("Reset Form?", "Clear all inputs, selections, and logs?"): return
-        self.state_menu.set(self.state_options[0])
-        self.panchayat_entry.delete(0, 'end'); self.village_entry.delete(0, 'end'); self.days_entry.delete(0, 'end'); self.search_entry.delete(0, 'end')
+        self.state_combobox.set("") # <-- ADDED
+        self.panchayat_entry.delete(0, 'end'); self.days_entry.delete(0, 'end'); self.search_entry.delete(0, 'end')
         self.demand_date_entry.clear()
         self.csv_path = None; self.all_applicants_data.clear()
         self.file_label.configure(text="No file loaded.", text_color="gray")
-        self.select_all_button.pack_forget(); self.clear_selection_button.pack_forget()
+        self.select_all_button.pack_forget()
+        self.clear_selection_button.pack_forget()
         self._update_applicant_display(); self._update_selection_summary()
         for item in self.results_tree.get_children(): self.results_tree.delete(item)
         self.app.clear_log(self.log_display); self.app.after(0, self.update_status, "Ready", 0.0)
@@ -267,108 +335,100 @@ class DemandTab(BaseAutomationTab):
         self.results_tree.heading("Status", text="Status", anchor=tkinter.W)
         self.style_treeview(self.results_tree)
 
-    def _process_demand(self, selected_state, panchayat, village_name, days, demand_from, work_start, grouped_by_village):
-        state_urls = {
-            "Jharkhand": "https://nregade4.nic.in/netnrega/demand_new.aspx",
-            "Rajasthan": "https://nregade2.nic.in/netnrega/demand_new.aspx"
-        }
-        target_url = state_urls.get(selected_state)
-        if not target_url:
-            self.app.after(0, self.app.log_message, self.log_display, f"ERROR: Invalid state '{selected_state}' selected.", "error")
-            return
-
+    # --- MODIFIED: Added 'selected_state' argument ---
+    def _process_demand(self, selected_state, panchayat, days, demand_from, work_start, grouped_by_village):
         driver = None
         try:
+            # --- NEW: Get URL from state config ---
+            try:
+                base_url = config.STATE_DEMAND_CONFIG[selected_state]["base_url"]
+            except KeyError:
+                self.app.after(0, self.app.log_message, self.log_display, f"ERROR: No base_url configured for state '{selected_state}'.")
+                return
+            # --- END NEW ---
+            
             driver = self.app.get_driver()
-            if not driver: self.app.after(0, self.app.log_message, self.log_display, "ERROR: WebDriver not available."); return
+            if not driver:
+                self.app.after(0, self.app.log_message, self.log_display, "ERROR: WebDriver not available.")
+                return
 
-            self.app.after(0, self.app.log_message, self.log_display, f"Navigating to {selected_state} demand page...")
-            driver.get(target_url)
+            driver.get(base_url) # <-- MODIFIED
             wait = WebDriverWait(driver, 20)
             
             panchayat_ids = ["ctl00_ContentPlaceHolder1_DDL_panchayat", "ctl00_ContentPlaceHolder1_ddlPanchayat"]
             village_ids = ["ctl00_ContentPlaceHolder1_DDL_Village", "ctl00_ContentPlaceHolder1_ddlvillage"]
-            
-            is_panchayat_present = False
+            jobcard_ids = ["ctl00_ContentPlaceHolder1_DDL_Registration", "ctl00_ContentPlaceHolder1_ddlJobcard"]
+
+            def find_and_select_by_text(ids, select_text):
+                element = next((wait.until(EC.element_to_be_clickable((By.ID, eid))) for eid in ids if driver.find_elements(By.ID, eid)), None)
+                if not element: raise TimeoutException(f"Could not find any element with IDs: {ids}")
+                Select(element).select_by_visible_text(select_text)
+
+            is_gp_mode = False
             try:
-                WebDriverWait(driver, 5).until(EC.any_of(*[EC.presence_of_element_located((By.ID, pid)) for pid in panchayat_ids]))
-                is_panchayat_present = True
-                self.app.after(0, self.app.log_message, self.log_display, "Panchayat field found.")
+                WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.ID, panchayat_ids[0])))
             except TimeoutException:
-                self.app.after(0, self.app.log_message, self.log_display, "Panchayat field not found. Assuming GP-level login.")
+                is_gp_mode = True
+                self.app.after(0, self.app.log_message, self.log_display, "Panchayat field not found. Assuming GP Login Mode.")
 
-            if is_panchayat_present:
-                if not panchayat and not village_name: 
-                    raise ValueError("Panchayat name is required unless you are manually selecting a village.")
-                if panchayat:
-                    self.app.after(0, self.app.log_message, self.log_display, f"Navigated. Selecting Panchayat: {panchayat}")
-                    panchayat_element = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, f"#{panchayat_ids[0]}, #{panchayat_ids[1]}")))
-                    Select(panchayat_element).select_by_visible_text(panchayat)
-                    self.app.after(0, self.app.log_message, self.log_display, "Waiting for village list to load...")
-                    wait.until(EC.any_of(*[EC.presence_of_element_located((By.XPATH, f"//select[@id='{vid}']/option[position()>1]")) for vid in village_ids]))
+            if not is_gp_mode:
+                if not panchayat: raise ValueError("Panchayat name is required for this login level.")
+                self.app.after(0, self.app.log_message, self.log_display, f"Navigated. Selecting Panchayat: {panchayat}")
+                find_and_select_by_text(panchayat_ids, panchayat)
+                self.app.after(0, self.app.log_message, self.log_display, "Waiting for village list to load...")
+                wait.until(EC.any_of(EC.presence_of_element_located((By.XPATH, f"//select[@id='{village_ids[0]}']/option[position()>1]")),EC.presence_of_element_located((By.XPATH, f"//select[@id='{village_ids[1]}']/option[position()>1]"))))
 
-            if village_name:
-                self.app.after(0, self.app.log_message, self.log_display, f"--- Manual Village Mode: Searching for '{village_name}' ---")
+            for village_code, job_cards_in_village in grouped_by_village.items():
+                if self.stop_event.is_set(): break
                 try:
-                    village_select_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, f"#{village_ids[0]}, #{village_ids[1]}")))
+                    self.app.after(0, self.app.log_message, self.log_display, f"--- Processing Village Code: {village_code} ---")
+                    village_select_element = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, f"#{village_ids[0]}, #{village_ids[1]}")))
                     village_select = Select(village_select_element)
                     
-                    target_option = next((opt for opt in village_select.options if village_name.lower() in opt.text.lower()), None)
-                    if not target_option: raise NoSuchElementException(f"Could not find village containing text: {village_name}")
+                    target_option_value = None
+                    for option in village_select.options:
+                        option_value = option.get_attribute('value')
+                        if option_value and option_value.endswith(village_code):
+                            target_option_value = option_value
+                            break
                     
-                    village_select.select_by_visible_text(target_option.text)
-                    self.app.after(0, self.app.log_message, self.log_display, f"Selected Village '{target_option.text}'.")
-                    
-                    jobcard_ids = ["ctl00_ContentPlaceHolder1_DDL_Registration", "ctl00_ContentPlaceHolder1_ddlJobcard"]
-                    wait.until(EC.any_of(*[EC.presence_of_element_located((By.XPATH, f"//select[@id='{jid}']/option[position()>1]")) for jid in jobcard_ids]))
+                    if target_option_value:
+                        village_select.select_by_value(target_option_value)
+                        selected_option_text = village_select.all_selected_options[0].text.strip()
+                        self.app.after(0, self.app.log_message, self.log_display, f"Selected Village '{selected_option_text}' using value '{target_option_value}'.")
+                    else:
+                        raise NoSuchElementException(f"Could not find any village option whose value ends with code: {village_code}")
 
-                    all_job_cards = {jc: apps for village_data in grouped_by_village.values() for jc, apps in village_data.items()}
-                    for job_card, applicants_in_jc in all_job_cards.items():
+
+                    self.app.after(0, self.app.log_message, self.log_display, "Waiting for job cards to load...")
+                    wait.until(EC.any_of(EC.presence_of_element_located((By.XPATH, f"//select[@id='{jobcard_ids[0]}']/option[position()>1]")), EC.presence_of_element_located((By.XPATH, f"//select[@id='{jobcard_ids[1]}']/option[position()>1]"))))
+
+                    for job_card, applicants_in_jc in job_cards_in_village.items():
                         if self.stop_event.is_set(): break
                         self._process_single_job_card(driver, wait, job_card, applicants_in_jc, locals())
 
-                except (TimeoutException, NoSuchElementException) as e:
-                    self.app.after(0, self.app.log_message, self.log_display, f"ERROR during manual village selection: {e}. Automation stopped.", "error")
-
-            else:
-                self.app.after(0, self.app.log_message, self.log_display, "--- Auto-detect Village Mode ---")
-                for village_code, job_cards_in_village in grouped_by_village.items():
-                    if self.stop_event.is_set(): break
-                    try:
-                        self.app.after(0, self.app.log_message, self.log_display, f"--- Processing Village Code: {village_code} ---")
-                        village_select_element = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, f"#{village_ids[0]}, #{village_ids[1]}")))
-                        village_select = Select(village_select_element)
-                        
-                        target_option = next((opt for opt in village_select.options if opt.get_attribute('value') and opt.get_attribute('value').endswith(village_code)), None)
-                        if not target_option: raise NoSuchElementException(f"Could not find any village option whose value ends with code: {village_code}")
-                        
-                        village_select.select_by_value(target_option.get_attribute('value'))
-                        self.app.after(0, self.app.log_message, self.log_display, f"Selected Village '{target_option.text}' using value ending with '{village_code}'.")
-
-                        jobcard_ids = ["ctl00_ContentPlaceHolder1_DDL_Registration", "ctl00_ContentPlaceHolder1_ddlJobcard"]
-                        wait.until(EC.any_of(*[EC.presence_of_element_located((By.XPATH, f"//select[@id='{jid}']/option[position()>1]")) for jid in jobcard_ids]))
-
-                        for job_card, applicants_in_jc in job_cards_in_village.items():
-                            if self.stop_event.is_set(): break
-                            self._process_single_job_card(driver, wait, job_card, applicants_in_jc, locals())
-
-                    except (ValueError, IndexError, TimeoutException, NoSuchElementException) as e:
-                        self.app.after(0, self.app.log_message, self.log_display, f"ERROR processing village {village_code}: {e}. Skipping to next village.", "error")
-                        continue
+                except (ValueError, IndexError, TimeoutException, NoSuchElementException) as e:
+                    self.app.after(0, self.app.log_message, self.log_display, f"ERROR processing village {village_code}: {e}. Skipping to next village.")
+                    for job_card, applicants_in_jc in job_cards_in_village.items():
+                         for app_data in applicants_in_jc:
+                            self.app.after(0, self._update_results_tree, (job_card, app_data.get('Name of Applicant'), f"Skipped (Village Error: {e})"))
+                    continue
 
             if not self.stop_event.is_set():
                 self.app.after(0, self.app.log_message, self.log_display, "✅ All selected applicants processed.")
                 self.app.set_status("Automation completed!")
 
         except Exception as e:
-            self.app.after(0, self.app.log_message, self.log_display, f"A critical error occurred: {e}", "error")
+            self.app.after(0, self.app.log_message, self.log_display, f"A critical error occurred: {e}")
             self.app.set_status(f"Critical error occurred.")
         finally:
             if not self.stop_event.is_set():
                 self.app.after(100, lambda: messagebox.showinfo("Complete", "Work demand automation has finished."))
+                # --- NEW: CALL TO CLEAR SELECTION ---
                 self.app.after(0, self._clear_processed_selection)
             self.app.after(0, self.set_ui_state, False)
 
+    # **IMPROVEMENT**: Major overhaul for robust error handling
     def _process_single_job_card(self, driver, wait, job_card, applicants_in_jc, local_vars):
         days, demand_from, work_start = local_vars['days'], local_vars['demand_from'], local_vars['work_start']
         jobcard_ids = ["ctl00_ContentPlaceHolder1_DDL_Registration", "ctl00_ContentPlaceHolder1_ddlJobcard"]
@@ -376,36 +436,51 @@ class DemandTab(BaseAutomationTab):
         button_ids = ["ctl00_ContentPlaceHolder1_btnProceed", "ctl00_ContentPlaceHolder1_btnSave"]
         
         try:
+            # --- OPTIMIZED: Use XPath for faster job card selection ---
             jc_suffix = job_card.split('/')[-1]
             self.app.after(0, self.app.log_message, self.log_display, f"Processing Job Card Suffix: {jc_suffix}")
             
             jc_dropdown_element = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, f"#{jobcard_ids[0]}, #{jobcard_ids[1]}")))
-            prefixes_to_try = list(dict.fromkeys([f"{jc_suffix}-", f"{jc_suffix.zfill(2)}-", f"{jc_suffix.zfill(3)}-"]))
-            xpath_conditions = " or ".join([f"starts-with(normalize-space(.), '{p}')" for p in prefixes_to_try]) + f" or contains(normalize-space(@value), '/{jc_suffix}:')"
-            xpath_query = f".//option[{xpath_conditions}]"
             
+            # --- MODIFIED: More robust job card matching ---
+            # Try to find by exact value (fastest)
+            jc_value_to_find = job_card.split('/')[0]
             try:
-                option_to_select = jc_dropdown_element.find_element(By.XPATH, xpath_query)
-                found_option_text = option_to_select.text
-                self.app.after(0, self.app.log_message, self.log_display, f"   -> Found matching option: '{found_option_text}'")
-                Select(jc_dropdown_element).select_by_visible_text(found_option_text)
+                Select(jc_dropdown_element).select_by_value(jc_value_to_find)
+                found_option_text = jc_value_to_find
+                self.app.after(0, self.app.log_message, self.log_display, f"   -> Found matching option by value: '{found_option_text}'")
             except NoSuchElementException:
-                raise NoSuchElementException(f"Could not find a matching job card for suffix '{jc_suffix}' using XPath.")
+                # Fallback to text-based matching if value fails
+                self.app.after(0, self.app.log_message, self.log_display, f"   -> Value match failed, trying text match for suffix: {jc_suffix}")
+                prefixes_to_try = list(dict.fromkeys([f"{jc_suffix}-", f"{jc_suffix.zfill(2)}-", f"{jc_suffix.zfill(3)}-"]))
+                xpath_conditions = " or ".join([f"starts-with(normalize-space(.), '{p}')" for p in prefixes_to_try])
+                xpath_query = f".//option[{xpath_conditions}]"
+            
+                try:
+                    option_to_select = jc_dropdown_element.find_element(By.XPATH, xpath_query)
+                    found_option_text = option_to_select.text
+                    self.app.after(0, self.app.log_message, self.log_display, f"   -> Found matching option by text: '{found_option_text}'")
+                    Select(jc_dropdown_element).select_by_visible_text(found_option_text)
+                except NoSuchElementException:
+                    raise NoSuchElementException(f"Could not find a matching job card for value '{jc_value_to_find}' or suffix '{jc_suffix}'.")
+            # --- END MODIFICATION ---
 
             try:
-                grid_element = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.CSS_SELECTOR, f"#{grid_ids[0]}, #{grid_ids[1]}")))
+                grid_element = WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.CSS_SELECTOR, f"#{grid_ids[0]}, #{grid_ids[1]}")))
                 grid_id_found = grid_element.get_attribute("id")
-                WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, f"table[id='{grid_id_found}'] > tbody > tr")))
                 time.sleep(1.5)
             except TimeoutException:
                 try:
-                    error_message = driver.find_element(By.XPATH, "//font[contains(text(), 'not yet issued')]").text.strip()
+                    error_element = driver.find_element(By.XPATH, "//font[contains(text(), 'not yet issued')]")
+                    error_message = error_element.text.strip()
                     self.app.after(0, self.app.log_message, self.log_display, f"   ERROR: {error_message}", "error")
-                    for app_data in applicants_in_jc: self.app.after(0, self._update_results_tree, (job_card, app_data.get('Name of Applicant'), "Skipped (Job Card Not Issued)"))
+                    for app_data in applicants_in_jc:
+                        self.app.after(0, self._update_results_tree, (job_card, app_data.get('Name of Applicant'), "Skipped (Job Card Not Issued)"))
                     return
                 except NoSuchElementException:
-                    self.app.after(0, self.app.log_message, self.log_display, "   ERROR: Applicant table did not load.", "error")
-                    for app_data in applicants_in_jc: self.app.after(0, self._update_results_tree, (job_card, app_data.get('Name of Applicant'), "Skipped (Table failed to load)"))
+                    self.app.after(0, self.app.log_message, self.log_display, "   ERROR: Applicant table did not load for an unknown reason.", "error")
+                    for app_data in applicants_in_jc:
+                         self.app.after(0, self._update_results_tree, (job_card, app_data.get('Name of Applicant'), "Skipped (Applicant table failed to load)"))
                     return
 
             target_applicant_names_csv = [app.get('Name of Applicant', '').strip() for app in applicants_in_jc]
@@ -416,22 +491,27 @@ class DemandTab(BaseAutomationTab):
             for i, row in enumerate(all_rows_on_page):
                 if i == 0: continue
                 try:
-                    applicant_name_web = row.find_element(By.CSS_SELECTOR, "span[id*='_job']").text.strip()
-                    if not any("".join(csv_name.lower().split()) in "".join(applicant_name_web.lower().split()) for csv_name in target_applicant_names_csv):
+                    applicant_name_web_span = row.find_element(By.CSS_SELECTOR, "span[id*='_job']")
+                    applicant_name_web = applicant_name_web_span.text.strip()
+                    is_target_applicant = any("".join(csv_name.lower().split()) in "".join(applicant_name_web.lower().split()) for csv_name in target_applicant_names_csv)
+                    if not is_target_applicant:
                         row_id_prefix = f"{grid_id_found}_ctl{i+1:02d}_"
                         from_date_field_to_clear = row.find_element(By.ID, row_id_prefix + "dt_app")
-                        if from_date_field_to_clear.get_attribute('value'):
+                        if from_date_field_to_clear.get_attribute('value') != '':
                             from_date_field_to_clear.clear()
-                            self.app.after(0, self.app.log_message, self.log_display, f"   -> Cleared dates for non-selected: {applicant_name_web}")
-                except Exception: continue
+                            self.app.after(0, self.app.log_message, self.log_display, f"   -> Cleared dates for non-selected applicant: {applicant_name_web}")
+                except Exception:
+                    continue
 
             for target_name in target_applicant_names_csv:
-                if self.stop_event.is_set(): break; found_and_filled = False
+                if self.stop_event.is_set(): break
+                found_and_filled = False
                 all_rows_on_page = driver.find_elements(By.CSS_SELECTOR, f"table[id='{grid_id_found}'] > tbody > tr")
                 for i, row in enumerate(all_rows_on_page):
                     if i == 0: continue
                     try:
-                        applicant_name_web = row.find_element(By.CSS_SELECTOR, "span[id*='_job']").text.strip()
+                        applicant_name_web_span = row.find_element(By.CSS_SELECTOR, "span[id*='_job']")
+                        applicant_name_web = applicant_name_web_span.text.strip()
                         if "".join(target_name.lower().split()) in "".join(applicant_name_web.lower().split()):
                             row_id_prefix = f"{grid_id_found}_ctl{i+1:02d}_"
                             from_date_id, start_date_id, days_id, till_date_id = "dt_app", "dt_from", "d3", "dt_to"
@@ -447,45 +527,78 @@ class DemandTab(BaseAutomationTab):
                                 wait.until(lambda d: d.find_element(By.ID, row_id_prefix + till_date_id).get_attribute("value") != "")
                                 self.app.after(0, self.app.log_message, self.log_display, f"   SUCCESS: Filled data for {applicant_name_web}.")
                             
-                            filled_at_least_one = True; processed_applicants_in_loop.append(target_name); found_and_filled = True; break
-                    except Exception as e: self.app.after(0, self.app.log_message, self.log_display, f"   -> Warning: Error processing row for {target_name}: {e}"); continue
-                if not found_and_filled: self.app.after(0, self.app.log_message, self.log_display, f"   ERROR: Could not find {target_name} in the grid.")
+                            filled_at_least_one = True
+                            processed_applicants_in_loop.append(target_name)
+                            found_and_filled = True
+                            break
+                    except Exception as e:
+                        self.app.after(0, self.app.log_message, self.log_display, f"   -> Warning: Error processing row for {target_name}: {e}")
+                        continue
+                if not found_and_filled:
+                     self.app.after(0, self.app.log_message, self.log_display, f"   ERROR: Could not find {target_name} in the grid.")
 
             if filled_at_least_one:
                 self.app.after(0, self.app.log_message, self.log_display, f"Submitting demand for Job Card {jc_suffix}...")
-                wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, f"#{button_ids[0]}, #{button_ids[1]}"))).click()
+                button_element = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, f"#{button_ids[0]}, #{button_ids[1]}")))
+                button_element.click()
                 
                 result_text = ""
-                try: alert = WebDriverWait(driver, 5).until(EC.alert_is_present()); result_text = alert.text.strip(); self.app.after(0, self.app.log_message, self.log_display, f"   SUCCESS (Alert): {result_text}"); alert.accept()
+                try:
+                    alert = WebDriverWait(driver, 5).until(EC.alert_is_present())
+                    result_text = alert.text.strip(); self.app.after(0, self.app.log_message, self.log_display, f"   SUCCESS (Alert): {result_text}"); alert.accept()
                 except TimeoutException:
-                    self.app.after(0, self.app.log_message, self.log_display, "   -> No alert, checking on-page message...")
+                    self.app.after(0, self.app.log_message, self.log_display, "   -> No alert found, checking for on-page message...")
                     try:
-                        elements_to_check = [
-                            "//font[contains(text(), 'Aadhaar available')]", "//font[@color='red']",
-                            "ctl00_ContentPlaceHolder1_lblmsg"
-                        ]
-                        result_text = next((driver.find_element(By.ID if 'lblmsg' in xpath else By.XPATH, xpath).text.strip() for xpath in elements_to_check if driver.find_elements(By.ID if 'lblmsg' in xpath else By.XPATH, xpath)), "Unknown result (No message found)")
-                        self.app.after(0, self.app.log_message, self.log_display, f"   RESULT (On-Page): {result_text}")
-                    except NoSuchElementException: result_text = "Unknown result (No message found)"
+                        aadhaar_error_element = driver.find_element(By.XPATH, "//font[contains(text(), 'Aadhaar available')]")
+                        result_text = aadhaar_error_element.text.strip()
+                        self.app.after(0, self.app.log_message, self.log_display, f"   RESULT (On-Page Error): {result_text}", "error")
+                    except NoSuchElementException:
+                        try:
+                            error_font = driver.find_element(By.XPATH, "//font[@color='red']")
+                            result_text = error_font.text.strip()
+                            self.app.after(0, self.app.log_message, self.log_display, f"   RESULT (On-Page): {result_text}")
+                        except NoSuchElementException:
+                            try:
+                               msg_label = driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_lblmsg")
+                               result_text = msg_label.text.strip()
+                               self.app.after(0, self.app.log_message, self.log_display, f"   RESULT (On-Page): {result_text}")
+                            except NoSuchElementException:
+                               result_text = "Unknown result (No message found)"
 
                 is_specific_error = "is already there" in result_text.lower() and "demand of" in result_text.lower()
                 error_applicant_name = ""
+
                 if is_specific_error:
-                    try: error_applicant_name = result_text.split("Demand of ")[1].split("  ")[0].split(" for period")[0].strip(); self.app.after(0, self.app.log_message, self.log_display, f"   -> Specific error for: {error_applicant_name}")
-                    except IndexError: is_specific_error = False; self.app.after(0, self.app.log_message, self.log_display, "   -> 'Already there' message found, but name couldn't be parsed.")
+                    try:
+                        name_part = result_text.split("Demand of ")[1]
+                        error_applicant_name = name_part.split("  ")[0].strip()
+                        if " for period" in error_applicant_name:
+                            error_applicant_name = error_applicant_name.split(" for period")[0].strip()
+                        self.app.after(0, self.app.log_message, self.log_display, f"   -> Specific error detected for: {error_applicant_name}")
+                    except IndexError:
+                        is_specific_error = False
+                        self.app.after(0, self.app.log_message, self.log_display, "   -> 'Already there' message found, but name couldn't be parsed.")
 
                 for applicant_data in applicants_in_jc:
                     applicant_name_csv = applicant_data.get('Name of Applicant', 'N/A')
                     if applicant_name_csv not in processed_applicants_in_loop: continue
-                    status = result_text if not (is_specific_error and error_applicant_name and "".join(error_applicant_name.lower().split()) not in "".join(applicant_name_csv.lower().split())) else "Success (Processed in batch)"
-                    self.app.after(0, self._update_results_tree, (job_card, applicant_name_csv, status))
+                    
+                    status_to_display = result_text 
+                    if is_specific_error and error_applicant_name:
+                        if "".join(error_applicant_name.lower().split()) in "".join(applicant_name_csv.lower().split()):
+                            status_to_display = result_text
+                        else:
+                            status_to_display = "Success (Processed in batch)"
+                    
+                    self.app.after(0, self._update_results_tree, (job_card, applicant_name_csv, status_to_display))
             
         except StaleElementReferenceException:
             self.app.after(0, self.app.log_message, self.log_display, f"   INFO: Page reloaded for {job_card}, retrying...")
             self._process_single_job_card(driver, wait, job_card, applicants_in_jc, local_vars)
         except Exception as e:
             self.app.after(0, self.app.log_message, self.log_display, f"ERROR processing {job_card}: {e}", "error")
-            for app_data in applicants_in_jc: self.app.after(0, self._update_results_tree, (app_data.get('Job card number'), app_data.get('Name of Applicant'), f"CRASH: {e}"))
+            for app_data in applicants_in_jc:
+                self.app.after(0, self._update_results_tree, (app_data.get('Job card number'), app_data.get('Name of Applicant'), f"CRASH: {e}"))
 
     def _update_results_tree(self, data):
         job_card, name, status = data; row_count = len(self.results_tree.get_children()) + 1
@@ -505,24 +618,27 @@ class DemandTab(BaseAutomationTab):
 
     def load_inputs(self):
         if not os.path.exists(self.config_file):
-            self.demand_date_entry.set_date(datetime.now().strftime('%d/%m/%Y'))
+            today = datetime.now().strftime('%d/%m/%Y')
+            self.demand_date_entry.set_date(today)
             return
         try:
             with open(self.config_file, 'r') as f: data = json.load(f)
-            saved_state = data.get('state')
-            if saved_state in self.state_options:
-                self.state_menu.set(saved_state)
+            self.state_combobox.set(data.get('state', '')) # <-- ADDED
             self.panchayat_entry.insert(0, data.get('panchayat', ''))
-            self.village_entry.insert(0, data.get('village', ''))
             self.demand_date_entry.set_date(data.get('demand_date', ''))
         except Exception as e: print(f"Error loading demand inputs: {e}")
 
     def _clear_selection(self):
+        """Clears all selected applicants."""
         if not any(app.get('_selected', False) for app in self.all_applicants_data):
             self.app.log_message(self.log_display, "No applicants were selected.", "info")
             return
-        for applicant_data in self.all_applicants_data: applicant_data['_selected'] = False
-        for checkbox in self.displayed_checkboxes: checkbox.deselect()
+
+        for applicant_data in self.all_applicants_data:
+            applicant_data['_selected'] = False
+
+        for checkbox in self.displayed_checkboxes:
+            checkbox.deselect()
+
         self._update_selection_summary()
         self.app.log_message(self.log_display, "Selection has been cleared.")
-
