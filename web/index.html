@@ -27,8 +27,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
-    <script>
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet"> <script>
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark')
         } else {
@@ -39,6 +38,7 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
+            overflow-x: hidden; /* Prevent horizontal scrollbar caused by AOS */
         }
 
         .feature-card {
@@ -100,6 +100,8 @@
                     to Use</a>
                 <a href="#faq"
                     class="mobile-link text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400">FAQ</a>
+                 <a href="https://tools.nregabot.com" target="_blank" rel="noopener noreferrer"
+                    class="mobile-link text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400">Tools</a>
                 <a href="contact.html"
                     class="mobile-link text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400">Contact</a>
                 <a href="https://bookmark.nregabot.com" target="_blank" rel="noopener noreferrer"
@@ -132,6 +134,8 @@
                 Use</a>
             <a href="#faq"
                 class="mobile-link text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400">FAQ</a>
+            <a href="https://tools.nregabot.com" target="_blank" rel="noopener noreferrer"
+                class="mobile-link text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400">Tools</a>
             <a href="contact.html"
                 class="mobile-link text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400">Contact</a>
             <a href="https://bookmark.nregabot.com" target="_blank" rel="noopener noreferrer"
@@ -157,7 +161,7 @@
                 </div>
             </div>
 
-            <main class="container mx-auto px-6 pt-16 pb-12 text-center">
+            <main class="container mx-auto px-6 pt-16 pb-12 text-center" data-aos="fade-up">
                 <h2 class="text-4xl md:text-5xl font-extrabold text-gray-900 leading-tight dark:text-white">Automate
                     Your NREGA Tasks.</h2>
                 <p class="mt-4 text-lg text-gray-600 max-w-3xl mx-auto dark:text-gray-400">Stop wasting hours on
@@ -184,14 +188,14 @@
 
             <section class="py-16 bg-white dark:bg-gray-800">
                 <div class="container mx-auto px-6">
-                    <div class="text-center mb-12">
+                    <div class="text-center mb-12" data-aos="fade-up">
                         <h3 class="text-3xl font-bold text-gray-900 dark:text-white">A Modern Dashboard for Modern Needs
                         </h3>
                         <p class="text-gray-600 mt-2 dark:text-gray-400">Clean, intuitive, and powerful. Built to make
                             your job easier.</p>
                     </div>
 
-                    <div class="swiper-container max-w-5xl mx-auto relative group overflow-hidden rounded-xl">
+                    <div class="swiper-container max-w-5xl mx-auto relative group overflow-hidden rounded-xl" data-aos="zoom-in">
                         <div class="swiper-wrapper">
                             <div class="swiper-slide"><img src="/assets/Muster_Roll_Generator.png"
                                     alt="Muster Roll Generator Screenshot" class="shadow-lg"></div>
@@ -221,16 +225,21 @@
                 </div>
             </section>
             <section id="support" class="py-20 bg-gray-100 dark:bg-black/50">
-                <div class="container mx-auto px-6 text-center">
+                <div class="container mx-auto px-6 text-center" data-aos="fade-up">
                     <h3 class="text-3xl font-bold text-gray-900 dark:text-white">Support the Project</h3>
                     <p class="text-gray-600 dark:text-gray-400 mt-2 max-w-3xl mx-auto">Your 30-day free trial starts
                         automatically. After the trial, please consider purchasing a license to support app maintenance,
-                        bug fixes, and future updates. All plans include **500 MB of Cloud Storage**.
+                        bug fixes, and future updates. All plans include <strong>500 MB of Cloud Storage</strong>.
                     </p>
+                    
+                    <div class="mt-8 mb-6 p-4 bg-green-100 dark:bg-green-900/50 border border-green-300 dark:border-green-700 rounded-lg max-w-md mx-auto" data-aos="zoom-in">
+                         <p class="text-lg font-semibold text-green-800 dark:text-green-200">🎉 Festival Discount! 🎉</p>
+                         <p class="mt-1 text-green-700 dark:text-green-300">Use code <strong class="font-mono bg-green-200 dark:bg-green-800 px-1.5 py-0.5 rounded">FESTIVAL15</strong> at checkout for <strong class="font-semibold">15% OFF</strong> any plan!</p>
+                    </div>
                     <div class="mt-12 grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
 
                         <div
-                            class="bg-white rounded-xl shadow-lg p-6 border dark:border-gray-700 flex flex-col dark:bg-gray-800">
+                            class="bg-white rounded-xl shadow-lg p-6 border dark:border-gray-700 flex flex-col dark:bg-gray-800" data-aos="fade-up" data-aos-delay="100">
                             <h4 class="font-bold text-xl flex items-center justify-center">
                                 <span>Monthly Plan</span>
                                 <span
@@ -249,7 +258,7 @@
                         </div>
 
                         <div
-                            class="bg-white rounded-xl shadow-lg p-6 border dark:border-gray-700 flex flex-col dark:bg-gray-800">
+                            class="bg-white rounded-xl shadow-lg p-6 border dark:border-gray-700 flex flex-col dark:bg-gray-800" data-aos="fade-up" data-aos-delay="200">
                             <h4 class="font-bold text-xl flex items-center justify-center">
                                 <span>Quarterly Plan</span>
                                 <span
@@ -268,7 +277,7 @@
                         </div>
 
                         <div
-                            class="bg-white rounded-xl shadow-lg p-6 border dark:border-gray-700 flex flex-col dark:bg-gray-800">
+                            class="bg-white rounded-xl shadow-lg p-6 border dark:border-gray-700 flex flex-col dark:bg-gray-800" data-aos="fade-up" data-aos-delay="300">
                             <h4 class="font-bold text-xl flex items-center justify-center">
                                 <span>Half Yearly Plan</span>
                                 <span
@@ -287,7 +296,7 @@
                         </div>
 
                         <div
-                            class="bg-blue-600 text-white rounded-xl shadow-lg p-6 border border-blue-700 flex flex-col ring-4 ring-blue-300 dark:ring-blue-500/50">
+                            class="bg-blue-600 text-white rounded-xl shadow-lg p-6 border border-blue-700 flex flex-col ring-4 ring-blue-300 dark:ring-blue-500/50" data-aos="fade-up" data-aos-delay="400">
                             <h4 class="font-bold text-xl flex items-center justify-center">
                                 <span>Yearly Plan</span>
                                 <span
@@ -311,83 +320,83 @@
 
             <section class="py-20">
                 <div class="container mx-auto px-6">
-                    <div class="text-center mb-16">
+                    <div class="text-center mb-16" data-aos="fade-up">
                         <h3 class="text-3xl font-bold text-gray-900 dark:text-white">Powerful Automation Features</h3>
                         <p class="text-gray-600 mt-2 dark:text-gray-400">Everything you need to streamline your
                             workflow.</p>
                     </div>
                     <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700">
+                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up">
                             <h4>MR Generator</h4>
                             <p class="text-gray-600 dark:text-gray-400 mt-2">Automatically generate and download Muster
                                 Roll PDFs for one or all work codes.</p>
                         </div>
-                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700">
+                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="50">
                             <h4>Duplicate MR Print</h4>
                             <p class="text-gray-600 dark:text-gray-400 mt-2">Find, save as PDF, and print all Muster
                                 Rolls associated with one or more work codes in a batch.</p>
                         </div>
-                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700">
+                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="100">
                             <h4>Update Outcome</h4>
                             <p class="text-gray-600 dark:text-gray-400 mt-2">Quickly update the 'Estimated Outcome' for
                                 a list of work codes without manual entry.</p>
                         </div>
-                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700">
+                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="150">
                             <h4>MSR Processor</h4>
                             <p class="text-gray-600 dark:text-gray-400 mt-2">Process and save Muster Rolls for a list of
                                 work codes, with results shown instantly.</p>
                         </div>
-                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700">
+                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="200">
                             <h4>FTO Generation</h4>
                             <p class="text-gray-600 dark:text-gray-400 mt-2">Automates the login and two-step
                                 verification process to generate and capture FTO numbers.</p>
                         </div>
-                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700">
+                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="250">
                             <h4>Wagelist Automation</h4>
                             <p class="text-gray-600 dark:text-gray-400 mt-2">Generate new wagelists and send them for
                                 e-FMS payment processing with a single click.</p>
                         </div>
-                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700">
+                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="300">
                             <h4>Jobcard Verification</h4>
                             <p class="text-gray-600 dark:text-gray-400 mt-2">Verify job cards and automatically upload
                                 the correct family photo based on the job card number.</p>
                         </div>
-                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700">
+                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="350">
                             <h4>eMB Entry</h4>
                             <p class="text-gray-600 dark:text-gray-400 mt-2">Fill the Measurement Book (MB) entry page
                                 for multiple work codes automatically.</p>
                         </div>
-                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700">
+                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="400">
                             <h4>eMB Verify</h4>
                             <p class="text-gray-600 dark:text-gray-400 mt-2">Automate the verification process for
                                 Measurement Book entries in bulk.</p>
                         </div>
-                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700">
+                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="450">
                             <h4>Scheme Closing</h4>
                             <p class="text-gray-600 dark:text-gray-400 mt-2">Close out multiple schemes efficiently by
                                 automating the finalization process.</p>
                         </div>
-                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700">
+                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="500">
                             <h4>Delete Work Allocation</h4>
                             <p class="text-gray-600 dark:text-gray-400 mt-2">Quickly remove work allocations for a list
                                 of Muster Roll numbers.</p>
                         </div>
-                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700">
+                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="550">
                             <h4>Workcode Gen (Dynamic)</h4>
                             <p class="text-gray-600 dark:text-gray-400 mt-2">Create new work codes in bulk by loading
                                 categories from the website and reading data from a simple CSV file.</p>
                         </div>
-                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700">
+                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="600">
                             <h4>IF Editor (Dynamic)</h4>
                             <p class="text-gray-600 dark:text-gray-400 mt-2">Automate the multi-page IF editing process
                                 with a flexible UI for all settings, using a simple CSV for work codes.</p>
                         </div>
-                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700">
+                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="650">
                             <h4>Verify ABPS</h4>
                             <p class="text-gray-600 dark:text-gray-400 mt-2">Automate checking worker Aadhaar numbers
                                 with NPCI, with an auto-mode to process all villages in a panchayat.</p>
                         </div>
-                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700">
+                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="700">
                             <h4>Workcode Extractor</h4>
                             <p class="text-gray-600 dark:text-gray-400 mt-2">A handy utility to parse and extract clean
                                 lists of work codes from any block of text.</p>
@@ -396,25 +405,22 @@
                 </div>
             </section>
 
-            <section class="py-16 lg:py-20 bg-gray-100 dark:bg-black/50">
+            <section id="getting-started" class="py-16 lg:py-20 bg-gray-100 dark:bg-black/50">
                 <div class="container mx-auto px-6">
-                    <div class="text-center mb-16">
+                    <div class="text-center mb-16" data-aos="fade-up">
                         <h2 class="text-4xl font-extrabold text-gray-900 dark:text-white">Getting Started</h2>
                         <p class="text-lg text-gray-600 dark:text-gray-400 mt-4 max-w-3xl mx-auto">Download our demo
                             files to see how to structure your data for our most powerful automations.</p>
                     </div>
-                    <div class="max-w-4xl mx-auto grid md:grid-cols-2 gap-8">
-
-                        <div
-                            class="instruction-card bg-white dark:bg-gray-800 p-8 rounded-lg border dark:border-gray-700 overflow-hidden">
+                    <div class="max-w-6xl mx-auto grid md:grid-cols-3 gap-8"> <div
+                            class="instruction-card bg-white dark:bg-gray-800 p-8 rounded-lg border dark:border-gray-700 overflow-hidden" data-aos="fade-up">
                             <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Workcode Generator CSV</h3>
                             <p class="text-gray-600 dark:text-gray-400 mt-2 mb-4">Use this format for the 'WC Gen' tab.
                                 The CSV provides the dynamic data for each work code you want to create.</p>
                             <pre
                                 class="bg-gray-100 text-gray-800 p-4 rounded-md text-sm overflow-x-auto dark:bg-gray-900 dark:text-gray-300"><code>priority,work_name,...,job_card,beneficiary_type</code></pre>
                             <div class="mt-4 flex flex-wrap gap-2">
-                                <a href="https://bills.nregabot.com/work_code_generator" target="_blank"
-                                    rel="noopener noreferrer"
+                                <a href="https://bills.nregabot.com/work_code_generator" target="_blank" rel="noopener noreferrer"
                                     class="inline-block bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors dark:bg-blue-500 dark:hover:bg-blue-600">
                                     Generate CSV Online
                                 </a>
@@ -425,10 +431,8 @@
                             </div>
                         </div>
 
-
-
                         <div
-                            class="instruction-card bg-white dark:bg-gray-800 p-8 rounded-lg border dark:border-gray-700 overflow-hidden">
+                            class="instruction-card bg-white dark:bg-gray-800 p-8 rounded-lg border dark:border-gray-700 overflow-hidden" data-aos="fade-up" data-aos-delay="100">
                             <h3 class="text-2xl font-bold text-gray-900 dark:text-white">IF Editor CSV</h3>
                             <p class="text-gray-600 dark:text-gray-400 mt-2 mb-4">Use this simplified format for the 'IF
                                 Editor' tab. All other settings are now configured in the app's UI.</p>
@@ -439,6 +443,21 @@
                                 IF Edit Demo</a>
                         </div>
 
+                         <div
+                            class="instruction-card bg-white dark:bg-gray-800 p-8 rounded-lg border dark:border-gray-700 overflow-hidden" data-aos="fade-up" data-aos-delay="200">
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Demand Automation CSV</h3>
+                            <p class="text-gray-600 dark:text-gray-400 mt-2 mb-4">Required for the 'Demand' tab. Include names and job card numbers for demand generation.</p>
+                            <pre
+                                class="bg-gray-100 text-gray-800 p-4 rounded-md text-sm overflow-x-auto dark:bg-gray-900 dark:text-gray-300"><code>Name of Applicant,Job card number</code></pre>
+                             <div class="mt-4 flex flex-wrap gap-2"> <a href="https://bills.nregabot.com/extract-job-cards" target="_blank" rel="noopener noreferrer"
+                                    class="inline-block bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors dark:bg-blue-500 dark:hover:bg-blue-600">
+                                    Generate CSV Online
+                                </a>
+                                <a href="/assets/demo_demand.csv" download class="inline-block bg-green-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-green-700 transition-colors dark:bg-green-500 dark:hover:bg-green-600">Download
+                                    Demand Demo</a>
+                             </div>
+                        </div>
+
                     </div>
                 </div>
             </section>
@@ -446,37 +465,37 @@
 
         <section id="faq" class="py-16 lg:py-20">
             <div class="container mx-auto px-6">
-                <div class="text-center mb-16">
+                <div class="text-center mb-16" data-aos="fade-up">
                     <h2 class="text-4xl font-extrabold text-gray-900 dark:text-white">Frequently Asked Questions</h2>
                     <p class="text-lg text-gray-600 dark:text-gray-400 mt-4 max-w-3xl mx-auto">Have questions? We've got
                         answers.</p>
                 </div>
                 <div class="max-w-3xl mx-auto space-y-4">
-                    <details class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm cursor-pointer">
+                    <details class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm cursor-pointer" data-aos="fade-up">
                         <summary class="font-semibold text-lg">Is my NREGA data safe?</summary>
                         <p class="text-gray-600 dark:text-gray-400 mt-4">Absolutely. The application works by automating
                             your local browser. It only reads what's on the screen to perform its tasks. None of your
                             NREGA data, work codes, or personal information is ever sent to our servers.</p>
                     </details>
-                    <details class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm cursor-pointer">
+                    <details class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm cursor-pointer" data-aos="fade-up">
                         <summary class="font-semibold text-lg">What happens after my 30-day free trial ends?</summary>
                         <p class="text-gray-600 dark:text-gray-400 mt-4">After 30 days, the automation features will be
                             disabled. To continue using the app, you can support the project by purchasing a monthly or
                             yearly license key.</p>
                     </details>
-                    <details class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm cursor-pointer">
+                    <details class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm cursor-pointer" data-aos="fade-up">
                         <summary class="font-semibold text-lg">How do I get a license key after purchasing?</summary>
                         <p class="text-gray-600 dark:text-gray-400 mt-4">After making a payment on our secure license
                             page, your key will be generated instantly and sent to your registered email address.</p>
                     </details>
-                    <details class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm cursor-pointer">
+                    <details class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm cursor-pointer" data-aos="fade-up">
                         <summary class="font-semibold text-lg">Can I use one license key on multiple computers?
                         </summary>
                         <p class="text-gray-600 dark:text-gray-400 mt-4">Each license key is valid for the number of
                             devices you selected during purchase (1, 2, or 3). The license is locked to the first few
                             computers it is activated on. If you need to change a computer, please contact support.</p>
                     </details>
-                    <details class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm cursor-pointer">
+                    <details class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm cursor-pointer" data-aos="fade-up">
                         <summary class="font-semibold text-lg">Why do I need to launch a browser from the app?</summary>
                         <p class="text-gray-600 dark:text-gray-400 mt-4">The app launches a browser (Chrome or Firefox)
                             with a special profile and a connection that allows the application to securely automate
@@ -519,9 +538,14 @@
     </footer>
 
     <script src="https://unpkg.com/swiper/swiper-bundle.min.js"></script>
-
-    <script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script> <script>
         document.addEventListener('DOMContentLoaded', function () {
+             // Initialize AOS
+            AOS.init({
+                duration: 800, // values from 0 to 3000, with step 50ms
+                once: true, // whether animation should happen only once - while scrolling down
+            });
+
             // Mobile Menu
             const mobileMenuButton = document.getElementById('mobile-menu-button');
             const mobileMenu = document.getElementById('mobile-menu');
