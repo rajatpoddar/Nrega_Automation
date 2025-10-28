@@ -10,6 +10,9 @@ from getmac import get_mac_address
 from datetime import datetime
 from dotenv import load_dotenv
 
+# --- ADD THIS IMPORT ---
+import pygame
+
 from selenium import webdriver
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.chrome.options import Options as ChromeOptions
@@ -55,6 +58,13 @@ load_dotenv()
 
 # --- ADD THIS LINE AFTER load_dotenv() ---
 config.create_default_config_if_not_exists()
+
+# --- ADD THIS SECTION ---
+# Store original messagebox functions before we patch them
+_original_showinfo = messagebox.showinfo
+_original_showwarning = messagebox.showwarning
+_original_showerror = messagebox.showerror
+# --- END SECTION ---
 
 import sentry_sdk
 SENTRY_DSN = os.getenv("SENTRY_DSN")
@@ -194,6 +204,16 @@ class NregaBotApp(ctk.CTk):
         # self.withdraw()
         self.attributes("-alpha", 0.0)
 
+        # --- ADD THIS LINE TO INITIALIZE PYGAME MIXER ---
+        pygame.mixer.init()
+
+        # --- ADD THIS SECTION ---
+        # Apply the monkey-patch to intercept messagebox calls
+        messagebox.showinfo = self._custom_showinfo
+        messagebox.showwarning = self._custom_showwarning
+        messagebox.showerror = self._custom_showerror
+        # --- END SECTION ---
+
         self.initial_width = 1100
         self.initial_height = 800
         self.geometry(f"{self.initial_width}x{self.initial_height}")
@@ -211,6 +231,8 @@ class NregaBotApp(ctk.CTk):
         self.category_frames = {}
         self.last_selected_category = get_config('last_selected_category', 'All Automations')
 
+        self.sound_switch_var = tkinter.BooleanVar(value=get_config('sound_enabled', True))
+
         self.status_label = None
         self.server_status_indicator = None
         self.loading_animation_label = None
@@ -227,12 +249,10 @@ class NregaBotApp(ctk.CTk):
         self._load_icon("feedback", "assets/icons/feedback.png")
         self._load_icon("wc_extractor", "assets/icons/extractor.png")
 
-        # --- ADD THIS SECTION FOR DISCLAIMER ICONS ---
         self._load_icon("disclaimer_warning", "assets/icons/emojis/warning.png", size=(16,16))
         self._load_icon("disclaimer_thunder", "assets/icons/emojis/thunder.png", size=(16,16))
         self._load_icon("disclaimer_tools", "assets/icons/emojis/tools.png", size=(16,16))
 
-        # --- ADD THIS SECTION FOR ONBOARDING ICONS ---
         self._load_icon("onboarding_launch", "assets/icons/emojis/thunder.png", size=(48, 48))
         self._load_icon("onboarding_login", "assets/icons/emojis/verify_jobcard.png", size=(48, 48))
         self._load_icon("onboarding_select", "assets/icons/emojis/wc_gen.png", size=(48, 48))
@@ -278,8 +298,12 @@ class NregaBotApp(ctk.CTk):
             if color is None:
                 message_lower = message.lower()
                 if "running" in message_lower: color = "#E53E3E"
-                elif "finished" in message_lower: color = "#3B82F6"
-                elif "ready" in message_lower: color = "#38A169"
+                elif "finished" in message_lower: 
+                    color = "#3B82F6"
+                    # self.play_sound("complete") # <-- REMOVE THIS LINE TO PREVENT DOUBLE-PLAY
+                elif "ready" in message_lower: 
+                    color = "#38A169"
+                    self.play_sound("success") # <-- Keep this one for general "Ready" status
                 else: color = "gray50"
             self.status_label.configure(text=f"Status: {message}", text_color=color)
             if "running" in message.lower():
@@ -437,6 +461,58 @@ class NregaBotApp(ctk.CTk):
         if self.is_licensed and not self.is_validating_license:
             self.after(500, lambda: threading.Thread(target=self._validate_in_background, daemon=True).start())
 
+    def _on_sound_toggle(self):
+        is_enabled = self.sound_switch_var.get()
+        save_config('sound_enabled', is_enabled)
+        if is_enabled:
+            self.play_sound("success") # Play a sound to confirm
+
+    # --- THIS METHOD IS NOW UPDATED FOR PYGAME ---
+    def play_sound(self, sound_name: str):
+        """Plays a sound using pygame if sounds are enabled."""
+        if not self.sound_switch_var.get():
+            return
+        
+        try:
+            sound_file = resource_path(f"assets/sounds/{sound_name}.wav")
+            if os.path.exists(sound_file):
+                # pygame.mixer.Sound() and .play() are non-blocking
+                sound = pygame.mixer.Sound(sound_file)
+                sound.play()
+            else:
+                print(f"Sound file not found: {sound_file}")
+        except Exception as e:
+            # Catch exceptions (e.g., file not found, audio device issue)
+            print(f"Error playing sound '{sound_name}' with pygame: {e}")
+
+# --- ADD THIS ENTIRE SECTION OF NEW METHODS ---
+    def _custom_showinfo(self, title, message, **options):
+        """Custom showinfo to play a sound first."""
+        # Check if the message is a "completion" message
+        if "finished" in message.lower() or \
+           "complete" in message.lower() or \
+           "success" in message.lower() or \
+           "transferred" in message.lower():
+            self.play_sound("complete")
+        else:
+            self.play_sound("success") # Default for other info popups
+        return _original_showinfo(title, message, **options)
+
+    def _custom_showwarning(self, title, message, **options):
+        """Custom showwarning to play a sound first."""
+        self.play_sound("error") # Use "error" for warnings
+        return _original_showwarning(title, message, **options)
+
+    def _custom_showerror(self, title, message, **options):
+        """Custom showerror to play a sound first."""
+        self.play_sound("error")
+        return _original_showerror(title, message, **options)
+    # --- END SECTION ---
+
+    def bring_to_front(self):
+        self.lift()
+
+
     def _validate_in_background(self):
         try:
             self.is_validating_license = True
@@ -488,12 +564,14 @@ class NregaBotApp(ctk.CTk):
             self.launch_chrome_btn.configure(state="disabled")
             self.launch_firefox_btn.configure(state="disabled")
             self.theme_combo.configure(state="disabled")
+            if hasattr(self, 'sound_switch'): self.sound_switch.configure(state="disabled") # Disable sound switch
 
 
     def _unlock_app(self):
         for btn in self.nav_buttons.values(): btn.configure(state="normal")
         self.launch_chrome_btn.configure(state="normal"); self.launch_firefox_btn.configure(state="normal")
         self.theme_combo.configure(state="normal")
+        if hasattr(self, 'sound_switch'): self.sound_switch.configure(state="normal") # Enable sound switch
 
     def get_data_path(self, filename): return get_data_path(filename)
     def get_user_downloads_path(self): return get_user_downloads_path()
@@ -502,7 +580,9 @@ class NregaBotApp(ctk.CTk):
             if os.path.exists(path):
                 if sys.platform == "win32": os.startfile(path)
                 else: subprocess.call(["open" if sys.platform == "darwin" else "xdg-open", path])
-        except Exception as e: messagebox.showerror("Error", f"Could not open folder: {e}")
+        except Exception as e: 
+            self.play_sound("error")
+            messagebox.showerror("Error", f"Could not open folder: {e}")
 
     def _load_icon(self, name, path, size=(20, 20)):
         try: self.icon_images[name] = ctk.CTkImage(Image.open(resource_path(path)), size=size)
@@ -513,13 +593,19 @@ class NregaBotApp(ctk.CTk):
         os.makedirs(p_dir, exist_ok=True)
         paths = {"Darwin": ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"], "Windows": [r"C:\Program Files\Google\Chrome\Application\chrome.exe", r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"]}
         b_path = next((p for p in paths.get(config.OS_SYSTEM, []) if os.path.exists(p)), None)
-        if not b_path: messagebox.showerror("Error", "Google Chrome not found."); return
+        if not b_path: 
+            self.play_sound("error")
+            messagebox.showerror("Error", "Google Chrome not found."); 
+            return
         try:
             cmd = [b_path, f"--remote-debugging-port={port}", f"--user-data-dir={p_dir}", config.MAIN_WEBSITE_URL, "https://bookmark.nregabot.com/"]
             flags = 0x00000008 if config.OS_SYSTEM == "Windows" else 0
             subprocess.Popen(cmd, creationflags=flags, start_new_session=(config.OS_SYSTEM != "Windows"))
+            self.play_sound("success")
             messagebox.showinfo("Chrome Launched", "Chrome is starting. Please log in to the NREGA website.")
-        except Exception as e: messagebox.showerror("Error", f"Failed to launch Chrome:\n{e}")
+        except Exception as e: 
+            self.play_sound("error")
+            messagebox.showerror("Error", f"Failed to launch Chrome:\n{e}")
 
     def launch_firefox_managed(self):
         if self.driver and messagebox.askyesno("Browser Running", "Close existing Firefox and start new?"): self.driver.quit(); self.driver = None
@@ -528,10 +614,15 @@ class NregaBotApp(ctk.CTk):
             p_dir = os.path.join(os.path.expanduser("~"), "FirefoxProfileForNREGABot"); os.makedirs(p_dir, exist_ok=True)
             opts = FirefoxOptions(); opts.add_argument("-profile"); opts.add_argument(p_dir)
             self.driver = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=opts)
-            self.active_browser = "firefox"; messagebox.showinfo("Browser Launched", "Firefox is starting. Please log in.")
+            self.active_browser = "firefox"; 
+            self.play_sound("success")
+            messagebox.showinfo("Browser Launched", "Firefox is starting. Please log in.")
             self.driver.get(config.MAIN_WEBSITE_URL); self.driver.execute_script("window.open(arguments[0], '_blank');", "https://bookmark.nregabot.com/")
             self.driver.switch_to.window(self.driver.window_handles[0])
-        except Exception as e: messagebox.showerror("Error", f"Failed to launch Firefox:\n{e}"); self.driver = None; self.active_browser = None
+        except Exception as e: 
+            self.play_sound("error")
+            messagebox.showerror("Error", f"Failed to launch Firefox:\n{e}"); 
+            self.driver = None; self.active_browser = None
 
     def get_driver(self):
         ff_active = False
@@ -544,13 +635,16 @@ class NregaBotApp(ctk.CTk):
         except (socket.timeout, ConnectionRefusedError): pass
         if ff_active: self.active_browser = "firefox"; return self.driver
         if cr_active: return self._connect_to_chrome()
+        self.play_sound("error")
         messagebox.showerror("Connection Failed", "No browser is running. Please launch one first."); return None
 
     def _connect_to_chrome(self):
         try:
             opts = ChromeOptions(); opts.add_experimental_option("debuggerAddress", "127.0.0.1:9222")
             driver = webdriver.Chrome(options=opts); self.active_browser = 'chrome'; return driver
-        except WebDriverException as e: messagebox.showerror("Connection Failed", f"Could not connect to Chrome.\nError: {e}"); return None
+        except WebDriverException as e: 
+            self.play_sound("error")
+            messagebox.showerror("Connection Failed", f"Could not connect to Chrome.\nError: {e}"); return None
 
     def _get_machine_id(self):
         try: return get_mac_address() or "unknown-" + str(uuid.getnode())
@@ -574,7 +668,6 @@ class NregaBotApp(ctk.CTk):
 
         controls = ctk.CTkFrame(header, fg_color="transparent"); controls.pack(side="right")
         
-        # --- BUTTONS HAVE BEEN UPDATED HERE ---
         self.extractor_btn = ctk.CTkButton(controls, text="Extractor", image=self.icon_images.get("wc_extractor"), command=lambda: self.show_frame("Workcode Extractor"), width=110)
         self.extractor_btn.pack(side="left", padx=(0,10))
         
@@ -588,6 +681,11 @@ class NregaBotApp(ctk.CTk):
         ctk.CTkLabel(theme_frame, text="Theme:").pack(side="left", padx=(0, 5))
         self.theme_combo = ctk.CTkOptionMenu(theme_frame, values=["System", "Light", "Dark"], command=self.on_theme_change)
         self.theme_combo.pack(side="left")
+
+        sound_frame = ctk.CTkFrame(controls, fg_color="transparent"); sound_frame.pack(side="left", padx=5, fill="y")
+        ctk.CTkLabel(sound_frame, text="Sound:").pack(side="left", padx=(0, 5))
+        self.sound_switch = ctk.CTkSwitch(sound_frame, text="", variable=self.sound_switch_var, onvalue=True, offvalue=False, command=self._on_sound_toggle, width=0)
+        self.sound_switch.pack(side="left")
 
     def _update_header_welcome_message(self):
         if not self.header_welcome_prefix_label: return
@@ -625,18 +723,14 @@ class NregaBotApp(ctk.CTk):
         self.button_to_category_frame.clear()
         self.category_frames.clear()
 
-        # --- Add Category Filter Dropdown ---
         ctk.CTkLabel(parent, text="Category Filter:", font=ctk.CTkFont(size=12)).pack(fill="x", padx=10, pady=(5, 2))
         categories = ["All Automations"] + list(self.get_tabs_definition().keys())
         self.category_filter_menu = ctk.CTkOptionMenu(parent, values=categories, command=self._on_category_filter_change)
         self.category_filter_menu.set(self.last_selected_category)
         self.category_filter_menu.pack(fill="x", padx=10, pady=(0, 15))
 
-        # --- Create all category frames ---
         for cat, tabs in self.get_tabs_definition().items():
-            # --- THIS LINE IS CHANGED ---
             cat_frame = CollapsibleFrame(parent, title=cat)
-            # Store the frame but don't pack it yet
             self.category_frames[cat] = cat_frame
             
             for name, data in tabs.items():
@@ -651,7 +745,6 @@ class NregaBotApp(ctk.CTk):
                 self.nav_buttons[name] = btn
                 self.button_to_category_frame[name] = cat_frame
         
-        # --- Initially filter the view based on the saved category ---
         self._filter_nav_menu(self.last_selected_category)
 
     def _on_category_filter_change(self, selected_category: str):
@@ -662,16 +755,13 @@ class NregaBotApp(ctk.CTk):
     def _filter_nav_menu(self, selected_category: str):
         """Shows or hides category frames based on the filter."""
         for category, frame in self.category_frames.items():
-            # Hide the frame first to prevent layout jumping
             frame.pack_forget()
             if selected_category == "All Automations" or category == selected_category:
-                # Show the frame if it matches the selection or if 'All' is selected
                 frame.pack(fill="x", pady=0, padx=0)
 
     def _create_content_frames(self):
         self.content_frames.clear()
         self.tab_instances.clear()
-        # We only create the 'About' tab initially, others are created on demand.
         self.show_frame("About", raise_frame=False)
 
     def get_tabs_definition(self):
@@ -687,7 +777,6 @@ class NregaBotApp(ctk.CTk):
                 "Duplicate MR Print": {"creation_func": DuplicateMrTab, "icon": self.icon_images.get("emoji_duplicate_mr"), "key": "dup_mr"},
                 "Demand": {"creation_func": DemandTab, "icon": self.icon_images.get("emoji_demand"), "key": "demand"},
             },
-            # --- ADD THIS NEW CATEGORY ---
             "JE & AE Automation": {
                 "eMB Entry": {"creation_func": MbEntryTab, "icon": self.icon_images.get("emoji_emb_entry"), "key": "mb_entry"},
                 "eMB Verify": {"creation_func": EmbVerifyTab, "icon": self.icon_images.get("emoji_emb_verify"), "key": "emb_verify"},
@@ -716,29 +805,19 @@ class NregaBotApp(ctk.CTk):
         }
 
     def show_frame(self, page_name, raise_frame=True):
-        # Check if the frame has already been created
         if page_name not in self.tab_instances:
-            # If not, find its creation function from the tabs definition
             tabs = self.get_tabs_definition()
             for cat, tab_items in tabs.items():
                 if page_name in tab_items:
-                    # Create the frame and the tab instance inside it
                     frame = ctk.CTkFrame(self.content_area)
                     frame.grid(row=0, column=0, sticky="nsew")
                     self.content_frames[page_name] = frame
-
-                    # Create the actual tab content
                     instance = tab_items[page_name]["creation_func"](frame, self)
                     instance.pack(expand=True, fill="both")
                     self.tab_instances[page_name] = instance
-                    break # Stop searching once found
+                    break 
 
-        # Now, raise the frame to the front
         if raise_frame:
-            # --- REMOVE THIS LINE ---
-            # if page_name in self.button_to_category_frame:
-            #     self.button_to_category_frame[page_name].expand()
-            
             if page_name in self.content_frames:
                 self.content_frames[page_name].tkraise()
             for name, btn in self.nav_buttons.items():
@@ -749,20 +828,20 @@ class NregaBotApp(ctk.CTk):
             auth_url = f"{config.LICENSE_SERVER_URL}/authenticate-from-app/{self.license_info['key']}?next=files"
             webbrowser.open_new_tab(auth_url)
         else:
+            self.play_sound("error")
             messagebox.showerror("Error", "License key not found. Please log in to use the web file manager.")
 
-    # --- NEW METHOD for WC Gen -> IF Edit integration ---
     def switch_to_if_edit_with_data(self, data):
         """Switches to the IF Editor tab and passes data from the WC Gen tab."""
         if not data:
             return
         
-        # Ensure the IF Editor tab is created and visible
         self.show_frame("IF Editor")
         
         if_edit_instance = self.tab_instances.get("IF Editor")
         if if_edit_instance and hasattr(if_edit_instance, 'load_data_from_wc_gen'):
             if_edit_instance.load_data_from_wc_gen(data)
+            self.play_sound("success")
             messagebox.showinfo(
                 "Data Transferred",
                 f"{len(data)} work code(s) have been successfully transferred to the IF Editor tab.\n\n"
@@ -770,6 +849,7 @@ class NregaBotApp(ctk.CTk):
                 parent=self
             )
         else:
+            self.play_sound("error")
             messagebox.showerror("Error", "Could not find the IF Editor tab instance or it's missing the required method.")
 
     def _create_footer(self):
@@ -798,10 +878,18 @@ class NregaBotApp(ctk.CTk):
     def save_demo_csv(self, file_type: str):
         try:
             src = resource_path(f"assets/demo_{file_type}.csv")
-            if not os.path.exists(src): messagebox.showerror("Error", f"Demo file not found: demo_{file_type}.csv"); return
+            if not os.path.exists(src): 
+                self.play_sound("error")
+                messagebox.showerror("Error", f"Demo file not found: demo_{file_type}.csv"); 
+                return
             save_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")], initialfile=f"{file_type}_data.csv", title=f"Save Demo {file_type.upper()} CSV")
-            if save_path: shutil.copyfile(src, save_path); messagebox.showinfo("Success", f"Demo file saved to:\n{save_path}")
-        except Exception as e: messagebox.showerror("Error", f"Could not save demo file: {e}")
+            if save_path: 
+                shutil.copyfile(src, save_path); 
+                self.play_sound("success")
+                messagebox.showinfo("Success", f"Demo file saved to:\n{save_path}")
+        except Exception as e: 
+            self.play_sound("error")
+            messagebox.showerror("Error", f"Could not save demo file: {e}")
 
     def on_theme_change(self, new_theme: str): ctk.set_appearance_mode(new_theme); self.after(100, self.restyle_all_treeviews)
     def restyle_all_treeviews(self):
@@ -835,30 +923,27 @@ class NregaBotApp(ctk.CTk):
             data = resp.json()
 
             if resp.status_code == 200 and data.get("status") == "valid":
-                # Server confirms the license is valid, update the local file with the latest info.
                 self.license_info = {**data, 'key': key}
                 with open(get_data_path('license.dat'), 'w') as f:
                     json.dump(self.license_info, f)
                 if not is_startup_check:
+                    self.play_sound("success")
                     messagebox.showinfo("License Valid", f"Activation successful!\nExpires on: {self.license_info['expires_at'].split('T')[0]}")
                 return True
             else:
-                # Server says the license is invalid (expired, blocked, etc.).
-                # Delete the local license file so the app won't open next time.
                 lic_file = get_data_path('license.dat')
                 if os.path.exists(lic_file):
                     os.remove(lic_file)
                 if not is_startup_check:
+                    self.play_sound("error")
                     messagebox.showerror("Validation Failed", data.get('reason', 'Unknown error.'))
                 return False
 
         except requests.exceptions.RequestException:
             self.after(0, self.set_server_status, False)
-            # If the server is offline, we don't treat it as a failure.
-            # We just can't sync. Only show an error if it's an interactive check.
             if not is_startup_check:
+                self.play_sound("error")
                 messagebox.showerror("Connection Error", "Could not connect to the license server. Please check your internet connection.")
-            # IMPORTANT: Return True here to allow offline use if the server is unreachable.
             return True
 
     def send_wagelist_data_and_switch_tab(self, start, end):
@@ -885,12 +970,16 @@ class NregaBotApp(ctk.CTk):
 
         def on_activate():
             key = key_entry.get().strip()
-            if not key: messagebox.showwarning("Input Required", "Please enter a license key.", parent=win); return
+            if not key: 
+                self.play_sound("error")
+                messagebox.showwarning("Input Required", "Please enter a license key.", parent=win); return
             if self.validate_on_server(key): activated.set(True); win.destroy()
 
         def on_login():
             email = email_entry.get().strip()
-            if not email: messagebox.showwarning("Input Required", "Please enter your email.", parent=win); return
+            if not email: 
+                self.play_sound("error")
+                messagebox.showwarning("Input Required", "Please enter your email.", parent=win); return
             login_btn.configure(state="disabled", text="Activating...")
             try:
                 resp = requests.post(f"{config.LICENSE_SERVER_URL}/api/login-for-activation", json={"email": email, "machine_id": self.machine_id}, timeout=15)
@@ -898,14 +987,18 @@ class NregaBotApp(ctk.CTk):
                 if resp.status_code == 200 and data.get("status") == "success":
                     self.license_info = data
                     with open(get_data_path('license.dat'), 'w') as f: json.dump(self.license_info, f)
+                    self.play_sound("success")
                     messagebox.showinfo("Success", f"Device activated!\nWelcome back, {data.get('user_name', 'User')}.")
                     activated.set(True); win.destroy()
                 else:
                     reason = data.get("reason", "Unknown error.")
+                    self.play_sound("error")
                     messagebox.showerror("Activation Failed", reason, parent=win)
                     if data.get("action") == "redirect" and data.get("url"):
                         webbrowser.open_new_tab(data["url"])
-            except requests.exceptions.RequestException as e: messagebox.showerror("Connection Error", f"Could not connect: {e}", parent=win)
+            except requests.exceptions.RequestException as e: 
+                self.play_sound("error")
+                messagebox.showerror("Connection Error", f"Could not connect: {e}", parent=win)
             finally:
                 if login_btn.winfo_exists(): login_btn.configure(state="normal", text="Login & Activate Device")
 
@@ -936,7 +1029,6 @@ class NregaBotApp(ctk.CTk):
         ctk.CTkLabel(scroll, text="Please provide your details to begin.", text_color="gray50").pack(pady=(0, 15))
 
         entries = {}
-        # --- List of fields to create ---
         fields = ["Full Name", "Email", "Mobile", "Block"]
         for field in fields:
             key = field.lower().replace(" ", "_")
@@ -945,15 +1037,13 @@ class NregaBotApp(ctk.CTk):
             entry.pack(fill="x", padx=10, pady=(0, 10))
             entries[key] = entry
 
-        # --- State Dropdown (pre-filled and disabled) ---
         ctk.CTkLabel(scroll, text="State", anchor="w").pack(fill="x", padx=10)
         state_menu = ctk.CTkOptionMenu(scroll, values=["Jharkhand"])
         state_menu.set("Jharkhand")
         state_menu.configure(state="disabled")
         state_menu.pack(fill="x", padx=10, pady=(0, 10))
-        entries['state'] = state_menu # Add to entries dict
+        entries['state'] = state_menu 
 
-        # --- District Dropdown ---
         jharkhand_districts = [
             "Bokaro", "Chatra", "Deoghar", "Dhanbad", "Dumka", "East Singhbhum",
             "Garhwa", "Giridih", "Godda", "Gumla", "Hazaribagh", "Jamtara",
@@ -963,11 +1053,10 @@ class NregaBotApp(ctk.CTk):
         ]
         ctk.CTkLabel(scroll, text="District", anchor="w").pack(fill="x", padx=10)
         district_menu = ctk.CTkOptionMenu(scroll, values=jharkhand_districts)
-        district_menu.set("Select a District") # Set a default placeholder
+        district_menu.set("Select a District") 
         district_menu.pack(fill="x", padx=10, pady=(0, 10))
-        entries['district'] = district_menu # Add to entries dict
+        entries['district'] = district_menu 
 
-        # --- Pincode Entry ---
         ctk.CTkLabel(scroll, text="Pincode", anchor="w").pack(fill="x", padx=10)
         pincode_entry = ctk.CTkEntry(scroll)
         pincode_entry.pack(fill="x", padx=10, pady=(0, 10))
@@ -978,13 +1067,21 @@ class NregaBotApp(ctk.CTk):
             import re
             user_data = {k: e.get().strip() for k, e in entries.items()}
             email, mobile = user_data.get('email', ''), user_data.get('mobile', '')
-            if not re.match(r"[^@]+@[^@]+\.[^@]+", email): messagebox.showwarning("Invalid Input", "Valid email is required.", parent=win); return
-            if not (mobile.isdigit() and len(mobile) == 10): messagebox.showwarning("Invalid Input", "Valid 10-digit mobile is required.", parent=win); return
-            if user_data.get('district') == "Select a District": messagebox.showwarning("Input Required", "Please select a district.", parent=win); return
+            if not re.match(r"[^@]+@[^@]+\.[^@]+", email): 
+                self.play_sound("error")
+                messagebox.showwarning("Invalid Input", "Valid email is required.", parent=win); return
+            if not (mobile.isdigit() and len(mobile) == 10): 
+                self.play_sound("error")
+                messagebox.showwarning("Invalid Input", "Valid 10-digit mobile is required.", parent=win); return
+            if user_data.get('district') == "Select a District": 
+                self.play_sound("error")
+                messagebox.showwarning("Input Required", "Please select a district.", parent=win); return
 
             user_data["name"] = user_data.pop("full_name")
             user_data["machine_id"] = self.machine_id
-            if not all(user_data.values()): messagebox.showwarning("Input Required", "All fields are required.", parent=win); return
+            if not all(user_data.values()): 
+                self.play_sound("error")
+                messagebox.showwarning("Input Required", "All fields are required.", parent=win); return
 
             submit_btn.configure(state="disabled", text="Requesting...")
             try:
@@ -993,10 +1090,15 @@ class NregaBotApp(ctk.CTk):
                 if resp.status_code == 200 and data.get("status") == "success":
                     self.license_info = {'key': data.get("key"), 'expires_at': data.get('expires_at'), 'user_name': user_data['name'], 'key_type': 'trial'}
                     with open(get_data_path('license.dat'), 'w') as f: json.dump(self.license_info, f)
+                    self.play_sound("success")
                     messagebox.showinfo("Success!", f"{data.get('reason', 'Trial has started!')}\nExpires on: {self.license_info['expires_at'].split('T')[0]}")
                     successful.set(True); win.destroy()
-                else: messagebox.showerror("Trial Error", data.get("reason", "Could not start trial."), parent=win)
-            except requests.exceptions.RequestException: messagebox.showerror("Connection Error", "Could not connect to server.", parent=win)
+                else: 
+                    self.play_sound("error")
+                    messagebox.showerror("Trial Error", data.get("reason", "Could not start trial."), parent=win)
+            except requests.exceptions.RequestException: 
+                self.play_sound("error")
+                messagebox.showerror("Connection Error", "Could not connect to server.", parent=win)
             finally:
                 if submit_btn.winfo_exists(): submit_btn.configure(state="normal", text="Start Trial")
 
@@ -1004,18 +1106,14 @@ class NregaBotApp(ctk.CTk):
         self.wait_window(win); return successful.get()
 
     def show_purchase_window(self, context='upgrade'):
-        """
-        Opens the web browser directly to the purchase/renewal page,
-        pre-filling user data if available.
-        """
         form = {k.replace('user_', ''): v for k, v in self.license_info.items() if k.startswith('user_')}
         form['existing_key'] = self.license_info.get('key')
         
-        # Pass current plan details to the web page as suggestions
         form['plan_type'] = self.license_info.get('key_type', 'monthly')
         form['max_devices'] = self.license_info.get('max_devices', 1)
 
         if not form.get('existing_key'):
+            self.play_sound("error")
             messagebox.showerror(
                 "License Error", 
                 "Cannot open purchase page because your license key is not available. Please restart the app or contact support.", 
@@ -1024,11 +1122,11 @@ class NregaBotApp(ctk.CTk):
             return
 
         try:
-            # Filter out any keys with None values before encoding
             url_params = {k: v for k, v in form.items() if v is not None}
             buy_url = f"{config.LICENSE_SERVER_URL}/buy?{urlencode(url_params)}"
             webbrowser.open_new_tab(buy_url)
         except Exception as e:
+            self.play_sound("error")
             messagebox.showerror("Error", f"Could not open the purchase page: {e}", parent=self)
 
     def check_expiry_and_notify(self):
@@ -1038,6 +1136,7 @@ class NregaBotApp(ctk.CTk):
             days = (datetime.fromisoformat(expires_str.split('T')[0]).date() - datetime.now().date()).days
             if 0 <= days < 7:
                 msg = f"License expires {'today' if days == 0 else f'in {days} day' + ('s' if days != 1 else '')}."
+                self.play_sound("error") 
                 messagebox.showwarning("License Expiring", f"{msg}\nPlease renew from the website."); self.open_on_about_tab = True; return True
         except (ValueError, TypeError) as e:
             if SENTRY_DSN: sentry_sdk.capture_exception(e)
@@ -1045,7 +1144,10 @@ class NregaBotApp(ctk.CTk):
 
     def start_automation_thread(self, key, target, args=()):
         if self.automation_threads.get(key) and self.automation_threads[key].is_alive():
+            self.play_sound("error")
             messagebox.showwarning("In Progress", "Task is already running."); return
+        
+        self.play_sound("start") 
         self.history_manager.increment_usage(key); self.prevent_sleep()
         self.active_automations.add(key); self.stop_events[key] = threading.Event()
         def wrapper():
@@ -1063,6 +1165,8 @@ class NregaBotApp(ctk.CTk):
                 try: self.driver.quit()
                 except Exception as e: print(f"Error quitting driver: {e}")
             for event in self.stop_events.values(): event.set()
+            # --- ADD THIS LINE TO QUIT PYGAME ---
+            pygame.mixer.quit()
             self.after(100, self.destroy)
 
     def prevent_sleep(self):
@@ -1101,6 +1205,7 @@ class NregaBotApp(ctk.CTk):
         threading.Thread(target=_check, daemon=True).start()
 
     def show_update_prompt(self, version):
+        self.play_sound("update") 
         if messagebox.askyesno("Update Available", f"Version {version} is available. Go to the 'Updates' tab?"):
             self.show_frame("About")
             about = self.tab_instances.get("About")
@@ -1117,7 +1222,9 @@ class NregaBotApp(ctk.CTk):
 
     def download_and_install_update(self, url, version):
         about = self.tab_instances.get("About")
-        if not about: messagebox.showerror("Error", "Could not find About Tab."); return
+        if not about: 
+            self.play_sound("error")
+            messagebox.showerror("Error", "Could not find About Tab."); return
         about.update_button.configure(state="disabled"); about.update_progress.grid(row=4, column=0, pady=10, padx=20, sticky='ew')
 
         def _worker():
@@ -1133,13 +1240,16 @@ class NregaBotApp(ctk.CTk):
 
                 self.after(0, lambda: about.update_button.configure(text="Download Complete. Installing..."))
                 if sys.platform == "win32":
+                    self.play_sound("success")
                     messagebox.showinfo("Ready to Update", "The app will now close to run the installer.", parent=self)
                     os.startfile(dl_path); self.after(200, os._exit, 0)
                 elif sys.platform == "darwin":
                     subprocess.call(["open", dl_path])
+                    self.play_sound("success")
                     self.after(0, messagebox.showinfo, "Instructions", f"'{filename}' has been opened.\nDrag the icon to Applications.\nApp will now close.")
                     self.after(3000, self.on_closing, True)
             except Exception as e:
+                self.play_sound("error")
                 self.after(0, messagebox.showerror, "Update Failed", f"Could not run update.\n\nError: {e}")
                 if about.winfo_exists():
                     self.after(0, lambda: about.update_button.configure(state="normal", text=f"Download v{version}"))
@@ -1178,7 +1288,6 @@ if __name__ == '__main__':
         except Exception as e: logging.error(f"Failed to send focus: {e}")
         finally: s.close(); sys.exit(0)
 
-    # Run webdriver manager in a thread so the UI can appear even faster
     threading.Thread(target=initialize_webdriver_manager, daemon=True).start()
 
     try:
@@ -1194,5 +1303,12 @@ if __name__ == '__main__':
     except Exception as e:
         if SENTRY_DSN: sentry_sdk.capture_exception(e)
         logging.critical(f"Fatal startup error: {e}", exc_info=True)
+        try:
+            # Try to play a fatal error sound
+            pygame.mixer.init()
+            pygame.mixer.Sound(resource_path("assets/sounds/error.wav")).play()
+            time.sleep(1) # Give sound time to play
+        except Exception:
+            pass 
         messagebox.showerror("Fatal Startup Error", f"A critical error occurred:\n\n{e}\n\nThe app will now close.")
     finally: s.close()
