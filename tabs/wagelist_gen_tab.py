@@ -4,6 +4,7 @@ from tkinter import ttk, messagebox, filedialog
 import customtkinter as ctk
 import time, os, sys, subprocess
 import re  # <-- IMPORT ADDED
+import base64 # <-- IMPORT ADDED
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs
 from selenium.webdriver.common.by import By
@@ -31,6 +32,17 @@ class WagelistGenTab(BaseAutomationTab):
             history_key="panchayat_name")
         self.agency_entry.grid(row=0, column=1, sticky='ew', padx=15, pady=(15,0))
         ctk.CTkLabel(controls_frame, text="Enter only the Panchayat name (e.g., Palojori).", text_color="gray50").grid(row=1, column=1, sticky='w', padx=15)
+
+        # --- NEW: Checkbox to control saving PDF ---
+        self.save_pdf_var = ctk.StringVar(value="off") # Default to off
+        self.save_pdf_checkbox = ctk.CTkCheckBox(
+            controls_frame, 
+            text="Save generated wagelist page as PDF",
+            variable=self.save_pdf_var,
+            onvalue="on",
+            offvalue="off"
+        )
+        self.save_pdf_checkbox.grid(row=4, column=0, columnspan=4, sticky='w', padx=15, pady=(10, 0))
 
         # --- NEW: Checkbox to control sending data ---
         self.send_to_sender_var = ctk.StringVar(value="on")
@@ -81,6 +93,7 @@ class WagelistGenTab(BaseAutomationTab):
         self.set_common_ui_state(running)
         state = "disabled" if running else "normal"
         self.agency_entry.configure(state=state)
+        self.save_pdf_checkbox.configure(state=state) # <-- ADDED
         self.export_button.configure(state=state)
         self.export_format_menu.configure(state=state)
         self.export_filter_menu.configure(state=state)
@@ -89,6 +102,7 @@ class WagelistGenTab(BaseAutomationTab):
     def reset_ui(self):
         if messagebox.askokcancel("Reset Form?", "Are you sure?"):
             self.agency_entry.delete(0, tkinter.END)
+            self.save_pdf_var.set("off") # <-- ADDED
             for item in self.results_tree.get_children(): self.results_tree.delete(item)
             self.app.clear_log(self.log_display)
             self.update_status("Ready", 0.0)
@@ -111,6 +125,23 @@ class WagelistGenTab(BaseAutomationTab):
             driver = self.app.get_driver()
             if not driver: return
             wait = WebDriverWait(driver, 20)
+            
+            # --- NEW: Setup output directory if saving PDF ---
+            output_dir = None
+            if self.save_pdf_var.get() == "on":
+                try:
+                    safe_agency_name = "".join(c for c in agency_name_part if c.isalnum() or c in (' ', '_')).rstrip()
+                    # Use .get() for safe access to a potentially new config key
+                    folder_name = config.WAGELIST_GEN_CONFIG.get('output_folder_name', 'NREGABot_WL_Output')
+                    output_dir = os.path.join(self.app.get_user_downloads_path(), folder_name, datetime.now().strftime('%Y-%m-%d'), safe_agency_name)
+                    os.makedirs(output_dir, exist_ok=True)
+                    self.app.log_message(self.log_display, f"PDFs will be saved to: {output_dir}", "info")
+                except Exception as e:
+                    self.app.log_message(self.log_display, f"Could not create output directory: {e}. PDF saving will be disabled.", "error")
+                    self.app.after(0, lambda: self.save_pdf_var.set("off")) # Disable saving if dir fails
+                    output_dir = None
+            # --- END NEW ---
+
             total_errors_to_skip = 0
             while not self.app.stop_events[self.automation_key].is_set():
                 self.app.after(0, self.update_status, "Navigating and selecting agency...")
@@ -142,10 +173,22 @@ class WagelistGenTab(BaseAutomationTab):
                     if not checkbox.is_selected(): checkbox.click()
                     wait.until(EC.element_to_be_clickable((By.ID, 'ctl00_ContentPlaceHolder1_btn_go'))).click()
                     wait.until(EC.any_of(EC.url_changes(config.WAGELIST_GEN_CONFIG["base_url"]), EC.visibility_of_element_located((By.ID, "ctl00_ContentPlaceHolder1_lblmsg"))))
+                    
                     if "view_wagelist.aspx" in driver.current_url:
                         parsed_url = urlparse(driver.current_url); query_params = parse_qs(parsed_url.query)
                         wagelist_no = query_params.get('Wage_Listno', ['N/A'])[0]
-                        self.app.log_message(self.log_display, f"SUCCESS: Wagelist {wagelist_no} generated for {work_code}.", "success")
+                        
+                        # --- NEW: Save PDF if toggled ---
+                        pdf_save_detail = ""
+                        if output_dir and wagelist_no != 'N/A':
+                            pdf_path = self._save_page_as_pdf(driver, wagelist_no, work_code, output_dir)
+                            if pdf_path:
+                                pdf_save_detail = f" (Saved as {os.path.basename(pdf_path)})"
+                            else:
+                                pdf_save_detail = " (PDF Save Failed)"
+                        # --- End new logic ---
+
+                        self.app.log_message(self.log_display, f"SUCCESS: Wagelist {wagelist_no} generated for {work_code}.{pdf_save_detail}", "success")
                         self._log_result(work_code, "Success", wagelist_no, "", "")
                     else:
                         error_text = driver.find_element(By.ID, "ctl00_ContentPlaceHolder1_lblmsg").text.strip()
@@ -161,7 +204,16 @@ class WagelistGenTab(BaseAutomationTab):
                         total_errors_to_skip += 1
                 except TimeoutException: self.app.log_message(self.log_display, "No wagelist table found. Assuming process complete.", "info"); break
                 if self.app.stop_events[self.automation_key].is_set(): self.app.log_message(self.log_display, "Stop signal received."); break
-            if not self.app.stop_events[self.automation_key].is_set(): self.app.after(0, lambda: messagebox.showinfo("Automation Complete", "The wagelist generation process has finished."))
+            
+            # --- Open folder on completion ---
+            if not self.app.stop_events[self.automation_key].is_set():
+                if output_dir and os.path.exists(output_dir):
+                    if messagebox.askyesno("Automation Complete", "The wagelist generation process has finished.\n\nDo you want to open the output folder?"):
+                        self.app.open_folder(output_dir)
+                else:
+                    messagebox.showinfo("Automation Complete", "The wagelist generation process has finished.")
+            # --- END NEW ---
+
         except Exception as e: self.app.log_message(self.log_display, f"A critical error occurred: {e}", level="error")
         finally:
             self.app.after(0, self.set_ui_state, False)
@@ -184,6 +236,60 @@ class WagelistGenTab(BaseAutomationTab):
                 else:
                     self.app.log_message(self.log_display, "Could not find any generated wagelist range to send.", "warning")
 
+    # --- NEW METHOD: Save Page as PDF ---
+    def _save_page_as_pdf(self, driver, wagelist_no, work_code, output_dir):
+        """Saves the current page as a PDF."""
+        try:
+            # Create a safe filename
+            safe_work_code = work_code.split('/')[-1][-6:] if '/' in work_code else work_code[-6:]
+            base_filename = f"WL_{wagelist_no.replace('/', '-')}_{safe_work_code}"
+            extension = ".pdf"
+            counter = 1
+            pdf_filename = f"{base_filename}{extension}"
+            save_path = os.path.join(output_dir, pdf_filename)
+
+            # Ensure filename is unique
+            while os.path.exists(save_path):
+                pdf_filename = f"{base_filename} ({counter}){extension}"
+                save_path = os.path.join(output_dir, pdf_filename)
+                counter += 1
+
+            pdf_data_base64 = None
+            
+            # Use browser-specific commands to print to PDF
+            if self.app.active_browser == 'firefox':
+                self.app.log_message(self.log_display, "   - Using Firefox's print command to save PDF...", "info")
+                pdf_data_base64 = driver.print_page()
+
+            elif self.app.active_browser == 'chrome':
+                self.app.log_message(self.log_display, "   - Using Chrome's advanced print command (CDP) to save PDF...", "info")
+                # Default to portrait, 100% scale
+                print_options = {
+                    "landscape": False, 
+                    "displayHeaderFooter": False, 
+                    "printBackground": True, # Keep background colors
+                    "scale": 1.0, 
+                    "marginTop": 0.4, "marginBottom": 0.4,
+                    "marginLeft": 0.4, "marginRight": 0.4,
+                    "paperWidth": 8.27, # A4 width in inches
+                    "paperHeight": 11.69 # A4 height in inches
+                }
+                result = driver.execute_cdp_cmd("Page.printToPDF", print_options)
+                pdf_data_base64 = result['data']
+
+            if pdf_data_base64:
+                pdf_data = base64.b64decode(pdf_data_base64)
+                with open(save_path, 'wb') as f:
+                    f.write(pdf_data)
+                return save_path
+            else:
+                self.app.log_message(self.log_display, f"Error: PDF data was not generated for {wagelist_no}.", "error")
+                return None
+
+        except Exception as e:
+            self.app.log_message(self.log_display, f"Error saving PDF for {wagelist_no}: {e}", "error")
+            return None
+    # --- END NEW METHOD ---
 
     def _log_result(self, work_code, status, wagelist_no, job_card, applicant_name):
         timestamp = datetime.now().strftime("%H:%M:%S")
