@@ -545,9 +545,17 @@ class DemandTab(BaseAutomationTab):
                 try: Select(jc_el).select_by_value(jc_val); self.app.after(0, self.app.log_message, self.log_display, f"   -> Selected by value: '{jc_val}'")
                 except NoSuchElementException:
                     self.app.after(0, self.app.log_message, self.log_display, f"   -> Value fail, trying text: {jc_suffix}")
-                    prefixes = list(dict.fromkeys([f"{s}-" for s in [jc_suffix, jc_suffix.zfill(2), jc_suffix.zfill(3)]])); xpath = f".//option[" + " or ".join([f"starts-with(normalize-space(.), '{p}')" for p in prefixes]) + "]"
+
+                    # --- FIX: Find exact suffix match (handles 5, 6, 7, or 8 digits) ---
+                    # Create the exact prefix we need: "SUFFIX-"
+                    exact_prefix = f"{jc_suffix}-"
+                    # Build an XPath to find an option that starts with this exact prefix
+                    xpath = f".//option[starts-with(normalize-space(.), '{exact_prefix}')]"
+                    self.app.after(0, self.app.log_message, self.log_display, f"   -> Searching for exact prefix: '{exact_prefix}'")
+                    # --- END FIX ---
+
                     try: opt = jc_el.find_element(By.XPATH, xpath); Select(jc_el).select_by_visible_text(opt.text); self.app.after(0, self.app.log_message, self.log_display, f"   -> Selected by text: '{opt.text}'")
-                    except NoSuchElementException: raise NoSuchElementException(f"Couldn't find JC '{jc_val}' or '{jc_suffix}'.")
+                    except NoSuchElementException: raise NoSuchElementException(f"Couldn't find JC with exact prefix '{exact_prefix}'.")
             except NoSuchElementException as e_jc_select:
                 self.app.after(0, self.app.log_message, self.log_display, f"   ERROR: Job Card '{jc}' not found. Skipping.", "error"); [self.app.after(0, self._update_results_tree, (jc, a.get('Name of Applicant'), "FAIL: JC Not Found")) for a in apps_in_jc]; return
 

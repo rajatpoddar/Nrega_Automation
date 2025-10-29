@@ -205,7 +205,10 @@ class NregaBotApp(ctk.CTk):
         self.attributes("-alpha", 0.0)
 
         # --- ADD THIS LINE TO INITIALIZE PYGAME MIXER ---
-        pygame.mixer.init()
+        try:
+            pygame.mixer.init()
+        except Exception as e:
+            print(f"Warning: Could not initialize audio mixer: {e}. Sounds will be disabled.")
 
         # --- ADD THIS SECTION ---
         # Apply the monkey-patch to intercept messagebox calls

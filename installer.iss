@@ -32,6 +32,7 @@ WizardImageFile=wizard_image.bmp
 WizardSmallImageFile=wizard_small_image.bmp
 LicenseFile=license.txt
 InfoBeforeFile=infobefore.txt
+DisableReadyPage=yes
 CloseApplications=yes
 CloseApplicationsFilter=NREGA Bot.exe
 
