@@ -94,6 +94,20 @@ class MsrTab(BaseAutomationTab):
         self.results_tree.configure(yscroll=scrollbar.set); scrollbar.grid(row=1, column=1, sticky='ns')
         self.style_treeview(self.results_tree); self._setup_treeview_sorting(self.results_tree)
     
+    def load_data_from_mr_tracking(self, workcodes: str, panchayat_name: str):
+        """Public method to receive data from other tabs."""
+        # Set Panchayat Name
+        self.panchayat_entry.delete(0, tkinter.END)
+        self.panchayat_entry.insert(0, panchayat_name)
+        
+        # Set Work Codes
+        self.work_key_text.configure(state="normal")
+        self.work_key_text.delete("1.0", tkinter.END)
+        self.work_key_text.insert("1.0", workcodes)
+        self.work_key_text.configure(state="disabled")
+        
+        self.app.log_message(self.log_display, f"Loaded {len(workcodes.splitlines())} workcodes and panchayat '{panchayat_name}' from MR Tracking.", "info")
+
     def _on_format_change(self, selected_format):
         """Disables the filter menu for CSV format as it exports all data."""
         if "CSV" in selected_format:
@@ -121,7 +135,7 @@ class MsrTab(BaseAutomationTab):
         if messagebox.askokcancel("Reset Form?", "Clear all inputs, results, and logs?"):
             self.panchayat_entry.delete(0, tkinter.END)
             self.verify_amount_entry.delete(0, tkinter.END); self.verify_amount_entry.insert(0, "282")
-            self.work_key_text.configure(state="normal"); self.work_key_text.delete("1.0", tkinter.END)
+            self.work_key_text.configure(state="normal"); self.work_key_text.delete("1.0", tkinter.END); self.work_key_text.configure(state="disabled")
             for item in self.results_tree.get_children(): self.results_tree.delete(item)
             self.app.clear_log(self.log_display)
             self.update_status("Ready", 0)
@@ -137,7 +151,10 @@ class MsrTab(BaseAutomationTab):
         
         panchayat_name = self.panchayat_entry.get().strip()
         verify_amount_str = self.verify_amount_entry.get().strip()
+        
+        self.work_key_text.configure(state="normal") # Enable to read
         work_keys = [line.strip() for line in self.work_key_text.get("1.0", tkinter.END).strip().splitlines() if line.strip()]
+        self.work_key_text.configure(state="disabled") # Disable again
 
         if not work_keys: messagebox.showerror("Input Error", "No work keys provided."); self.app.after(0, self.set_ui_state, False); return
         try: verify_amount = float(verify_amount_str)

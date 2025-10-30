@@ -1,14 +1,18 @@
 {
-  "latest_version": "2.7.7",
-  "download_url_windows": "https://nregabot.com/updates/NREGABot-v2.7.7-Setup.exe",
-  "download_url_macos": "https://nregabot.com/updates/NREGABot-v2.7.7-macOS.dmg",
+  "latest_version": "2.7.8",
+  "download_url_windows": "https://nregabot.com/updates/NREGABot-v2.7.8-Setup.exe",
+  "download_url_macos": "https://nregabot.com/updates/NREGABot-v2.7.8-macOS.dmg",
   "changelog": {
-    "2.7.7": [
-      "✨ **New Feature (Workflow):** Added an 'Extract from Text' button to all automation tabs to simplify pasting work codes.",
-      "🚀 **Enhancement (Demand):** Demand automation now supports Rajasthan and includes minor bug fixes.",
-      "🚀 **Enhancement (UI):** Autocomplete for Panchayat names now properly supports arrow key navigation and fixes freezing issues.",
-      "🐞 **Bug Fix (Reports):** Fixed CSV and PDF exports to properly support Hindi fonts and improve PDF data organization.",
-      "🐞 **Bug Fix (eMB Verify):** Added missing imports to resolve errors in the eMB Verify tab."
+    "2.7.8": [
+      "✨ **New Feature (Core): MR Fill** - A new automation to automatically fill Muster Rolls. It intelligently marks holidays as absent and includes a manual mode for custom attendance.",
+      "✨ **New Feature (Reports): MR Tracking** - Track Muster Roll status in real-time. Includes options to export reports to PDF, Excel, and PNG, plus a workcode extractor.",
+      "✨ **New Feature (Reports): Dashboard Report** - A new tool to fetch and view dashboard reports, with full export capabilities (PDF, Excel, PNG) and a workcode extractor.",
+      "✨ **New Feature (UI): Sound Effects** - Added audible sound effects for key actions (e.g., automation complete, error). This can be toggled on/off in the settings.",
+      "🚀 **Enhancement (Workflow):** A new workflow allows you to send workcodes directly from the **MR Tracking** report to the **eMB Entry** and **MSR Processor** tabs.",
+      "🚀 **Enhancement (Workflow):** Send workcodes and panchayat names directly from the **Dashboard Report** to the **MR Fill** automation.",
+      "🚀 **Enhancement (Demand):** Demand Automation now automatically adjusts for laborers with 100 mandays and fully supports **GP logins**.",
+      "🚀 **Enhancement (Wagelist):** The Wagelist Automation tab now includes an option to **save the generated wagelist as a PDF** document.",
+      "🐞 **Bug Fix (ABPS Verify):** Resolved a critical bug where the automation failed to verify multiple laborers registered under the same job card."
     ]
   }
 }

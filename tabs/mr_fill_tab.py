@@ -1,229 +1,515 @@
 # tabs/mr_fill_tab.py
-import tkinter as tk
-from tkinter import ttk, scrolledtext, messagebox
-import time
+import tkinter
+from tkinter import ttk, messagebox, filedialog
+import customtkinter as ctk
+import os, random, time, sys, subprocess, re, json
 from datetime import datetime
+from fpdf import FPDF
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import NoSuchElementException, TimeoutException, StaleElementReferenceException
-
+from selenium.common.exceptions import StaleElementReferenceException, NoSuchElementException, TimeoutException, NoAlertPresentException
 import config
+from .base_tab import BaseAutomationTab
+from .autocomplete_widget import AutocompleteEntry
 
-widgets = {}
-
-def create_tab(parent_frame, app_instance):
-    """Creates the MR Fill & Absent tab UI."""
-    parent_frame.columnconfigure(0, weight=1)
-    parent_frame.rowconfigure(1, weight=1)
-
-    # --- Controls Frame ---
-    controls_frame = ttk.LabelFrame(parent_frame, text="MR Fill Controls")
-    controls_frame.grid(row=0, column=0, sticky="ew", pady=(0, 10))
-    controls_frame.columnconfigure(1, weight=1)
-
-    ttk.Label(controls_frame, text="Panchayat Name:").grid(row=0, column=0, sticky='w', padx=5, pady=5)
-    widgets['panchayat_entry'] = ttk.Entry(controls_frame)
-    widgets['panchayat_entry'].grid(row=0, column=1, sticky='ew', padx=5, pady=5)
-
-    action_frame = ttk.Frame(controls_frame)
-    action_frame.grid(row=1, column=0, columnspan=2, sticky='ew', pady=(15, 5))
-    action_frame.columnconfigure((0, 1, 2), weight=1)
-
-    def on_start_click(): start_automation(app_instance)
-    def on_stop_click(): app_instance.stop_events["mr_fill"].set()
-    def on_reset_click(): reset_ui(app_instance)
-
-    widgets['start_button'] = ttk.Button(action_frame, text="▶ Start Filling", style="Accent.TButton", command=on_start_click)
-    widgets['start_button'].grid(row=0, column=0, sticky="ew", padx=(0,5), ipady=5)
-    widgets['stop_button'] = ttk.Button(action_frame, text="Stop", command=on_stop_click, state="disabled")
-    widgets['stop_button'].grid(row=0, column=1, sticky="ew", padx=(5,5), ipady=5)
-    widgets['reset_button'] = ttk.Button(action_frame, text="Reset", style="Outline.TButton", command=on_reset_click)
-    widgets['reset_button'].grid(row=0, column=2, sticky='ew', padx=(5,0), ipady=5)
-
-    # --- Notebook for Work Codes, Results, and Logs ---
-    notebook = ttk.Notebook(parent_frame, style="Modern.TNotebook")
-    notebook.grid(row=1, column=0, sticky="nsew")
-
-    work_codes_frame = ttk.Frame(notebook, padding=15)
-    results_frame = ttk.Frame(notebook, padding=15)
-    logs_frame = ttk.Frame(notebook, padding=15)
-    
-    notebook.add(work_codes_frame, text="Work Codes")
-    notebook.add(results_frame, text="Results")
-    notebook.add(logs_frame, text="Logs & Status")
-
-    # --- Work Codes Tab ---
-    work_codes_frame.columnconfigure(0, weight=1); work_codes_frame.rowconfigure(0, weight=1)
-    widgets['work_codes_text'] = scrolledtext.ScrolledText(work_codes_frame, height=10, wrap=tk.WORD)
-    widgets['work_codes_text'].grid(row=0, column=0, sticky='nsew')
-
-    # --- Results Tab ---
-    results_frame.columnconfigure(0, weight=1); results_frame.rowconfigure(0, weight=1)
-    cols = ("Work Code", "Muster Roll No.", "Status", "Timestamp")
-    widgets['results_tree'] = ttk.Treeview(results_frame, columns=cols, show='headings', height=10)
-    for col in cols:
-        widgets['results_tree'].heading(col, text=col)
-    widgets['results_tree'].column("Work Code", width=250)
-    widgets['results_tree'].column("Muster Roll No.", width=150, anchor='center')
-    widgets['results_tree'].column("Status", width=250)
-    widgets['results_tree'].column("Timestamp", width=100, anchor='center')
-    widgets['results_tree'].grid(row=0, column=0, sticky='nsew')
-    scrollbar = ttk.Scrollbar(results_frame, orient="vertical", command=widgets['results_tree'].yview)
-    widgets['results_tree'].configure(yscroll=scrollbar.set)
-    scrollbar.grid(row=0, column=1, sticky='ns')
-
-    # --- Logs & Status Tab ---
-    logs_frame.columnconfigure(0, weight=1); logs_frame.rowconfigure(2, weight=1)
-    
-    def on_copy_log_click():
-        log_content = widgets['log_display'].get("1.0", tk.END)
-        parent_frame.clipboard_clear()
-        parent_frame.clipboard_append(log_content)
-        messagebox.showinfo("Copied", "Log content has been copied to the clipboard.")
+class MrFillTab(BaseAutomationTab):
+    """
+    This Tab handles filling Muster Roll (MR) attendance.
+    It selects Panchayat, searches Work Code, selects MR,
+    marks specified holiday columns, and then saves.
+    """
+    def __init__(self, parent, app_instance):
+        super().__init__(parent, app_instance, automation_key="mr_fill")
+        self.grid_columnconfigure(0, weight=1); self.grid_rowconfigure(1, weight=1)
         
-    widgets['copy_log_button'] = ttk.Button(logs_frame, text="Copy Log", command=on_copy_log_click)
-    widgets['copy_log_button'].grid(row=0, column=0, sticky='w')
-    widgets['progress_bar'] = ttk.Progressbar(logs_frame, mode='determinate')
-    widgets['progress_bar'].grid(row=0, column=1, sticky='ew', padx=(10,0))
-    widgets['status_label'] = ttk.Label(logs_frame, text="Status: Ready", style="Status.TLabel")
-    widgets['status_label'].grid(row=1, column=0, columnspan=2, sticky='ew', pady=(5,0))
-    widgets['log_display'] = scrolledtext.ScrolledText(logs_frame, wrap=tk.WORD, state="disabled")
-    widgets['log_display'].grid(row=2, column=0, columnspan=2, sticky='nsew', pady=(10, 0))
+        # --- Config file for saving inputs ---
+        self.config_file = self.app.get_data_path("mr_fill_inputs.json")
+        self.config_vars = {} # Dictionary to hold UI variables
 
-def reset_ui(app):
-    if messagebox.askokcancel("Reset Form?", "Are you sure you want to clear all inputs, results, and logs?"):
-        widgets['panchayat_entry'].delete(0, tk.END)
-        widgets['work_codes_text'].delete("1.0", tk.END)
-        for item in widgets['results_tree'].get_children():
-            widgets['results_tree'].delete(item)
-        app.clear_log(widgets['log_display'])
-        update_status("Ready", 0)
-        app.log_message(widgets['log_display'], "Form has been reset.")
+        # --- UI Variables ---
+        self.panchayat_var = ctk.StringVar()
+        self.manual_mode_var = ctk.BooleanVar(value=False)
+        self.holiday_cols_var = ctk.StringVar()
+        
+        # Store variables for easy save/load
+        self.config_vars["panchayat_name"] = self.panchayat_var
+        self.config_vars["holiday_cols"] = self.holiday_cols_var
+        self.config_vars["manual_mode"] = self.manual_mode_var
 
-def set_ui_state(running):
-    state = "disabled" if running else "normal"
-    widgets['start_button'].config(state=state)
-    widgets['stop_button'].config(state="normal" if running else "disabled")
-    widgets['reset_button'].config(state=state)
-    widgets['panchayat_entry'].config(state=state)
-    widgets['work_codes_text'].config(state=state)
+        self._create_widgets()
+        self._load_inputs() # Load saved inputs on startup
 
-def update_status(text, progress=None):
-    widgets['status_label'].config(text=f"Status: {text}")
-    if progress is not None:
-        widgets['progress_bar']['value'] = progress
+    def _create_widgets(self):
+        """Creates all the UI elements for the tab."""
+        
+        # --- Configuration Frame ---
+        controls_frame = ctk.CTkFrame(self)
+        controls_frame.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+        controls_frame.grid_columnconfigure((0, 1), weight=1)
+        
+        # Panchayat Entry
+        panchayat_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
+        panchayat_frame.grid(row=0, column=0, sticky='ew', padx=15, pady=(10,0))
+        ctk.CTkLabel(panchayat_frame, text="Panchayat Name", font=ctk.CTkFont(weight="bold")).pack(anchor='w')
+        self.panchayat_entry = AutocompleteEntry(
+            panchayat_frame, 
+            textvariable=self.panchayat_var, # Link to variable
+            suggestions_list=self.app.history_manager.get_suggestions("panchayat_name"),
+            app_instance=self.app,
+            history_key="panchayat_name"
+        )
+        self.panchayat_entry.pack(fill='x', pady=(5,0))
+        ctk.CTkLabel(panchayat_frame, text="e.g., Palojori (skip if using GP login)", text_color="gray50").pack(anchor='w')
+        
+        # Holiday Columns Entry
+        holiday_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
+        holiday_frame.grid(row=0, column=1, sticky='ew', padx=15, pady=(10,0))
+        ctk.CTkLabel(holiday_frame, text="Mark Holiday Columns (comma-separated)", font=ctk.CTkFont(weight="bold")).pack(anchor='w')
+        self.holiday_cols_entry = ctk.CTkEntry(holiday_frame, textvariable=self.holiday_cols_var) # Link to variable
+        self.holiday_cols_entry.pack(fill='x', pady=(5,0))
+        ctk.CTkLabel(holiday_frame, text="e.g., 7, 14 (will mark 7th and 14th columns as holiday)", text_color="gray50").pack(anchor='w')
 
-def start_automation(app):
-    app.start_automation_thread("mr_fill", run_automation_logic)
+        # Manual Mode Checkbox
+        self.manual_mode_checkbox = ctk.CTkCheckBox(
+            controls_frame, 
+            text="Manual Mode (Pause after marking holidays for you to mark absentees)",
+            variable=self.manual_mode_var # Link to variable
+        )
+        self.manual_mode_checkbox.grid(row=1, column=0, columnspan=2, sticky='w', padx=15, pady=(10,0))
 
-def run_automation_logic(app):
-    app.after(0, set_ui_state, True)
-    app.clear_log(widgets['log_display'])
-    app.after(0, lambda: [item for item in widgets['results_tree'].get_children() if widgets['results_tree'].delete(item)])
-    app.log_message(widgets['log_display'], "Starting MR Fill automation...")
+        # Action Buttons (Start, Stop, Reset)
+        action_frame = self._create_action_buttons(parent_frame=controls_frame)
+        action_frame.grid(row=2, column=0, columnspan=2, sticky='ew', pady=(15, 15))
+
+        # --- Data Tabs (Work Codes, Results, Logs) ---
+        data_notebook = ctk.CTkTabview(self)
+        data_notebook.grid(row=1, column=0, sticky="nsew")
+        work_codes_frame = data_notebook.add("Work Codes")
+        results_frame = data_notebook.add("Results")
+        self._create_log_and_status_area(parent_notebook=data_notebook)
+
+        # Work Codes Tab
+        work_codes_frame.grid_columnconfigure(0, weight=1); work_codes_frame.grid_rowconfigure(1, weight=1)
+        wc_controls_frame = ctk.CTkFrame(work_codes_frame, fg_color="transparent")
+        wc_controls_frame.grid(row=0, column=0, sticky='ew')
+        
+        clear_button = ctk.CTkButton(wc_controls_frame, text="Clear", width=80, command=lambda: self.work_key_text.delete("1.0", tkinter.END))
+        clear_button.pack(side='right', pady=(5,0), padx=(0,5))
+        
+        extract_button = ctk.CTkButton(wc_controls_frame, text="Extract from Text", width=120,
+                                       command=lambda: self._extract_and_update_workcodes(self.work_key_text))
+        extract_button.pack(side='right', pady=(5,0), padx=(0, 5))
+        
+        self.work_key_text = ctk.CTkTextbox(work_codes_frame, wrap=tkinter.WORD)
+        self.work_key_text.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
+        
+        # Results Tab
+        results_frame.grid_columnconfigure(0, weight=1); results_frame.grid_rowconfigure(1, weight=1)
+        results_action_frame = ctk.CTkFrame(results_frame, fg_color="transparent")
+        results_action_frame.grid(row=0, column=0, sticky='ew', pady=(5, 10))
+        
+        export_controls_frame = ctk.CTkFrame(results_action_frame, fg_color="transparent")
+        export_controls_frame.pack(side='right', padx=(10, 0))
+        self.export_button = ctk.CTkButton(export_controls_frame, text="Export Report", command=self.export_report)
+        self.export_button.pack(side='left')
+        self.export_format_menu = ctk.CTkOptionMenu(export_controls_frame, width=130, values=["PDF (.pdf)", "CSV (.csv)"], command=self._on_format_change)
+        self.export_format_menu.pack(side='left', padx=5)
+        self.export_filter_menu = ctk.CTkOptionMenu(export_controls_frame, width=150, values=["Export All", "Success Only", "Failed Only"])
+        self.export_filter_menu.pack(side='left', padx=(0, 5))
+
+        # Results Treeview
+        cols = ("Workcode", "MR No.", "Status", "Details", "Timestamp")
+        self.results_tree = ttk.Treeview(results_frame, columns=cols, show='headings')
+        for col in cols: self.results_tree.heading(col, text=col)
+        self.results_tree.column("Workcode", width=200)
+        self.results_tree.column("MR No.", width=80, anchor='center')
+        self.results_tree.column("Status", anchor='center', width=100)
+        self.results_tree.column("Details", width=300)
+        self.results_tree.column("Timestamp", width=100, anchor='center')
+        
+        self.results_tree.grid(row=1, column=0, sticky='nsew')
+        scrollbar = ctk.CTkScrollbar(results_frame, command=self.results_tree.yview)
+        self.results_tree.configure(yscroll=scrollbar.set); scrollbar.grid(row=1, column=1, sticky='ns')
+        self.style_treeview(self.results_tree); self._setup_treeview_sorting(self.results_tree)
+
+    def load_data_from_dashboard(self, workcodes: str, panchayat_name: str):
+        """Public method to receive data from the Dashboard Report tab."""
+        # Set Panchayat Name
+        self.panchayat_var.set(panchayat_name)
+        
+        # Set Work Codes
+        self.work_key_text.configure(state="normal")
+        self.work_key_text.delete("1.0", tkinter.END)
+        self.work_key_text.insert("1.0", workcodes)
+        self.work_key_text.configure(state="disabled")
+        
+        self.app.log_message(self.log_display, f"Loaded {len(workcodes.splitlines())} workcodes and panchayat '{panchayat_name}' from Dashboard Report.", "info")
+    # --- END NEW METHOD ---
     
-    try:
-        panchayat_name = widgets['panchayat_entry'].get().strip()
-        work_codes = [line.strip() for line in widgets['work_codes_text'].get("1.0", tk.END).strip().splitlines() if line.strip()]
-        if not work_codes or not panchayat_name:
-            messagebox.showwarning("Input Required", "Please provide a Panchayat name and at least one Work Code."); app.after(0, set_ui_state, False); return
+    # --- Save and Load Inputs ---
+    def _save_inputs(self, cfg):
+        """Saves the current UI inputs to a JSON file."""
+        try:
+            with open(self.config_file, 'w') as f: 
+                json.dump(cfg, f, indent=4)
+        except Exception as e: 
+            self.app.log_message(self.log_display, f"Could not save inputs: {e}", "warning")
+
+    def _load_inputs(self):
+        """Loads inputs from the JSON file on startup."""
+        saved_data = {}
+        if os.path.exists(self.config_file):
+            try:
+                with open(self.config_file, 'r') as f: 
+                    saved_data = json.load(f)
+            except (json.JSONDecodeError, IOError) as e: 
+                self.app.log_message(self.log_display, f"Could not load inputs: {e}", "warning")
         
-        driver = app.connect_to_chrome()
-        wait = WebDriverWait(driver, 20)
-        total = len(work_codes)
-        
-        for i, work_code in enumerate(work_codes):
-            if app.stop_events["mr_fill"].is_set():
-                app.log_message(widgets['log_display'], "Automation stopped by user.", "warning"); break
+        # Set values from saved_data, falling back to defaults
+        self.panchayat_var.set(saved_data.get("panchayat_name", ""))
+        self.holiday_cols_var.set(saved_data.get("holiday_cols", ""))
+        self.manual_mode_var.set(saved_data.get("manual_mode", False))
+    # --- END ---
+
+    def _on_format_change(self, selected_format):
+        """Disables the filter menu for CSV format."""
+        if "CSV" in selected_format:
+            self.export_filter_menu.configure(state="disabled")
+        else:
+            self.export_filter_menu.configure(state="normal")
+
+    def set_ui_state(self, running: bool):
+        """Enables/disables UI elements based on automation state."""
+        self.set_common_ui_state(running) # Handles Start, Stop, Reset
+        state = "disabled" if running else "normal"
+        self.panchayat_entry.configure(state=state)
+        self.holiday_cols_entry.configure(state=state)
+        self.manual_mode_checkbox.configure(state=state)
+        self.work_key_text.configure(state=state)
+        self.export_button.configure(state=state)
+        self.export_format_menu.configure(state=state)
+        self.export_filter_menu.configure(state=state)
+        if state == "normal": self._on_format_change(self.export_format_menu.get())
+
+    def reset_ui(self):
+        """Resets the form to its default state."""
+        if messagebox.askokcancel("Reset Form?", "Clear all inputs, results, and logs?"):
+            self._load_inputs() # Load saved inputs
+            # Clear text boxes and results
+            self.work_key_text.configure(state="normal"); self.work_key_text.delete("1.0", tkinter.END); self.work_key_text.configure(state="disabled")
+            for item in self.results_tree.get_children(): self.results_tree.delete(item)
+            self.app.clear_log(self.log_display)
+            self.update_status("Ready", 0)
+            self.app.log_message(self.log_display, "Form has been reset.")
+            self.app.after(0, self.app.set_status, "Ready")
             
-            app.after(0, update_status, f"Processing {i+1}/{total}: {work_code}", ((i+1) / total) * 100)
-            _process_single_mr(app, driver, wait, panchayat_name, work_code)
+    def start_automation(self):
+        """Validates inputs and starts the automation thread."""
         
-        final_msg = "Automation finished." if not app.stop_events["mr_fill"].is_set() else "Automation stopped by user."
-        app.after(0, update_status, final_msg, 100)
-        if not app.stop_events["mr_fill"].is_set():
-            app.after(0, lambda: messagebox.showinfo("Automation Complete", "The MR Fill process has finished."))
+        # Get inputs from variables and save them
+        cfg = {
+            "panchayat_name": self.panchayat_var.get().strip(),
+            "holiday_cols": self.holiday_cols_var.get().strip(),
+            "manual_mode": self.manual_mode_var.get()
+        }
+        
+        self.work_key_text.configure(state="normal") # Enable to read
+        work_keys = [line.strip() for line in self.work_key_text.get("1.0", tkinter.END).strip().splitlines() if line.strip()]
+        self.work_key_text.configure(state="disabled") # Disable again
+
+        if not work_keys: 
+            messagebox.showerror("Input Error", "No work keys (Search Key) provided."); 
+            return
             
-    except Exception as e:
-        app.log_message(widgets['log_display'], f"A critical error occurred: {e}", "error")
-        messagebox.showerror("Automation Error", f"An error occurred during the process:\n\n{e}")
-    finally:
-        app.after(0, set_ui_state, False)
-
-def _log_result(app, work_code, msr_no, status):
-    timestamp = datetime.now().strftime("%H:%M:%S")
-    values = (work_code, msr_no, status, timestamp)
-    app.after(0, lambda: widgets['results_tree'].insert("", "end", values=values))
-
-def _process_single_mr(app, driver, wait, panchayat_name, work_code):
-    msr_no_text = "N/A"
-    try:
-        app.log_message(widgets['log_display'], f"--- Processing {work_code} ---")
-        driver.get("https://nregade4.nic.in/netnrega/mustrollattend.aspx")
+        self._save_inputs(cfg) # Save the current inputs
+        self.app.start_automation_thread(self.automation_key, self.run_automation_logic, args=(cfg, work_keys))
         
-        html_element = driver.find_element(By.TAG_NAME, "html")
-        Select(wait.until(EC.element_to_be_clickable((By.ID, "ddlPanchayat")))).select_by_visible_text(panchayat_name)
-        wait.until(EC.staleness_of(html_element))
-        app.log_message(widgets['log_display'], f"Selected Panchayat: {panchayat_name}")
-
-        wait.until(EC.element_to_be_clickable((By.ID, "txtSearch"))).send_keys(work_code)
-        wait.until(EC.element_to_be_clickable((By.ID, "ImgbtnSearch"))).click()
+    def run_automation_logic(self, cfg, work_keys):
+        """Main automation logic that runs in a separate thread."""
+        self.app.after(0, self.set_ui_state, True)
+        self.app.after(0, lambda: [self.results_tree.delete(item) for item in self.results_tree.get_children()])
+        self.app.clear_log(self.log_display)
+        self.app.log_message(self.log_display, "Starting MR Fill (Attendance) processing...")
+        self.app.after(0, self.app.set_status, "Running MR Fill...")
         
-        html_element = driver.find_element(By.TAG_NAME, "html")
-        work_code_select = Select(wait.until(EC.element_to_be_clickable((By.ID, "ddlWorkCode"))))
-        if len(work_code_select.options) <= 1: raise ValueError("No work codes found after search.")
-        work_code_select.select_by_index(1)
-        wait.until(EC.staleness_of(html_element))
-
-        html_element = driver.find_element(By.TAG_NAME, "html")
-        msr_select = Select(wait.until(EC.element_to_be_clickable((By.ID, "ddlMsrNo"))))
-        if len(msr_select.options) <= 1: raise ValueError("No Muster Rolls found in dropdown.")
-        msr_no_text = msr_select.options[1].text
-        app.log_message(widgets['log_display'], f"Selected MSR No: {msr_no_text}")
-        msr_select.select_by_index(1)
-        wait.until(EC.staleness_of(html_element))
+        # --- 1. Get inputs from the passed cfg dictionary ---
+        panchayat_name = cfg["panchayat_name"]
+        holiday_cols_str = cfg["holiday_cols"]
+        is_manual_mode = cfg["manual_mode"]
         
-        # NEW: Check for page-level errors after MSR selection
-        time.sleep(1) # Brief pause for error message to render
-        if "No Future Dates Plz in Date To Field" in driver.page_source:
-            error_msg = "Skipped: 'No Future Dates' error displayed on page."
-            app.log_message(widgets['log_display'], error_msg, "warning")
-            _log_result(app, work_code, msr_no_text, error_msg)
-            return # Exit this function and move to the next work code
+        holiday_cols = [col.strip() for col in holiday_cols_str.split(',') if col.strip().isdigit()]
 
         try:
-            short_wait = WebDriverWait(driver, 2)
-            day_7_checkbox = short_wait.until(EC.element_to_be_clickable((By.ID, "c_p7")))
-            if not day_7_checkbox.is_selected():
-                day_7_checkbox.click()
-                app.log_message(widgets['log_display'], "Marked 7th day as absent.", "success")
-        except TimeoutException:
-            app.log_message(widgets['log_display'], "Day 7 checkbox not found, skipping.", "warning")
+            driver = self.app.get_driver()
+            if not driver: return
+            
+            wait = WebDriverWait(driver, 15)
+            
+            # --- 2. Navigate to Page FIRST ---
+            # --- MODIFICATION: Navigate to the URL before trying to select Panchayat ---
+            driver.get(config.MR_FILL_CONFIG["url"])
+            
+            # --- 3. Panchayat Selection Logic (with 2 attempts) ---
+            panchayat_selected = False
+            for attempt in range(2):
+                if self.app.stop_events[self.automation_key].is_set(): break
+                try:
+                    # Try to find dropdown with a 3-second wait
+                    panchayat_select_element = WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.ID, "ddlPanchayat")))
+                    
+                    if not panchayat_name: 
+                        messagebox.showerror("Input Error", "Panchayat name is required for Block Login."); 
+                        self.app.after(0, self.set_ui_state, False); return
 
-        app.log_message(widgets['log_display'], "--- PAUSED: WAITING FOR YOU TO CLICK SAVE ---", "warning")
-        app.log_message(widgets['log_display'], "Please make any edits and click 'Save' on the webpage. The script will handle the alerts.")
+                    panchayat_select = Select(panchayat_select_element)
+                    match = next((opt.text for opt in panchayat_select.options if panchayat_name.strip().lower() in opt.text.lower()), None)
+                    if not match: raise ValueError(f"Panchayat '{panchayat_name}' not found.")
+                    
+                    panchayat_select.select_by_visible_text(match)
+                    self.app.update_history("panchayat_name", panchayat_name) # Save to autocomplete history
+                    self.app.log_message(self.log_display, f"Successfully selected Panchayat: {match}", "success")
+                    time.sleep(2) # Wait for page to reload
+                    panchayat_selected = True
+                    break # Exit loop on success
+                
+                except TimeoutException:
+                    self.app.log_message(self.log_display, f"Panchayat dropdown not found (Attempt {attempt + 1}/2).", "info")
+                    time.sleep(1) # Wait before retrying
+                
+            if not panchayat_selected and not self.app.stop_events[self.automation_key].is_set():
+                self.app.log_message(self.log_display, "Panchayat selection not found/required (GP Login). Proceeding...", "info")
+            # --- End Panchayat Logic ---
 
-        long_wait = WebDriverWait(driver, timeout=900)
-        confirm_alert = long_wait.until(EC.alert_is_present())
+            # --- 4. Work Key Loop ---
+            total = len(work_keys)
+            for i, work_key in enumerate(work_keys, 1):
+                if self.app.stop_events[self.automation_key].is_set(): 
+                    self.app.log_message(self.log_display, "Automation stopped by user.", "warning"); break
+                
+                self.app.after(0, self.update_status, f"Processing {i}/{total}: {work_key}", (i/total))
+                
+                self._process_single_work_code(driver, wait, work_key, holiday_cols, is_manual_mode)
+                
+            if not self.app.stop_events[self.automation_key].is_set(): 
+                messagebox.showinfo("Completed", "Automation finished! Check the 'Results' tab for details.")
+        
+        except Exception as e:
+            self.app.log_message(self.log_display, f"A critical error occurred: {e}", "error")
+            messagebox.showerror("MR Fill Error", f"An error occurred: {e}")
+        
+        finally:
+            self.app.after(0, self.set_ui_state, False)
+            self.app.after(0, self.update_status, "Automation Finished.", 1.0)
+            self.app.after(0, self.app.set_status, "Automation Finished")
+            
+    def _process_single_work_code(self, driver, wait, work_key, holiday_cols, is_manual_mode):
+        """Processes a single work code and its first available MR."""
+        current_mr_no = "N/A"
+        try:
+            # Dismiss any previous alerts
+            try: driver.switch_to.alert.accept()
+            except NoAlertPresentException: pass
+            
+            # Navigate to the page if not already on it
+            if driver.current_url != config.MR_FILL_CONFIG["url"]:
+                driver.get(config.MR_FILL_CONFIG["url"])
 
-        app.log_message(widgets['log_display'], "Alert detected! Resuming automation...")
-        confirm_text = confirm_alert.text.strip()
-        app.log_message(widgets['log_display'], f"Accepted confirm dialog: '{confirm_text}'")
-        confirm_alert.accept()
+            # --- 1. Work Code Search ---
+            self.app.after(0, self.app.set_status, f"Searching for Work Key: {work_key}")
+            wait.until(EC.presence_of_element_located((By.ID, "txtSearch"))).clear()
+            driver.find_element(By.ID, "txtSearch").send_keys(work_key)
+            wait.until(EC.element_to_be_clickable((By.ID, "ImgbtnSearch"))).click()
+            time.sleep(1) # Wait for search
 
-        final_alert = WebDriverWait(driver, 10).until(EC.alert_is_present())
-        final_alert_text = final_alert.text.strip()
-        app.log_message(widgets['log_display'], f"Accepted final confirmation: '{final_alert_text}'")
-        final_alert.accept()
-        _log_result(app, work_code, msr_no_text, f"Success: {final_alert_text}")
+            # Check for 'lblmsg' error (like Geotag)
+            error_span = driver.find_element(By.ID, "lblmsg")
+            error_text = error_span.text.strip()
+            if error_span and error_text: 
+                raise ValueError(f"{error_text}")
 
-    except TimeoutException:
-        error_msg = "Timed out waiting for user to click 'Save'."
-        app.log_message(widgets['log_display'], f"Error processing {work_code}: {error_msg}", "error")
-        _log_result(app, work_code, msr_no_text, f"Failed: {error_msg}")
+            # --- 2. Work Code Select ---
+            self.app.after(0, self.app.set_status, f"Selecting Work Code...")
+            work_code_select = Select(wait.until(EC.presence_of_element_located((By.ID, "ddlWorkCode"))))
+            if len(work_code_select.options) <= 1: 
+                raise IndexError("Work code not found after search.")
+            work_code_select.select_by_index(1) # Select the first work code
+            time.sleep(1.5) # Wait for MR list to load
 
-    except (ValueError, NoSuchElementException, StaleElementReferenceException) as e:
-        error_msg = f"{type(e).__name__}: {str(e).splitlines()[0]}"
-        app.log_message(widgets['log_display'], f"Error processing {work_code}: {error_msg}", "error")
-        _log_result(app, work_code, msr_no_text, f"Failed: {error_msg}")
+            # --- 3. MR No. Select ---
+            self.app.after(0, self.app.set_status, f"Selecting MR No...")
+            msr_select = Select(wait.until(EC.presence_of_element_located((By.ID, "ddlMsrNo"))))
+            if len(msr_select.options) <= 1: 
+                raise IndexError("Muster Roll (MR) not found for this work code.")
+            
+            current_mr_no = msr_select.options[1].text # Store the first MR No.
+            msr_select.select_by_index(1)
+            self.app.log_message(self.log_display, f"Processing Work Key: {work_key}, MR No: {current_mr_no}")
+            
+            # Wait for table to load by checking for the 'Save' button
+            wait.until(EC.presence_of_element_located((By.ID, "btnsave")))
+            time.sleep(1) # Allow table to render
+
+            # --- 4. Mark Holidays ---
+            if holiday_cols:
+                self.app.after(0, self.app.set_status, f"Marking holidays for MR: {current_mr_no}")
+                self.app.log_message(self.log_display, f"Marking holiday columns: {', '.join(holiday_cols)}")
+                for col_num in holiday_cols:
+                    try:
+                        holiday_checkbox_id = f"c_p{col_num}"
+                        checkbox = driver.find_element(By.ID, holiday_checkbox_id)
+                        if not checkbox.is_selected():
+                            driver.execute_script("arguments[0].click();", checkbox)
+                    except NoSuchElementException:
+                        self.app.log_message(self.log_display, f"Warning: Holiday column {col_num} not found.", "warning")
+            
+            # --- 5. Manual Mode Logic ---
+            if is_manual_mode:
+                self.app.after(0, self.app.set_status, f"Manual Mode: Pausing for MR: {current_mr_no}")
+                self.app.log_message(self.log_display, f"Manual Mode: Pausing for MR: {current_mr_no}. Please mark absentees and click 'Save'.", "info")
+                
+                # --- MODIFICATION: Wait for the FIRST alert ---
+                try:
+                    # Wait up to 10 minutes (600s) for the user to click 'Save' which triggers the first alert
+                    alert = WebDriverWait(driver, 600).until(EC.alert_is_present())
+                    alert_text = alert.text # Get text before accepting
+                    alert.accept()
+                    self.app.log_message(self.log_display, f"User action detected. Bot handled first alert: '{alert_text}'", "info")
+                except TimeoutException:
+                    # User didn't click 'Save' in 10 minutes
+                    raise ValueError("Manual mode timed out. User did not click 'Save'.")
+                # --- END MODIFICATION ---
+
+            else:
+                # --- 6. Auto-Submit Logic ---
+                self.app.after(0, self.app.set_status, f"Auto-submitting MR: {current_mr_no}")
+                self.app.log_message(self.log_display, "Auto-submitting attendance...")
+                driver.find_element(By.ID, "btnsave").click()
+                
+                # Handle first confirmation alert ("Do you want to Save?")
+                WebDriverWait(driver, 10).until(EC.alert_is_present()).accept()
+
+            # --- 7. Final Alert Handling (for both modes) ---
+            self.app.after(0, self.app.set_status, f"Waiting for final confirmation...")
+            outcome_found = False
+            for _ in range(3): # Try for 3 seconds
+                try:
+                    final_alert = driver.switch_to.alert
+                    final_alert_text = final_alert.text.strip()
+                    final_alert.accept()
+                    
+                    if "Muster Roll Saved Successfully" in final_alert_text or "Muster Roll has been saved" in final_alert_text:
+                        self._log_result(work_key, current_mr_no, "Success", final_alert_text)
+                    else:
+                        self._log_result(work_key, current_mr_no, "Failed", f"Unknown Alert: {final_alert_text}")
+                    
+                    outcome_found = True; break
+                except NoAlertPresentException:
+                    time.sleep(1)
+            
+            if not outcome_found: 
+                self._log_result(work_key, current_mr_no, "Failed", "No final confirmation alert found (Timeout).")
+
+        except ValueError as e:
+            # Catches specific errors like Geotag
+            error_message = str(e)
+            self._log_result(work_key, current_mr_no, "Failed", error_message)
+        
+        except (IndexError, NoSuchElementException) as e:
+            # Catches dropdown/element errors
+            display_msg = str(e)
+            if "Muster Roll (MR) not found" in display_msg: details = "MR not found (or not available)."
+            elif "Work code not found" in display_msg: details = "Work Code not found."
+            else: details = f"Element not found: {e}"
+            self._log_result(work_key, current_mr_no, "Failed", details)
+
+        except TimeoutException as e:
+            self.app.log_message(self.log_display, f"Timeout processing {work_key}: {e}", "error")
+            self._log_result(work_key, current_mr_no, "Failed", "Page timed out or element not found.")
+        
+        except Exception as e:
+            self.app.log_message(self.log_display, f"Critical error processing {work_key}: {e}", "error")
+            self._log_result(work_key, current_mr_no, "Failed", f"CRITICAL ERROR: {type(e).__name__}")
+        
+    def _log_result(self, work_key, mr_no, status, msg):
+        """Logs the result to the log display and the results tree."""
+        level = "success" if status.lower() == "success" else "error"
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        details = msg.replace("\n", " ").replace("\r", " ")
+        
+        self.app.log_message(self.log_display, f"'{work_key}' (MR: {mr_no}) - {status.upper()}: {details}", level=level)
+        tags = ('failed',) if 'success' not in status.lower() else ()
+        
+        self.app.after(0, lambda: self.results_tree.insert("", "end", values=(work_key, mr_no, status.upper(), details, timestamp), tags=tags))
+
+    def export_report(self):
+        """Exports the data in the results tree to PDF or CSV."""
+        export_format = self.export_format_menu.get()
+        panchayat_name = self.panchayat_var.get() # Get from variable
+
+        if not panchayat_name:
+            messagebox.showwarning("Input Needed", "Please enter a Panchayat Name to include in the report filename.", parent=self)
+            return
+
+        if "CSV" in export_format:
+            safe_name = "".join(c for c in panchayat_name if c.isalnum() or c in (' ', '_')).rstrip()
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            default_filename = f"MR_Fill_Report_{safe_name}_{timestamp}.csv"
+            self.export_treeview_to_csv(self.results_tree, default_filename)
+            return
+            
+        data, file_path = self._get_filtered_data_and_filepath(export_format)
+        if not data: return
+
+        if "PDF" in export_format:
+            self._handle_pdf_export(data, file_path)
+
+    def _get_filtered_data_and_filepath(self, export_format):
+        """Filters data based on UI selection and gets a save file path from the user."""
+        all_items = self.results_tree.get_children()
+        if not all_items: messagebox.showinfo("No Data", "There are no results to export."); return None, None
+        panchayat_name = self.panchayat_var.get() # Get from variable
+        if not panchayat_name: messagebox.showwarning("Input Needed", "Please enter a Panchayat Name for the report title."); return None, None
+
+        filter_option = self.export_filter_menu.get()
+        data_to_export = []
+        for item_id in all_items:
+            row_values = self.results_tree.item(item_id)['values']
+            status = row_values[2].upper() # Status column
+            if filter_option == "Export All": data_to_export.append(row_values)
+            elif filter_option == "Success Only" and "SUCCESS" in status: data_to_export.append(row_values)
+            elif filter_option == "Failed Only" and "SUCCESS" not in status: data_to_export.append(row_values)
+        if not data_to_export: messagebox.showinfo("No Data", f"No records found for filter '{filter_option}'."); return None, None
+
+        safe_name = "".join(c for c in panchayat_name if c.isalnum() or c in (' ', '_')).rstrip()
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        file_details = {
+            "PDF (.pdf)": { "ext": ".pdf", "types": [("PDF Document", "*.pdf")], "title": "Save Report as PDF"},
+        }
+        details = file_details[export_format] # Assume PDF
+        filename = f"MR_Fill_Report_{safe_name}_{timestamp}{details['ext']}"
+
+        file_path = filedialog.asksaveasfilename(defaultextension=details['ext'], filetypes=details['types'], initialdir=self.app.get_user_downloads_path(), initialfile=filename, title=details['title'])
+        return (data_to_export, file_path) if file_path else (None, None)
+    
+    def _handle_pdf_export(self, data, file_path):
+        """Generates the PDF report."""
+        try:
+            headers = self.results_tree['columns']
+            # ("Workcode", "MR No.", "Status", "Details", "Timestamp")
+            col_widths = [60, 25, 30, 130, 25] # Widths for A4 Landscape
+            title = f"MR Fill (Attendance) Report: {self.panchayat_var.get()}" # Get from variable
+            report_date = datetime.now().strftime('%d %b %Y')
+            
+            success = self.generate_report_pdf(data, headers, col_widths, title, report_date, file_path)
+            
+            if success:
+                if messagebox.askyesno("Success", f"PDF Report exported to:\n{file_path}\n\nDo you want to open the file?"):
+                    if sys.platform == "win32":
+                        os.startfile(file_path)
+                    else:
+                        subprocess.call(['open', file_path])
+        except Exception as e:
+            messagebox.showerror("Export Error", f"Failed to create PDF file.\n\nError: {e}")
+

@@ -20,6 +20,7 @@ from openpyxl.worksheet.page import PageMargins
 
 from .base_tab import BaseAutomationTab
 from .autocomplete_widget import AutocompleteEntry
+import config
 
 class MisReportsTab(BaseAutomationTab):
     def __init__(self, parent, app_instance):
@@ -151,10 +152,30 @@ class MisReportsTab(BaseAutomationTab):
         self.save_inputs({'state': inputs['state'], 'district': inputs['district'], 'block': inputs['block']})
         self.app.update_history("mis_state", inputs['state']); self.app.update_history("mis_district", inputs['district']); self.app.update_history("mis_block", inputs['block'])
         
-        today_str = datetime.now().strftime("%d-%m-%Y")
-        initial_filename = f"MIS_Reports_{today_str}.xlsx"
-        
-        save_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel Workbook", "*.xlsx")], title="Save MIS Reports As", initialdir=self.app.get_user_downloads_path(), initialfile=initial_filename)
+        # --- NEW: Create suggested directory structure ---
+        try:
+            downloads_path = self.app.get_user_downloads_path()
+            current_year = datetime.now().strftime("%Y")
+            current_date_str_folder = datetime.now().strftime("%d-%m-%Y")
+            
+            target_dir = os.path.join(downloads_path, f"Reports {current_year}", "MIS Report", current_date_str_folder)
+            os.makedirs(target_dir, exist_ok=True)
+            
+            today_str_file = datetime.now().strftime("%d-%m-%Y")
+            initial_filename = f"MIS_Reports_{today_str_file}.xlsx"
+        except Exception as e:
+            messagebox.showerror("Folder Error", f"Could not create default save directory.\n{e}")
+            target_dir = self.app.get_user_downloads_path() # Fallback
+            initial_filename = "MIS_Reports.xlsx"
+        # --- END NEW ---
+
+        save_path = filedialog.asksaveasfilename(
+            defaultextension=".xlsx", 
+            filetypes=[("Excel Workbook", "*.xlsx")], 
+            title="Save MIS Reports As", 
+            initialdir=target_dir, # <-- Use new target dir
+            initialfile=initial_filename # <-- Use new initial filename
+        )
         if not save_path: return
         
         self.app.start_automation_thread(self.automation_key, self.run_automation_logic, args=(inputs, save_path))
@@ -187,12 +208,21 @@ class MisReportsTab(BaseAutomationTab):
                 for i, report_name in enumerate(inputs['reports']):
                     if self.app.stop_events[self.automation_key].is_set(): self.app.log_message(self.log_display, "Stop signal received.", "warning"); break
                     
+                    # --- NEW: Update App Status ---
+                    status_msg = f"Processing report {i+1}/{total_reports}..."
+                    self.app.after(0, self.app.set_status, status_msg)
+                    # ---
+                    
                     self.app.after(0, self.update_status, f"Processing {report_name}", (i+1)/total_reports)
                     self.app.log_message(self.log_display, f"--- Processing report {i+1}/{total_reports}: {report_name} ---")
                     
+                    report_df = pd.DataFrame() # Initialize empty dataframe
+                    png_success = False
+                    details = ""
+                    
                     try:
                         self.app.log_message(self.log_display, "Navigating to portal and solving CAPTCHA...")
-                        driver.get("https://nreganarep.nic.in/netnrega/MISreport4.aspx")
+                        driver.get(config.MIS_REPORTS_CONFIG["base_url"])
                         self._solve_captcha(driver, wait)
                         self.app.log_message(self.log_display, "CAPTCHA verified. Selecting state...")
                         state_dropdown = wait.until(EC.element_to_be_clickable((By.ID, "ContentPlaceHolder1_ddl_States")))
@@ -278,9 +308,33 @@ class MisReportsTab(BaseAutomationTab):
                             adjusted_width = min((max_length + 2), 50)
                             worksheet.column_dimensions[column_letter].width = adjusted_width
                         # --- END: FINAL EXCEL FORMATTING ---
-
-                        self.app.log_message(self.log_display, f"Successfully saved and formatted '{report_name}' to sheet '{sheet_name}'.", "success")
+                        
                         details = f"Saved to sheet: {sheet_name}"
+                        self.app.log_message(self.log_display, f"Successfully saved and formatted '{report_name}' to sheet '{sheet_name}'.", "success")
+                        
+                        # --- NEW: Generate PNG ---
+                        if not report_df.empty:
+                            self.app.log_message(self.log_display, f"Generating PNG for '{report_name}'...")
+                            headers = list(report_df.columns)
+                            data = report_df.values.tolist()
+                            date_str = datetime.now().strftime('%d-%m-%Y')
+                            output_dir = os.path.dirname(save_path)
+                            safe_filename = re.sub(r'[\\/*?:\[\]]', '', report_name)[:100]
+                            png_output_path = os.path.join(output_dir, f"{safe_filename}.png")
+                            
+                            png_success = self.generate_report_image(data, headers, report_name, date_str, png_output_path)
+                            
+                            if png_success:
+                                self.app.log_message(self.log_display, f"Successfully saved PNG for '{report_name}'.", "success")
+                                details += " | PNG saved."
+                            else:
+                                self.app.log_message(self.log_display, f"Failed to save PNG for '{report_name}'.", "warning")
+                                details += " | PNG failed."
+                        else:
+                            self.app.log_message(self.log_display, f"Skipping PNG for '{report_name}' (no data).", "warning")
+                            details += " | PNG skipped."
+                        # --- END NEW ---
+                        
                         self.app.after(0, lambda r=report_name, d=details: self.results_tree.insert("", "end", values=(r, "Success", d)))
 
                     except Exception as e:
@@ -293,9 +347,15 @@ class MisReportsTab(BaseAutomationTab):
         except Exception as e:
             error_msg = str(e).split('\n')[0]; self.app.log_message(self.log_display, f"A critical error occurred: {error_msg}", "error"); messagebox.showerror("Critical Error", error_msg)
         finally:
-            self.app.after(0, self.set_ui_state, False); self.app.after(0, self.update_status, "Automation Finished", 1.0); self.app.after(0, self.app.set_status, "Automation Finished")
+            self.app.after(0, self.set_ui_state, False); 
+            self.app.after(0, self.update_status, "Automation Finished", 1.0); 
+            self.app.after(0, self.app.set_status, "Automation Finished")
+            
             if not self.app.stop_events[self.automation_key].is_set():
-                self.app.after(100, lambda: messagebox.showinfo("Complete", f"MIS Report generation has finished.\nFile saved to: {save_path}"))
+                self.app.after(100, lambda: messagebox.showinfo("Complete", f"MIS Report generation has finished.\nFile(s) saved near: {save_path}"))
+            
+            self.app.after(5000, lambda: self.app.set_status("Ready")) # Reset app status
+            self.app.after(5000, lambda: self.update_status("Ready", 0.0)) # Reset tab status
 
     def save_inputs(self, inputs):
         try:

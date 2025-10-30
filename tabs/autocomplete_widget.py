@@ -162,7 +162,8 @@ class AutocompleteEntry(ctk.CTkEntry):
     def _on_mouse_leave(self, index):
         """Resets the active index when mousing out."""
         # --- MODIFIED: Use suggestion_frames ---
-        if 0 <= index < len(self.Ssuggestion_frames):
+        # --- FIX: Corrected typo 'Ssuggestion_frames' to '_suggestion_frames' ---
+        if 0 <= index < len(self._suggestion_frames):
             self._suggestion_frames[index].configure(fg_color="transparent")
             self._active_suggestion_index = -1
 

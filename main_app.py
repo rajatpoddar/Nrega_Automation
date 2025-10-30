@@ -48,6 +48,9 @@ from tabs.resend_rejected_wg_tab import ResendRejectedWgTab
 from tabs.SA_report_tab import SAReportTab
 from tabs.mis_reports_tab import MisReportsTab
 from tabs.demand_tab import DemandTab
+from tabs.mr_tracking_tab import MrTrackingTab
+from tabs.dashboard_report_tab import DashboardReportTab
+from tabs.mr_fill_tab import MrFillTab
 
 from utils import resource_path, get_data_path, get_user_downloads_path, get_config, save_config
 
@@ -285,6 +288,9 @@ class NregaBotApp(ctk.CTk):
         self._load_icon("emoji_social_audit", "assets/icons/emojis/social_audit.png", size=(16,16))
         self._load_icon("emoji_mis_reports", "assets/icons/emojis/mis_reports.png", size=(16,16))
         self._load_icon("emoji_demand", "assets/icons/emojis/demand.png", size=(16,16))
+        self._load_icon("emoji_mr_tracking", "assets/icons/emojis/mr_tracking.png", size=(16,16))
+        self._load_icon("emoji_dashboard_report", "assets/icons/emojis/dashboard_report.png", size=(16,16))
+        self._load_icon("emoji_mr_fill", "assets/icons/emojis/mr_fill.png", size=(16,16))
 
 
         self.bind("<FocusIn>", self._on_window_focus)
@@ -298,20 +304,52 @@ class NregaBotApp(ctk.CTk):
 
     def set_status(self, message, color=None):
         if self.status_label:
-            if color is None:
-                message_lower = message.lower()
-                if "running" in message_lower: color = "#E53E3E"
-                elif "finished" in message_lower: 
-                    color = "#3B82F6"
-                    # self.play_sound("complete") # <-- REMOVE THIS LINE TO PREVENT DOUBLE-PLAY
-                elif "ready" in message_lower: 
-                    color = "#38A169"
-                    self.play_sound("success") # <-- Keep this one for general "Ready" status
-                else: color = "gray50"
-            self.status_label.configure(text=f"Status: {message}", text_color=color)
-            if "running" in message.lower():
-                if not self.is_animating: self.is_animating = True; self._animate_loading_icon()
-            else: self.is_animating = False
+            message_lower = message.lower()
+            final_color = color # Start with the provided color (if any)
+            
+            should_animate = False
+
+            if final_color is None: # If no color was forced, determine it
+                if "running" in message_lower or "starting" in message_lower or \
+                   "navigating" in message_lower or "solving" in message_lower or \
+                   "selecting" in message_lower or "opening" in message_lower or \
+                   "drilling" in message_lower or "finding" in message_lower or \
+                   "clicking" in message_lower or "loading" in message_lower or \
+                   "processing" in message_lower or "waiting for" in message_lower or \
+                   "retrying" in message_lower:
+                    
+                    final_color = "#3B82F6" # Blue
+                    should_animate = True
+                
+                elif "finished" in message_lower:
+                    final_color = "#E53E3E" # Red
+                
+                elif "ready" in message_lower:
+                    final_color = "#38A169" # Green
+                    if message == "Ready": # Only play "ready" sound for the final "Ready" state
+                        self.play_sound("success")
+
+                elif "error" in message_lower or "failed" in message_lower:
+                    final_color = "#E53E3E" # Red
+                    if not "session expired" in message_lower: # Don't play error sound for session expiry retries
+                        self.play_sound("error")
+
+                else: # Default for other states (Stopped, No data, etc.)
+                    final_color = "gray50" # Default gray
+
+            # Handle animation state
+            if should_animate and not self.is_animating:
+                self.is_animating = True
+                self._animate_loading_icon()
+            elif not should_animate:
+                self.is_animating = False
+
+            # Configure the status label with the final color
+            self.status_label.configure(text=f"Status: {message}", text_color=final_color)
+
+            # Ensure animation label is cleared if animation stops
+            if not self.is_animating and self.loading_animation_label:
+                 self.loading_animation_label.configure(text="")
 
     def _animate_loading_icon(self, frame_index=0):
         if not self.is_animating:
@@ -771,6 +809,7 @@ class NregaBotApp(ctk.CTk):
         return {
             "Core NREGA Tasks": {
                 "MR Gen": {"creation_func": MusterrollGenTab, "icon": self.icon_images.get("emoji_mr_gen"), "key": "muster"},
+                "MR Fill": {"creation_func": MrFillTab, "icon": self.icon_images.get("emoji_mr_fill"), "key": "mr_fill"},
                 "MR Payment": {"creation_func": MsrTab, "icon": self.icon_images.get("emoji_mr_payment"), "key": "msr"},
                 "Gen Wagelist": {"creation_func": WagelistGenTab, "icon": self.icon_images.get("emoji_gen_wagelist"), "key": "gen"},
                 "Send Wagelist": {"creation_func": WagelistSendTab, "icon": self.icon_images.get("emoji_send_wagelist"), "key": "send"},
@@ -800,6 +839,8 @@ class NregaBotApp(ctk.CTk):
             "Reporting": {
                 "Social Audit Report": {"creation_func": SAReportTab, "icon": self.icon_images.get("emoji_social_audit"), "key": "social_audit_respond"},
                 "MIS Reports": {"creation_func": MisReportsTab, "icon": self.icon_images.get("emoji_mis_reports"), "key": "mis_reports"},
+                "MR Tracking": {"creation_func": MrTrackingTab, "icon": self.icon_images.get("emoji_mr_tracking"), "key": "mr_tracking"},
+                "Dashboard Report": {"creation_func": DashboardReportTab, "icon": self.icon_images.get("emoji_dashboard_report"), "key": "dashboard_report"},
             },
             "Application": {
                  "Feedback": {"creation_func": FeedbackTab, "icon": self.icon_images.get("emoji_feedback")},
@@ -854,6 +895,68 @@ class NregaBotApp(ctk.CTk):
         else:
             self.play_sound("error")
             messagebox.showerror("Error", "Could not find the IF Editor tab instance or it's missing the required method.")
+
+    def switch_to_msr_tab_with_data(self, workcodes: str, panchayat_name: str):
+        """Switches to the MSR Payment tab and passes data from MR Tracking."""
+        
+        # Ensure the frame and instance exist
+        self.show_frame("MR Payment")
+        
+        msr_instance = self.tab_instances.get("MR Payment")
+        
+        if msr_instance and hasattr(msr_instance, 'load_data_from_mr_tracking'):
+            msr_instance.load_data_from_mr_tracking(workcodes, panchayat_name)
+            self.play_sound("success")
+            messagebox.showinfo(
+                "Data Transferred",
+                f"{len(workcodes.splitlines())} workcode(s) and Panchayat '{panchayat_name}' have been transferred to the MR Payment tab.",
+                parent=self
+            )
+        else:
+            self.play_sound("error")
+            messagebox.showerror("Error", "Could not find the MR Payment tab instance or it's missing the required method.")
+    # --- NEW METHOD to send data to eMB Entry ---
+    def switch_to_emb_entry_with_data(self, workcodes: str, panchayat_name: str):
+        """Switches to the eMB Entry tab and passes data from MR Tracking."""
+        
+        # Ensure the frame and instance exist
+        self.show_frame("eMB Entry")
+        
+        emb_instance = self.tab_instances.get("eMB Entry")
+        
+        if emb_instance and hasattr(emb_instance, 'load_data_from_mr_tracking'):
+            emb_instance.load_data_from_mr_tracking(workcodes, panchayat_name)
+            self.play_sound("success")
+            messagebox.showinfo(
+                "Data Transferred",
+                f"{len(workcodes.splitlines())} workcode(s) and Panchayat '{panchayat_name}' have been transferred to the eMB Entry tab.",
+                parent=self
+            )
+        else:
+            self.play_sound("error")
+            messagebox.showerror("Error", "Could not find the eMB Entry tab instance or it's missing the required method.")
+    # --- END NEW METHOD ---
+
+    def switch_to_mr_fill_with_data(self, workcodes: str, panchayat_name: str):
+        """Switches to the MR Fill tab and passes data from Dashboard Report."""
+        
+        # Ensure the frame and instance exist
+        self.show_frame("MR Fill")
+        
+        mr_fill_instance = self.tab_instances.get("MR Fill")
+        
+        if mr_fill_instance and hasattr(mr_fill_instance, 'load_data_from_dashboard'):
+            mr_fill_instance.load_data_from_dashboard(workcodes, panchayat_name)
+            self.play_sound("success")
+            messagebox.showinfo(
+                "Data Transferred",
+                f"{len(workcodes.splitlines())} workcode(s) and Panchayat '{panchayat_name}' have been transferred to the MR Fill tab.",
+                parent=self
+            )
+        else:
+            self.play_sound("error")
+            messagebox.showerror("Error", "Could not find the MR Fill tab instance or it's missing the required method.")
+    # --- END NEW METHOD ---
 
     def _create_footer(self):
         footer = ctk.CTkFrame(self, height=40, corner_radius=0)

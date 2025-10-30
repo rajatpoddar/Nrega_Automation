@@ -2,7 +2,7 @@
 import tkinter
 from tkinter import ttk, messagebox, filedialog
 import customtkinter as ctk
-import time, os, sys
+import time, os, sys, re
 from datetime import datetime
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
@@ -10,7 +10,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
 
 from fpdf import FPDF
-from utils import resource_path  # <-- FIX: Import the utility function
+from utils import resource_path
 from .base_tab import BaseAutomationTab
 from .autocomplete_widget import AutocompleteEntry
 
@@ -60,7 +60,11 @@ class SAReportTab(BaseAutomationTab):
         export_frame.grid(row=0, column=0, sticky="w", padx=5, pady=5)
         self.export_button = ctk.CTkButton(export_frame, text="Export Report", command=self.export_report)
         self.export_button.pack(side="left")
-        self.export_format_menu = ctk.CTkOptionMenu(export_frame, values=["PDF (.pdf)", "CSV (.csv)"])
+        
+        # --- UPDATE: Added PNG Export ---
+        self.export_format_menu = ctk.CTkOptionMenu(export_frame, values=["PDF (.pdf)", "PNG (.png)", "CSV (.csv)"])
+        # --- END UPDATE ---
+        
         self.export_format_menu.pack(side="left", padx=5)
 
         cols = ("SR#", "District", "Block", "Panchayat", "Issue Number", "Issue Type", "Forwarded To", "Status", "Issue Description")
@@ -107,7 +111,13 @@ class SAReportTab(BaseAutomationTab):
             table = wait.until(EC.presence_of_element_located((By.ID, RESULTS_TABLE_ID))); total_rows = len(table.find_elements(By.XPATH, ".//tr[position()>1]")); self.app.log_message(self.log_display, f"Found {total_rows} records.")
             for i in range(total_rows):
                 if self.app.stop_events[self.automation_key].is_set(): self.app.log_message(self.log_display, "Stop signal received.", "warning"); break
-                self.app.after(0, self.update_status, f"Processing row {i+1}/{total_rows}", (i+1)/total_rows)
+                
+                # --- UPDATE: Better Status ---
+                status_msg = f"Processing row {i+1}/{total_rows}"
+                self.app.after(0, self.app.set_status, status_msg)
+                self.app.after(0, self.update_status, status_msg, (i+1)/total_rows)
+                # --- END UPDATE ---
+                
                 row = wait.until(EC.presence_of_element_located((By.XPATH, f"//table[@id='{RESULTS_TABLE_ID}']//tr[{i+2}]"))); cells = row.find_elements(By.TAG_NAME, "td")
                 
                 sr_no, district, block, panchayat, issue_no, issue_type, forwarded_to, status = (cells[0].text.strip(), cells[1].text.strip(), cells[2].text.strip(), cells[3].text.strip(), cells[4].text.strip(), cells[5].text.strip(), cells[6].text.strip(), cells[7].text.strip())
@@ -125,53 +135,101 @@ class SAReportTab(BaseAutomationTab):
             self.app.after(0, self.set_ui_state, False); self.app.after(0, self.update_status, "Automation Finished", 1.0); self.app.after(0, self.app.set_status, "Automation Finished")
             if not self.app.stop_events[self.automation_key].is_set():
                 self.app.after(100, lambda: messagebox.showinfo("Complete", "Social Audit Report generation has finished."))
+            
+            # Reset status after 5 seconds
+            self.app.after(5000, lambda: self.app.set_status("Ready"))
+            self.app.after(5000, lambda: self.update_status("Ready", 0.0))
 
     def export_report(self):
         if not self.results_tree.get_children():
             messagebox.showinfo("No Data", "There are no results to export.")
             return
             
-        # Get panchayat name from the first row for dynamic filenames
         first_item = self.results_tree.get_children()[0]
         values = self.results_tree.item(first_item, 'values')
         district, block, panchayat = values[1], values[2], values[3]
+        
+        # --- NEW: Folder and Filename Logic ---
+        financial_year = self.year_entry.get()
+        current_year = datetime.now().strftime("%Y")
+        current_date_str = datetime.now().strftime("%d-%b-%Y") # e.g., 30-Oct-2025
+        safe_panchayat = re.sub(r'[\\/*?:"<>|]', '_', panchayat) 
+
+        try:
+            downloads_path = self.app.get_user_downloads_path()
+            target_dir = os.path.join(downloads_path, f"Reports {current_year}", "Social Audit Report", financial_year)
+            os.makedirs(target_dir, exist_ok=True)
+        except Exception as e:
+            messagebox.showerror("Folder Error", f"Could not create directory:\n{e}\nSaving to Downloads instead.")
+            target_dir = self.app.get_user_downloads_path()
+        # --- END NEW ---
 
         export_format = self.export_format_menu.get()
-        if "CSV" in export_format:
-            # FIX: Use a dynamic filename for the CSV export
-            csv_filename = f"social_audit_report_{panchayat}.csv"
-            self.export_treeview_to_csv(self.results_tree, csv_filename)
-            return
-        
-        title = f"Social Audit Status Report: {panchayat}, {block}, {district}"
-        date_str = f"Date- {datetime.now().strftime('%d.%m.%Y')}"
-        pdf_filename = f"Social_Audit_Report_{panchayat}.pdf"
-
-        file_path = filedialog.asksaveasfilename(
-            defaultextension=".pdf", 
-            filetypes=[("PDF Document", "*.pdf")], 
-            initialdir=self.app.get_user_downloads_path(), 
-            initialfile=pdf_filename, 
-            title="Save PDF Report"
-        )
-        if not file_path:
-            return
-
         headers = self.results_tree['columns']
         data = [self.results_tree.item(item, 'values') for item in self.results_tree.get_children()]
-        col_widths = [15, 30, 30, 30, 35, 40, 30, 25, 100]
         
-        success = self.generate_report_pdf(data, headers, col_widths, title, date_str, file_path)
-        if success:
-            messagebox.showinfo("Success", f"PDF report saved successfully to:\n{file_path}")
+        title = f"Social Audit Status Report: {panchayat}, {block}, {district}"
+        date_str = f"Date - {datetime.now().strftime('%d-%m-%Y')}"
+
+        if "CSV" in export_format:
+            default_filename = f"Social_Audit_Report_{safe_panchayat}-{current_date_str}.csv"
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".csv", filetypes=[("CSV files", "*.csv")], 
+                initialdir=target_dir, initialfile=default_filename, title="Save CSV Report")
+            if not file_path: return
+            self.export_treeview_to_csv(self.results_tree, file_path) # Pass full path to base method
+            return
+        
+        elif "PNG" in export_format:
+            default_filename = f"Social_Audit_Report_{safe_panchayat}-{current_date_str}.png"
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".png", filetypes=[("PNG Image", "*.png")], 
+                initialdir=target_dir, initialfile=default_filename, title="Save PNG Report")
+            if not file_path: return
+            
+            # Use the base class method to generate the PNG
+            success = self.generate_report_image(data, headers, title, date_str, file_path)
+            if success:
+                messagebox.showinfo("Success", f"PNG report saved successfully to:\n{file_path}")
+
+        elif "PDF" in export_format:
+            default_filename = f"Social_Audit_Report_{safe_panchayat}-{current_date_str}.pdf"
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".pdf", filetypes=[("PDF Document", "*.pdf")], 
+                initialdir=target_dir, initialfile=default_filename, title="Save PDF Report")
+            if not file_path: return
+
+            # Column widths for PDF (9 columns)
+            # ("SR#", "District", "Block", "Panchayat", "Issue Number", "Issue Type", "Forwarded To", "Status", "Issue Description")
+            col_widths = [10, 25, 25, 25, 30, 35, 20, 20, 87] # Tuned manually
+            total_width_ratio = sum(col_widths)
+            effective_page_width = 297 - 20 # A4 Landscape width minus margins
+            actual_col_widths = [(w / total_width_ratio) * effective_page_width for w in col_widths]
+            
+            success = self.generate_report_pdf(data, headers, actual_col_widths, title, date_str, file_path)
+            if success:
+                messagebox.showinfo("Success", f"PDF report saved successfully to:\n{file_path}")
         
     def generate_report_pdf(self, data, headers, col_widths, title, date_str, file_path):
         """
-        Overrides the base method to use a Unicode-compatible font (Noto Sans Devanagari)
-        and handles multi-line text wrapping for long cell content.
+        Overrides base method to use Unicode font, add footer, adjust formatting, 
+        and correctly handle row wrapping and page breaks.
         """
+        
+        class PDFWithFooter(FPDF):
+            def footer(self):
+                self.set_y(-15) 
+                try:
+                    self.set_font(font_name, '', 8) 
+                except NameError: 
+                    self.set_font('Helvetica', '', 8) 
+                self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
+                self.set_xy(self.l_margin, -15)
+                self.cell(0, 10, 'Report Generated by NregaBot.com', 0, 0, 'L')
+
         try:
-            pdf = FPDF(orientation="L", unit="mm", format="A4")
+            pdf = PDFWithFooter(orientation="L", unit="mm", format="A4")
+            pdf.set_auto_page_break(auto=True, margin=15)
             pdf.add_page()
             
             try:
@@ -179,47 +237,68 @@ class SAReportTab(BaseAutomationTab):
                 font_path_bold = resource_path("assets/fonts/NotoSansDevanagari-Bold.ttf")
                 pdf.add_font("NotoSansDevanagari", "", font_path_regular, uni=True)
                 pdf.add_font("NotoSansDevanagari", "B", font_path_bold, uni=True)
-                pdf.set_font("NotoSansDevanagari", size=12)
-            except RuntimeError as e:
-                messagebox.showerror("Font Error", f"Could not load PDF font: {e}\nPlease ensure 'NotoSansDevanagari-Regular.ttf' and '-Bold.ttf' are in the assets/fonts folder.", parent=self)
-                pdf.set_font("Helvetica", size=12)
+                font_name = "NotoSansDevanagari"
+            except RuntimeError:
+                font_name = "Helvetica" 
 
-            pdf.set_font("NotoSansDevanagari", "B", 16)
+            # --- Title ---
+            pdf.set_font(font_name, "B", 14) 
             pdf.cell(0, 10, title, 0, 1, "C")
-            pdf.set_font("NotoSansDevanagari", "", 12)
-            pdf.cell(0, 10, date_str, 0, 1, "R")
-            pdf.ln(5)
+            pdf.set_font(font_name, "", 10) 
+            pdf.cell(0, 8, date_str, 0, 1, "R") 
+            pdf.ln(4) 
 
-            pdf.set_font("NotoSansDevanagari", "B", 8)
+            # --- Headers ---
+            pdf.set_font(font_name, "B", 7) 
             pdf.set_fill_color(200, 220, 255)
-            effective_page_width = pdf.w - 2 * pdf.l_margin
+            header_height = 8 
             
-            total_width_ratio = sum(col_widths)
-            actual_col_widths = [(w / total_width_ratio) * effective_page_width for w in col_widths]
+            if len(col_widths) != len(headers):
+                self.app.log_message(self.log_display, "PDF Export Warning: Column width count mismatch.", "warning")
+                col_widths = [(pdf.w - 2 * pdf.l_margin) / len(headers)] * len(headers)
 
             for i, header in enumerate(headers):
-                pdf.cell(actual_col_widths[i], 10, header, 1, 0, "C", fill=True)
+                pdf.cell(col_widths[i], header_height, header, 1, 0, "C", fill=True) 
             pdf.ln()
 
-            # --- FIX: Use multi_cell for text wrapping ---
-            pdf.set_font("NotoSansDevanagari", "", 7)
-            line_height = 5  # Set a consistent line height for wrapped text
+            # --- Data Rows ---
+            pdf.set_font(font_name, "", 6) 
+            line_height = 4 # Define line height
+            
             for row_data in data:
-                y_start = pdf.get_y()
-                x_start = pdf.get_x()
-                max_y = y_start  # Track the lowest point reached in the row
+                if len(row_data) != len(headers):
+                    continue
 
-                # Draw each cell and update the max_y for the row
+                # --- Calculate row height based on content wrapping ---
+                max_lines = 1
                 for i, cell_text in enumerate(row_data):
-                    col_width = actual_col_widths[i]
-                    x_current = x_start + sum(actual_col_widths[:i])
-                    pdf.set_xy(x_current, y_start)
-                    pdf.multi_cell(col_width, line_height, str(cell_text), border=1, align='L')
-                    if pdf.get_y() > max_y:
-                        max_y = pdf.get_y()
+                    lines = pdf.multi_cell(col_widths[i], line_height, str(cell_text), border=0, align='L', split_only=True)
+                    current_lines = len(lines) if lines else 1 
+                    if current_lines > max_lines: max_lines = current_lines
                 
-                # Set the cursor for the next row to the lowest point of the current row
-                pdf.set_xy(x_start, max_y)
+                row_height = line_height * max_lines
+                
+                # --- Check for page break BEFORE drawing the row ---
+                if pdf.get_y() + row_height > pdf.page_break_trigger:
+                    pdf.add_page()
+                    # Redraw headers on new page
+                    pdf.set_font(font_name, "B", 7)
+                    for i, header in enumerate(headers):
+                         pdf.cell(col_widths[i], header_height, header, 1, 0, "C", fill=True)
+                    pdf.ln()
+                    pdf.set_font(font_name, "", 6) # Reset data font
+
+                # --- Draw the row using multi_cell for wrapping ---
+                y_start = pdf.get_y()
+                x_start = pdf.l_margin 
+                
+                for i, cell_text in enumerate(row_data):
+                    col_width = col_widths[i]
+                    x_current = x_start + sum(col_widths[:i]) 
+                    pdf.set_xy(x_current, y_start) 
+                    pdf.multi_cell(col_width, line_height, str(cell_text), border=1, align='L', max_line_height=line_height) 
+                
+                pdf.set_y(y_start + row_height) 
 
             pdf.output(file_path)
             return True

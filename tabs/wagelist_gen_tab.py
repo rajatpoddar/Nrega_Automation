@@ -11,6 +11,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.webdriver.common.print_page_options import PrintOptions  # <-- IMPORT ADDED
 import config
 from .base_tab import BaseAutomationTab
 from .autocomplete_widget import AutocompleteEntry
@@ -259,16 +260,21 @@ class WagelistGenTab(BaseAutomationTab):
             # Use browser-specific commands to print to PDF
             if self.app.active_browser == 'firefox':
                 self.app.log_message(self.log_display, "   - Using Firefox's print command to save PDF...", "info")
-                pdf_data_base64 = driver.print_page()
+                # --- MODIFIED: Set print options for Firefox ---
+                print_options = PrintOptions()
+                print_options.orientation = "landscape"
+                print_options.scale = 0.7
+                pdf_data_base64 = driver.print_page(print_options)
+                # --- END MODIFICATION ---
 
             elif self.app.active_browser == 'chrome':
                 self.app.log_message(self.log_display, "   - Using Chrome's advanced print command (CDP) to save PDF...", "info")
-                # Default to portrait, 100% scale
+                # --- MODIFIED: Landscape, 70% scale ---
                 print_options = {
-                    "landscape": False, 
+                    "landscape": True, 
                     "displayHeaderFooter": False, 
                     "printBackground": True, # Keep background colors
-                    "scale": 1.0, 
+                    "scale": 0.7, 
                     "marginTop": 0.4, "marginBottom": 0.4,
                     "marginLeft": 0.4, "marginRight": 0.4,
                     "paperWidth": 8.27, # A4 width in inches
@@ -357,3 +363,5 @@ class WagelistGenTab(BaseAutomationTab):
             if messagebox.askyesno("Success", f"PDF Report saved to:\n{file_path}\n\nDo you want to open it?"):
                 if sys.platform == "win32": os.startfile(file_path)
                 else: subprocess.call(['open', file_path])
+
+    

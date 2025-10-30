@@ -162,6 +162,8 @@
                             <ol class="list-decimal list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
                                 <li>Manually navigate to the "Send MSR to PO" page in the browser.</li>
                                 <li>Enter the Agency name (e.g., BURKUNDI) without "Gram Panchayat -".</li>
+                                <li>(Optional) Check "Save generated wagelist page as PDF" to save a PDF copy of each wagelist as it's generated.</li>
+                                <li>(Optional) Check "Send generated wagelist range..." to automatically send the first and last generated wagelist numbers to the 'Send Wagelist' tab.</li>
                                 <li>Click "Start Generation" to process all available items one by one.</li>
                             </ol>
                         </div>
@@ -359,6 +361,53 @@
                             </ol>
                         </div>
                         <div class="order-1 md:order-2"><img src="/assets/Cloud_Storage.png" alt="Cloud Storage"
+                                class="rounded-lg shadow-md border dark:border-gray-700"></div>
+                    </div>
+                    <div
+                        class="instruction-card grid md:grid-cols-2 gap-8 lg:gap-12 items-center bg-white dark:bg-gray-800 p-8 rounded-lg border dark:border-gray-700">
+                        <div class="order-2 md:order-2">
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white">20. MR Fill (Attendance)</h3>
+                            <ol class="list-decimal list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
+                                <li>Enter the Panchayat Name (this is required if you are using a Block login).</li>
+                                <li>Enter "Holiday Columns" (e.g., 7, 14) to have the bot automatically mark those days as holidays.</li>
+                                <li>Check "Manual Mode" to pause the bot after it marks holidays. This allows you to manually mark absentees before clicking 'Save' in the browser.</li>
+                                <li>Paste your list of Work Codes (search keys) into the text box.</li>
+                                <li>Click "Start Automation".</li>
+                                <li><b>Workflow:</b> You can also send workcodes and the panchayat name here directly from the 'Dashboard Report' tab.</li>
+                            </ol>
+                        </div>
+                        <div class="order-1 md:order-1"><img src="/assets/MR_Fill.png" alt="MR Fill Automation"
+                                class="rounded-lg shadow-md border dark:border-gray-700"></div>
+                    </div>
+                    <div
+                        class="instruction-card grid md:grid-cols-2 gap-8 lg:gap-12 items-center bg-white dark:bg-gray-800 p-8 rounded-lg border dark:border-gray-700">
+                        <div class="order-2 md:order-1">
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white">21. MR Tracking</h3>
+                            <ol class="list-decimal list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
+                                <li>Select your State, District, Block, and Panchayat.</li>
+                                <li>(Optional) Check "Show only 'Pending for filling' workcodes" to filter the report results.</li>
+                                <li>Click "Start Automation".</li>
+                                <li>The bot will fetch the report and display it in the "Results Table".</li>
+                                <li>Go to the "Workcode List" tab to see all unique workcodes from the report.</li>
+                                <li><b>Workflow:</b> From the list, click "Run MR Payment" to send the codes to the MSR Processor, or "Run eMB Entry" to send them to the eMB Entry tab.</li>
+                            </ol>
+                        </div>
+                        <div class="order-1 md:order-2"><img src="/assets/MR_Tracking.png" alt="MR Tracking Report"
+                                class="rounded-lg shadow-md border dark:border-gray-700"></div>
+                    </div>
+                    <div
+                        class="instruction-card grid md:grid-cols-2 gap-8 lg:gap-12 items-center bg-white dark:bg-gray-800 p-8 rounded-lg border dark:border-gray-700">
+                        <div class="order-2 md:order-2">
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white">22. Dashboard Report</h3>
+                            <ol class="list-decimal list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
+                                <li>Select your State, District, Block, and Panchayat.</li>
+                                <li>Choose the "Delay Column" you want to investigate from the dropdown (e.g., "Attendance not filled in T+2 days").</li>
+                                <li>Click "Start Automation".</li>
+                                <li>The bot will navigate the MIS dashboard and pull the detailed report.</li>
+                                <li><b>Workflow:</b> If you selected the "Attendance not filled..." delay column, a "Run MR Fill" button will appear. Click it to send the pending workcodes and panchayat name directly to the 'MR Fill' tab for processing.</li>
+                            </ol>
+                        </div>
+                        <div class="order-1 md:order-1"><img src="/assets/Dashboard_Report.png" alt="Dashboard Report"
                                 class="rounded-lg shadow-md border dark:border-gray-700"></div>
                     </div>
                 </div>

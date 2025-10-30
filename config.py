@@ -8,7 +8,7 @@ APP_TAGLINE = "Your NREGA Task Management Companion"
 APP_DESCRIPTION = "A comprehensive tool for managing NREGA tasks efficiently."
 APP_AUTHOR = "Rajat Poddar"
 APP_AUTHOR_EMAIL = "Rajatpoddar@outlook.com"
-APP_VERSION = "2.7.7"
+APP_VERSION = "2.7.8"
 LICENSE_SERVER_URL = "https://license.nregabot.com"
 MAIN_WEBSITE_URL = "https://nregabot.com"
 SUPPORT_EMAIL = "nregabot@gmail.com"
@@ -166,6 +166,21 @@ EMB_VERIFY_CONFIG = {
 }
 REJECTED_WL_CONFIG = {
     "RESEND_REJECTED_WG": "https://nregade4.nic.in/Netnrega/view_wagelist_rejected.aspx"
+}
+
+# --- MR Tracking Configuration  ---
+MR_TRACKING_CONFIG = {
+    "url": "https://nregastrep.nic.in/netnrega/dynamic_muster_track.aspx?lflag=eng&state_code=34&fin_year=2025-2026&state_name=JHARKHAND&Digest=FjAL4jfLQiHS1NU1KnbRZg"
+}
+
+# --- MIS Reports Configuration ---
+MIS_REPORTS_CONFIG = {
+    "base_url": "https://nreganarep.nic.in/netnrega/MISreport4.aspx"
+}
+
+# --- NEW: MR Fill (Attendance) Configuration ---
+MR_FILL_CONFIG = {
+    "url": "https://nregade4.nic.in/Netnrega/mustrollattend.aspx"
 }
 
 import os
