@@ -290,27 +290,32 @@ class BaseAutomationTab(ctk.CTkFrame):
             pdf = FPDF(orientation='L', unit='mm', format='A4')
             pdf.add_page()
             try:
-                # --- FIX: Changed self.app.resource_path to resource_path ---
-                font_path = resource_path("assets/fonts/DejaVuSans.ttf")
-                pdf.add_font('DejaVu', '', font_path, uni=True)
-                pdf.set_font('DejaVu', '', 14)
+                # --- FIX: Load both regular and bold fonts ---
+                font_path_regular = resource_path("assets/fonts/NotoSansDevanagari-Regular.ttf")
+                font_path_bold = resource_path("assets/fonts/NotoSansDevanagari-Bold.ttf")
+                pdf.add_font("NotoSansDevanagari", "", font_path_regular, uni=True)
+                pdf.add_font("NotoSansDevanagari", "B", font_path_bold, uni=True)
+                font_name = "NotoSansDevanagari"
+                pdf.set_font(font_name, 'B', 14)
+                # --- END FIX ---
             except Exception as e:
                 print(f"Custom font not found, falling back to Arial: {e}")
-                pdf.set_font("Arial", 'B', 16)
+                font_name = "Arial" # Fallback font
+                pdf.set_font(font_name, 'B', 16)
             
             pdf.cell(0, 10, title, 0, 1, 'C')
-            pdf.set_font('DejaVu' if 'font_path' in locals() else 'Arial', '', 10)
+            pdf.set_font(font_name, '', 10) # Use font_name
             pdf.cell(0, 5, date_str, 0, 1, 'C')
             pdf.ln(10)
 
-            pdf.set_font('DejaVu' if 'font_path' in locals() else 'Arial', 'B', 8)
+            pdf.set_font(font_name, 'B', 8) # Use font_name
             pdf.set_fill_color(240, 240, 240)
             
             for i, header in enumerate(headers):
                 pdf.cell(col_widths[i], 8, str(header), 1, 0, 'C', 1)
             pdf.ln()
 
-            pdf.set_font('DejaVu' if 'font_path' in locals() else 'Arial', '', 7)
+            pdf.set_font(font_name, '', 7) # Use font_name
             for row in data:
                 # Determine max number of lines in the row to calculate row height
                 max_lines = 1
@@ -327,12 +332,12 @@ class BaseAutomationTab(ctk.CTkFrame):
                 if pdf.get_y() + cell_height > pdf.page_break_trigger:
                     pdf.add_page()
                     # Redraw headers on new page
-                    pdf.set_font('DejaVu' if 'font_path' in locals() else 'Arial', 'B', 8)
+                    pdf.set_font(font_name, 'B', 8) # Use font_name
                     pdf.set_fill_color(240, 240, 240)
                     for i, header in enumerate(headers):
                         pdf.cell(col_widths[i], 8, str(header), 1, 0, 'C', 1)
                     pdf.ln()
-                    pdf.set_font('DejaVu' if 'font_path' in locals() else 'Arial', '', 7)
+                    pdf.set_font(font_name, '', 7) # Use font_name
 
                 # Get starting position of the row
                 y_pos = pdf.get_y()

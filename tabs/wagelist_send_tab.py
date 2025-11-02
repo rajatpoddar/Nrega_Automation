@@ -125,6 +125,9 @@ class WagelistSendTab(BaseAutomationTab):
         self.app.clear_log(self.log_display)
         self.app.log_message(self.log_display, "Starting automation...")
         self.app.after(0, self.app.set_status, "Running Wagelist Send...")
+        self.app.after(0, self.update_status, "Initializing...", 0.0) # <-- UPDATED
+        
+        automation_failed = False # Track errors
         
         try:
             driver = self.app.get_driver()
@@ -168,22 +171,45 @@ class WagelistSendTab(BaseAutomationTab):
             for idx, wagelist in enumerate(wagelists_to_process, 1):
                 if self.app.stop_events[self.automation_key].is_set():
                     break
-                self.app.after(0, self.update_status, f"Processing {idx}/{total}: {wagelist}", idx / total)
+                
+                # --- UPDATED: Set both tab and app status ---
+                status_msg = f"Processing {idx}/{total}: {wagelist}"
+                self.app.after(0, self.update_status, status_msg, idx / total)
+                self.app.after(0, self.app.set_status, status_msg)
+                
                 success = self._process_single_wagelist(driver, wait, wagelist, fin_year)
                 self.app.after(0, lambda w=wagelist, s="Success" if success else "Failed", t=datetime.now().strftime("%H:%M:%S"): self.results_tree.insert("", tkinter.END, values=(w, s, t)))
                 time.sleep(1)
 
         except Exception as e:
+            automation_failed = True # Track errors
             self.app.log_message(self.log_display, f"A critical error occurred: {e}", "error")
             messagebox.showerror("Automation Error", f"An error occurred: {e}")
         finally:
             stopped = self.app.stop_events[self.automation_key].is_set()
-            final_msg = "Process stopped by user." if stopped else "✅ All wagelists processed."
-            self.app.after(0, self.update_status, final_msg, 1.0)
+
+            # --- UPDATED: More robust final status logic ---
+            if stopped:
+                final_tab_msg = "Process stopped by user."
+                final_app_msg = "Automation Stopped"
+            elif automation_failed:
+                final_tab_msg = "Failed"
+                final_app_msg = "Automation Failed"
+            else:
+                final_tab_msg = "✅ All wagelists processed."
+                final_app_msg = "Automation Finished"
+
+            self.app.after(0, self.update_status, final_tab_msg, 1.0)
+            self.app.after(0, self.app.set_status, final_app_msg)
+            
             self.app.after(0, self.set_ui_state, False)
-            if not stopped:
+            
+            if not stopped and not automation_failed:
                 self.app.after(0, lambda: messagebox.showinfo("Automation Complete", "Wagelist sending process finished."))
-            self.app.after(0, self.app.set_status, "Automation Finished")
+            
+            # Add delayed reset, like in mr_tracking_tab
+            self.app.after(5000, lambda: self.app.set_status("Ready"))
+            self.app.after(5000, lambda: self.update_status("Ready", 0.0))
 
     def _process_single_wagelist(self, driver, wait, wagelist, fin_year):
         for attempt in range(2):

@@ -56,9 +56,35 @@
                 </div>
 
                 <div id="version-list" class="max-w-4xl mx-auto space-y-8">
-
+                    
                     <div
                         class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border-2 border-blue-500 dark:border-blue-500 shadow-lg">
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.7.9 (NREGA Bot)</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: November 02, 2025</p>
+                        <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
+                            <li>✨ <strong>New Feature (Reports): Issued MR Details</strong> - Added a new automation to fetch the 'MGNREGS daily status as per e-muster issued' report, drill down into 'No. Of Ongoing Works', and extract all related work codes.</li>
+                            <li>✨ <strong>New Feature (Utility): PDF Merger</strong> - Added a new standalone utility tab to merge multiple PDF files into a single document.</li>
+                            <li>🚀 <strong>Enhancement (Workflow):</strong> After FTO Generation, a 'Check Pending ABPS Labour' button now appears, linking directly to the MR Tracking tab pre-configured for ABPS pendency.</li>
+                            <li>🚀 <strong>Enhancement (Workflow):</strong> You can now send workcodes and the panchayat name directly from the new 'Issued MR Details' report to the 'Duplicate MR Print' tab.</li>
+                            <li>🚀 <strong>Enhancement (MR Gen &amp; Duplicate MR):</strong> Added a 'Merge Saved PDFs' button to the 'Results' tab in both Muster Roll Generator and Duplicate MR Print. This allows merging all generated PDFs from a single run into one file.</li>
+                            <li>🚀 <strong>Enhancement (MR Tracking):</strong> The MR Tracking automation is now more intelligent. It can identify and report on specific laborers pending for ABPS by drilling down into wagelist details.</li>
+                            <li>🚀 <strong>Enhancement (Demand):</strong> The Demand automation is now smarter. If demand is requested for multiple laborers approaching 100 mandays, it will automatically divide the remaining available mandays between them.</li>
+                            <li>🐞 <strong>Bug Fix (PDF Export):</strong> Fixed a critical bug where PDF exporting would fail with an 'Undefined font' error.</li>
+                            <li>🐞 <strong>Bug Fix (Wagelist Gen/Send):</strong> Fixed a bug that could cause the 'Generate Wagelist' automation to crash and corrected status reporting for 'Send Wagelist'.</li>
+                            <li>🐞 <strong>Bug Fix (Scheme Closing):</strong> Added missing imports to the Scheme Closing tab to prevent potential crashes.</li>
+                        </ul>
+                        <div class="mt-6 flex flex-col sm:flex-row gap-4">
+                            <a href="https://nregabot.com/updates/NREGABot-v2.7.9-Setup.exe"
+                                class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download
+                                for Windows</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.7.9-macOS.dmg"
+                                class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download
+                                for macOS</a>
+                        </div>
+                    </div>
+
+                    <div
+                    class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.7.8 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: October 31, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">

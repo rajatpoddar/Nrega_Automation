@@ -2,8 +2,9 @@
 import tkinter
 from tkinter import ttk, messagebox, filedialog
 import customtkinter as ctk
-import os, json, time, base64, sys, subprocess, requests
+import os, json, time, base64, sys, subprocess, requests, re, threading
 from datetime import datetime
+from pypdf import PdfWriter # <-- IMPORT ADD KIYA GAYA
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -19,6 +20,7 @@ class MusterrollGenTab(BaseAutomationTab):
         self.config_file = self.app.get_data_path("muster_roll_inputs.json")
         self.success_count = 0
         self.skipped_count = 0
+        self.output_dir = "" # <-- ADDED
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(2, weight=1)
         self._create_widgets()
@@ -32,7 +34,7 @@ class MusterrollGenTab(BaseAutomationTab):
         
         ctk.CTkLabel(controls_frame, text="Panchayat Name:").grid(row=0, column=0, sticky='w', padx=15, pady=(15,0))
         self.panchayat_entry = AutocompleteEntry(controls_frame, suggestions_list=self.app.history_manager.get_suggestions("panchayat_name"),
-            app_instance=self.app, # <-- ADD THIS LINE
+            app_instance=self.app,
             history_key="panchayat_name")
         self.panchayat_entry.grid(row=0, column=1, columnspan=3, sticky='ew', padx=15, pady=(15,0))
         
@@ -83,7 +85,8 @@ class MusterrollGenTab(BaseAutomationTab):
         self.scale_label = ctk.CTkLabel(scale_frame, text="75%", width=40)
         self.scale_label.grid(row=0, column=1, padx=(10, 0))
         
-        ctk.CTkLabel(controls_frame, text="ℹ️ Generated Muster Rolls are saved in 'Downloads/NREGABot_MR_Output'.", text_color="gray50").grid(row=6, column=1, columnspan=3, sticky='w', padx=15, pady=(10,15))
+        # --- PATH LABEL UPDATED ---
+        ctk.CTkLabel(controls_frame, text="ℹ️ Generated MRs are saved in 'Downloads/NregaBot/MR_Output'.", text_color="gray50").grid(row=6, column=1, columnspan=3, sticky='w', padx=15, pady=(10,15))
         
         action_frame_container = ctk.CTkFrame(self)
         action_frame_container.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
@@ -102,20 +105,24 @@ class MusterrollGenTab(BaseAutomationTab):
         wc_controls.grid(row=0, column=0, sticky='ew')
         clear_button = ctk.CTkButton(wc_controls, text="Clear", width=80, command=lambda: self.work_codes_text.delete("1.0", tkinter.END))
         clear_button.pack(side='right', pady=(5,0), padx=(0,5))
-        # --- MODIFIED: Update the command to use the base method ---
+        
         extract_button = ctk.CTkButton(wc_controls, text="Extract from Text", width=120,
                                        command=lambda: self._extract_and_update_workcodes(self.work_codes_text))
         extract_button.pack(side='right', pady=(5,0), padx=(0, 5))
-        # ---
+        
         self.work_codes_text = ctk.CTkTextbox(work_codes_tab, height=100)
         self.work_codes_text.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
         
         results_tab.grid_columnconfigure(0, weight=1); results_tab.grid_rowconfigure(2, weight=1)
         
-        # --- MODIFIED: Replaced Export CSV with Unified Export Controls ---
         results_action_frame = ctk.CTkFrame(results_tab, fg_color="transparent")
         results_action_frame.grid(row=0, column=0, sticky="ew", pady=(5,10), padx=5)
         
+        # --- MERGE BUTTON ADDED ---
+        self.merge_pdfs_button = ctk.CTkButton(results_action_frame, text="Merge Saved PDFs", command=self.merge_saved_pdfs)
+        self.merge_pdfs_button.pack(side='left', padx=(0, 10))
+        # --- END ---
+
         export_controls_frame = ctk.CTkFrame(results_action_frame, fg_color="transparent")
         export_controls_frame.pack(side='right', padx=(10, 0))
         self.export_button = ctk.CTkButton(export_controls_frame, text="Export Report", command=self.export_report)
@@ -124,8 +131,7 @@ class MusterrollGenTab(BaseAutomationTab):
         self.export_format_menu.pack(side='left', padx=5)
         self.export_filter_menu = ctk.CTkOptionMenu(export_controls_frame, width=150, values=["Export All", "Success Only", "Failed Only"])
         self.export_filter_menu.pack(side='left', padx=(0, 5))
-        # --- END MODIFICATION ---
-
+        
         summary_frame = ctk.CTkFrame(results_tab, fg_color="transparent")
         summary_frame.grid(row=1, column=0, sticky="ew", pady=(0, 10))
         summary_frame.grid_columnconfigure((0, 1), weight=1)
@@ -160,10 +166,11 @@ class MusterrollGenTab(BaseAutomationTab):
         self.output_action_combobox.configure(state=state)
         self.work_codes_text.configure(state=state)
         self.save_to_cloud_checkbox.configure(state=state)
-        # --- Add new export controls to state management ---
+        
         self.export_button.configure(state=state)
         self.export_format_menu.configure(state=state)
         self.export_filter_menu.configure(state=state)
+        self.merge_pdfs_button.configure(state=state) # <-- ADDED
         if state == "normal": self._on_format_change(self.export_format_menu.get())
         
     def start_automation(self):
@@ -249,13 +256,48 @@ class MusterrollGenTab(BaseAutomationTab):
             self.app.log_message(self.log_display, error_msg, "error")
             self.app.after(0, lambda: messagebox.showwarning("Print Error", error_msg))
 
+    # --- NEW HELPER METHOD ---
+    def _get_output_dir(self, panchayat_name):
+        """Creates and returns the structured output directory."""
+        try:
+            # Sanitize panchayat name
+            safe_panchayat_name = "".join(c for c in panchayat_name if c.isalnum() or c in (' ', '_')).rstrip()
+            if not safe_panchayat_name:
+                safe_panchayat_name = "Unknown_Panchayat"
+                
+            # Get date for folder name
+            date_str = datetime.now().strftime('%Y-%m-%d')
+            
+            # Create the full path
+            # NregaBot > MR_Output > Panchayat Name > Date
+            output_dir = os.path.join(
+                self.app.get_user_downloads_path(), 
+                "NregaBot", 
+                "MR_Output",
+                safe_panchayat_name,
+                date_str
+            )
+            os.makedirs(output_dir, exist_ok=True)
+            return output_dir
+        except Exception as e:
+            self.app.log_message(self.log_display, f"Error creating output directory: {e}", "error")
+            messagebox.showerror("Directory Error", f"Could not create output directory: {e}")
+            return None
+
     def run_automation_logic(self, inputs):
         self.app.after(0, self.set_ui_state, True)
         self.app.clear_log(self.log_display)
         self.app.log_message(self.log_display, f"Starting MR generation for: {inputs['panchayat']}")
         self.app.after(0, self.app.set_status, "Running MR Generation...")
         
-        output_dir = None
+        # --- PATH LOGIC UPDATED ---
+        self.output_dir = self._get_output_dir(inputs['panchayat'])
+        if not self.output_dir:
+            self.app.log_message(self.log_display, "Failed to create output directory. Aborting.", "error")
+            self.app.after(0, self.set_ui_state, False)
+            return
+        # --- END UPDATE ---
+            
         try:
             driver = self.app.get_driver()
             if not driver: 
@@ -263,9 +305,7 @@ class MusterrollGenTab(BaseAutomationTab):
                 return
             wait = WebDriverWait(driver, 20)
             
-            output_dir = os.path.join(self.app.get_user_downloads_path(), config.MUSTER_ROLL_CONFIG['output_folder_name'], datetime.now().strftime('%Y-%m-%d'), inputs['panchayat'])
-            os.makedirs(output_dir, exist_ok=True)
-            self.app.log_message(self.log_display, f"Output will be in: {output_dir}", "info")
+            self.app.log_message(self.log_display, f"Output will be in: {self.output_dir}", "info")
             
             if not self._validate_panchayat(driver, wait, inputs['panchayat']):
                 self.app.after(0, self.set_ui_state, False)
@@ -284,7 +324,8 @@ class MusterrollGenTab(BaseAutomationTab):
                     break
                 self.app.log_message(self.log_display, f"\n--- Processing item ({index+1}/{total_items}): {item} ---", "info")
                 self.app.after(0, self.update_status, f"Processing {item}", (index+1)/total_items)
-                self._process_single_item(driver, wait, inputs, item, output_dir, session_skip_list)
+                # --- PASSING self.output_dir ---
+                self._process_single_item(driver, wait, inputs, item, self.output_dir, session_skip_list)
         
         except Exception as e:
             self.app.log_message(self.log_display, f"A critical error occurred: {e}", "error")
@@ -294,7 +335,8 @@ class MusterrollGenTab(BaseAutomationTab):
         finally:
             self.app.after(0, self.set_ui_state, False)
             self.app.after(0, self.update_status, "Automation Finished.", 1.0)
-            self.app.after(100, self._show_completion_dialog, output_dir)
+            # --- Uses self.output_dir now ---
+            self.app.after(100, self._show_completion_dialog, self.output_dir)
             self.app.after(0, self.app.set_status, "Automation Finished")
 
     def _show_completion_dialog(self, output_dir):
@@ -519,7 +561,6 @@ class MusterrollGenTab(BaseAutomationTab):
         timestamp = datetime.now().strftime("%H:%M:%S")
         values = (timestamp, item_key, status, details)
         
-        # --- MODIFIED: Add tags for coloring ---
         tags = ('failed',) if 'success' not in status.lower() else ()
 
         if status == "Success":
@@ -545,18 +586,15 @@ class MusterrollGenTab(BaseAutomationTab):
             with open(file_path, 'rb') as f:
                 files = {'file': (filename, f, 'application/pdf')}
                 
-                # --- ENHANCEMENT: Create dynamic folder structure ---
                 date_folder = datetime.now().strftime('%Y-%m-%d')
-                # Sanitize panchayat name to be a valid folder name
                 safe_panchayat_name = "".join(c for c in panchayat_name if c.isalnum() or c in (' ', '_')).rstrip()
                 
                 relative_path = f'Muster_Rolls/{date_folder}/{safe_panchayat_name}/{filename}'
                 
                 data = {
-                    'parent_id': '', # The ultimate parent is the root
+                    'parent_id': '', 
                     'relative_path': relative_path
                 }
-                # --- END ENHANCEMENT ---
                 
                 response = requests.post(url, headers=headers, files=files, data=data, timeout=120)
 
@@ -581,7 +619,6 @@ class MusterrollGenTab(BaseAutomationTab):
         data, file_path = self._get_filtered_data_and_filepath(export_format)
         if not data: return
 
-        # Reshape data for consistent reporting (Status column at index 1)
         report_data = [[row[1], row[2], row[3], row[0]] for row in data]
         report_headers = ["Work Code/Key", "Status", "Details", "Timestamp"]
         col_widths = [70, 35, 140, 25]
@@ -598,7 +635,7 @@ class MusterrollGenTab(BaseAutomationTab):
         data_to_export = []
         for item_id in self.results_tree.get_children():
             row_values = self.results_tree.item(item_id)['values']
-            status = row_values[2].upper() # Status is at index 2
+            status = row_values[2].upper() 
             if filter_option == "Export All": data_to_export.append(row_values)
             elif filter_option == "Success Only" and "SUCCESS" in status: data_to_export.append(row_values)
             elif filter_option == "Failed Only" and "SUCCESS" not in status: data_to_export.append(row_values)
@@ -618,3 +655,94 @@ class MusterrollGenTab(BaseAutomationTab):
         if success and messagebox.askyesno("Success", f"PDF Report saved to:\n{file_path}\n\nDo you want to open it?"):
             if sys.platform == "win32": os.startfile(file_path)
             else: subprocess.call(['open', file_path])
+
+    # --- NEW MERGE PDFS METHOD ---
+    def merge_saved_pdfs(self):
+        self.app.log_message(self.log_display, "Starting PDF merge...")
+        
+        # 1. Get current output directory
+        panchayat = self.panchayat_entry.get().strip()
+        if not panchayat:
+            messagebox.showwarning("Input Required", "Please enter a Panchayat name to find the correct folder.", parent=self)
+            return
+            
+        # Get the directory for *today's* saved files for this panchayat
+        output_dir = self._get_output_dir(panchayat)
+        if not os.path.exists(output_dir):
+            self.app.log_message(self.log_display, f"No output folder found for today: {output_dir}", "warning")
+            messagebox.showinfo("No Files", f"No saved PDFs found for '{panchayat}' from today.", parent=self)
+            return
+
+        # 2. Find all PDF files in that directory
+        pdf_files = [os.path.join(output_dir, f) for f in os.listdir(output_dir) if f.lower().endswith('.pdf')]
+        
+        if not pdf_files:
+            self.app.log_message(self.log_display, "No PDF files found in the directory.", "warning")
+            messagebox.showinfo("No Files", f"No PDFs found in:\n{output_dir}", parent=self)
+            return
+            
+        pdf_files.sort() # Sort files alphabetically
+        self.app.log_message(self.log_display, f"Found {len(pdf_files)} PDF files to merge.")
+
+        # 3. Get output file name from user
+        dialog = ctk.CTkInputDialog(text="Enter a base name for the merged file:", title="Merge PDFs")
+        base_name = dialog.get_input()
+        
+        if not base_name:
+            self.app.log_message(self.log_display, "Merge cancelled by user.", "info")
+            return
+
+        # 4. Get unique output path in the Merged_Pdf_Output folder
+        try:
+            merge_output_dir = os.path.join(self.app.get_user_downloads_path(), "NregaBot", "Merged_Pdf_Output")
+            os.makedirs(merge_output_dir, exist_ok=True)
+            
+            date_str = datetime.now().strftime("%d-%b-%Y")
+            file_name = f"{base_name}_{date_str}.pdf"
+            output_path = os.path.join(merge_output_dir, file_name)
+            
+            count = 1
+            while os.path.exists(output_path):
+                file_name = f"{base_name}_{date_str}({count}).pdf"
+                output_path = os.path.join(merge_output_dir, file_name)
+                count += 1
+        except Exception as e:
+            messagebox.showerror("Path Error", f"Could not create merge output path: {e}", parent=self)
+            return
+
+        # 5. Run merge in a separate thread to keep UI responsive
+        self.app.start_automation_thread(
+            "pdf_merger_mr", # Use a temporary key
+            self._run_merge_logic, 
+            args=(pdf_files, output_path)
+        )
+
+    def _run_merge_logic(self, file_list, output_path):
+        """The actual PDF merging logic that runs in a thread."""
+        self.app.after(0, self.set_ui_state, True)
+        self.app.log_message(self.log_display, f"Merging {len(file_list)} files...")
+        self.app.after(0, self.app.set_status, "Merging PDFs...")
+        try:
+            merger = PdfWriter()
+            for pdf_path in file_list:
+                if self.app.stop_events.get("pdf_merger_mr", threading.Event()).is_set():
+                    self.app.log_message(self.log_display, "Merge cancelled.", "warning")
+                    merger.close()
+                    return
+                merger.append(pdf_path)
+            
+            with open(output_path, "wb") as f_out:
+                merger.write(f_out)
+            merger.close()
+            
+            self.app.log_message(self.log_display, "Merge complete!", "success")
+            messagebox.showinfo("Success", f"Successfully merged {len(file_list)} files into:\n{output_path}", parent=self)
+            if messagebox.askyesno("Open Location?", "Open the Merged PDFs folder?", parent=self):
+                self.app.open_folder(os.path.dirname(output_path))
+                
+        except Exception as e:
+            self.app.log_message(self.log_display, f"Error during merge: {e}", "error")
+            messagebox.showerror("Merge Error", f"An error occurred: {e}", parent=self)
+        finally:
+            self.app.after(0, self.set_ui_state, False)
+            self.app.after(0, self.app.set_status, "Ready")

@@ -7,14 +7,14 @@
 
     <title>NREGA Bot: The Ultimate Tool for NREGA Task Automation</title>
     <meta name="description"
-        content="Automate your NREGA tasks with NREGA Bot v2.7.8. Now featuring powerful new tools like MR Fill, MR Tracking, and Dashboard Reports, plus major enhancements to Demand and Wagelist automation.">
+        content="Automate your NREGA tasks with NREGA Bot v2.7.9. Now featuring powerful new tools like Issued MR Details, PDF Merger, and enhanced MR Tracking with ABPS pendency reports.">
     <meta name="keywords"
-        content="NREGA, MGNREGA, automation, FTO Generation, NREGA Bot, Jobcard Verification, MSR processor, wagelist, workcode generator, Palojori, Jharkhand, software, donation, eMB Verify, IF Editor, MR Fill, MR Tracking">
+        content="NREGA, MGNREGA, automation, FTO Generation, NREGA Bot, Jobcard Verification, MSR processor, wagelist, workcode generator, Palojori, Jharkhand, software, donation, eMB Verify, IF Editor, MR Fill, MR Tracking, Issued MR, PDF Merger, ABPS">
     <meta name="author" content="Rajat Poddar">
 
     <link rel="icon" href="favicon.ico" type="image/x-icon">
 
-    <meta property="og:title" content="NREGA Bot v2.7.7">
+    <meta property="og:title" content="NREGA Bot v2.7.9">
     <meta property="og:description"
         content="The ultimate tool to save time and automate your tedious NREGA data entry tasks.">
     <meta property="og:image" content="https://nregabot.com/og-logo.png">
@@ -155,7 +155,7 @@
                 <div class="container mx-auto px-4 sm:px-6 py-3 text-center text-white">
                     <p>
                         <span class="font-bold bg-white text-blue-600 rounded-full px-2 py-0.5 text-xs mr-2">NEW</span>
-                        <strong>Version 2.7.8 is here!</strong> Introducing new automations: <strong>MR Fill</strong>, <strong>MR Tracking</strong>, and <strong>Dashboard Reports</strong>. Plus, Demand Automation now supports GP Logins!
+                        <strong>Version 2.7.9 is here!</strong> Introducing <strong>Issued MR Details</strong>, <strong>PDF Merger</strong>, and new ABPS tracking in MR Tracking!
                         <a href="#downloads" class="underline ml-2 hover:text-blue-200">Download Now &rarr;</a>
                     </p>
                 </div>
@@ -173,10 +173,10 @@
                         instantly.</p>
                     <div
                         class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4">
-                        <a href="https://nregabot.com/updates/NREGABot-v2.7.8-Setup.exe"
+                        <a href="https://nregabot.com/updates/NREGABot-v2.7.9-Setup.exe"
                             class="bg-blue-600 text-white font-bold px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors text-lg w-full sm:w-auto dark:bg-blue-500 dark:hover:bg-blue-600">Download
                             for Windows</a>
-                        <a href="https://nregabot.com/updates/NREGABot-v2.7.8-macOS.dmg"
+                        <a href="https://nregabot.com/updates/NREGABot-v2.7.9-macOS.dmg"
                             class="bg-gray-700 text-white font-bold px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors text-lg w-full sm:w-auto dark:bg-gray-600 dark:hover:bg-gray-700">Download
                             for macOS</a>
                     </div>
@@ -333,8 +333,7 @@
                         </div>
                         <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="50">
                             <h4>Duplicate MR Print</h4>
-                            <p class="text-gray-600 dark:text-gray-400 mt-2">Find, save as PDF, and print all Muster
-                                Rolls associated with one or more work codes in a batch.</p>
+                            <p class="text-gray-600 dark:text-gray-400 mt-2">Find and save all MSRs for multiple work codes. Now includes a 'Merge Saved PDFs' button to combine all results into one file.</p>
                         </div>
                         <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="100">
                             <h4>Update Outcome</h4>
@@ -348,13 +347,12 @@
                         </div>
                         <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="200">
                             <h4>FTO Generation</h4>
-                            <p class="text-gray-600 dark:text-gray-400 mt-2">Automates the login and two-step
-                                verification process to generate and capture FTO numbers.</p>
+                            <p class="text-gray-600 dark:text-gray-400 mt-2">Automates FTO verification. Now includes a workflow button to check pending ABPS labour via MR Tracking.</p>
                         </div>
                         <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="250">
                             <h4>Wagelist Automation</h4>
                             <p class="text-gray-600 dark:text-gray-400 mt-2">Generate new wagelists and send them for
-                                e-FMS payment processing with a single click.</p>
+                                e-FMS payment processing with a single click. (Bug fixes applied)</p>
                         </div>
                         <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="300">
                             <h4>Jobcard Verification</h4>
@@ -374,7 +372,7 @@
                         <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="450">
                             <h4>Scheme Closing</h4>
                             <p class="text-gray-600 dark:text-gray-400 mt-2">Close out multiple schemes efficiently by
-                                automating the finalization process.</p>
+                                automating the finalization process. (Bug fixes applied)</p>
                         </div>
                         <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="500">
                             <h4>Delete Work Allocation</h4>
@@ -402,16 +400,24 @@
                         </div>
                         <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="750">
                             <h4>MR Tracking</h4>
-                            <p class="text-gray-600 dark:text-gray-400 mt-2">Track Muster Roll status in real-time. Export reports to PDF/Excel/PNG and extract workcodes for other tasks.</p>
+                            <p class="text-gray-600 dark:text-gray-400 mt-2">Track MR status in real-time. Now includes intelligent ABPS pendency checking and reporting. Export reports and extract workcodes.</p>
                         </div>
                         <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="800">
                             <h4>Dashboard Report</h4>
-                            <p class="text-gray-600 dark:text-gray-400 mt-2">Fetch and view comprehensive dashboard reports, with full export capabilities (PDF/Excel/PNG) and a workcode extractor.</p>
+                            <p class="text-gray-600 dark:text-gray-400 mt-2">Fetch and view comprehensive dashboard reports, with full export capabilities and a workflow to send data to MR Fill.</p>
                         </div>
                         <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="850">
                             <h4>Workcode Extractor</h4>
                             <p class="text-gray-600 dark:text-gray-400 mt-2">A handy utility to parse and extract clean
                                 lists of work codes from any block of text.</p>
+                        </div>
+                         <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="900">
+                            <h4>Issued MR Details <span class="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 font-semibold px-2 py-0.5 rounded-full ml-1">NEW</span></h4>
+                            <p class="text-gray-600 dark:text-gray-400 mt-2">Fetches the 'e-muster issued' report for a panchayat and extracts all work codes. Includes a workflow to send data to 'Duplicate MR Print'.</p>
+                        </div>
+                         <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="950">
+                            <h4>PDF Merger <span class="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 font-semibold px-2 py-0.5 rounded-full ml-1">NEW</span></h4>
+                            <p class="text-gray-600 dark:text-gray-400 mt-2">A utility to select, re-order, and merge multiple PDF files into one single document, saved in a 'Merged_Pdf_Output' folder.</p>
                         </div>
                     </div>
                 </div>
@@ -458,7 +464,7 @@
                          <div
                             class="instruction-card bg-white dark:bg-gray-800 p-8 rounded-lg border dark:border-gray-700 overflow-hidden" data-aos="fade-up" data-aos-delay="200">
                             <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Demand Automation CSV</h3>
-                            <p class="text-gray-600 dark:text-gray-400 mt-2 mb-4">Required for the 'Demand' tab. Include names and job card numbers for demand generation.</p>
+                            <p class="text-gray-600 dark:text-gray-400 mt-2 mb-4">Required for the 'Demand' tab. Now intelligently divides remaining mandays if laborers are near their 100-day limit.</p>
                             <pre
                                 class="bg-gray-100 text-gray-800 p-4 rounded-md text-sm overflow-x-auto dark:bg-gray-900 dark:text-gray-300"><code>Name of Applicant,Job card number</code></pre>
                              <div class="mt-4 flex flex-wrap gap-2"> <a href="https://bills.nregabot.com/extract-job-cards" target="_blank" rel="noopener noreferrer"

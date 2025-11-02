@@ -1,18 +1,19 @@
 {
-  "latest_version": "2.7.8",
-  "download_url_windows": "https://nregabot.com/updates/NREGABot-v2.7.8-Setup.exe",
-  "download_url_macos": "https://nregabot.com/updates/NREGABot-v2.7.8-macOS.dmg",
+  "latest_version": "2.7.9",
+  "download_url_windows": "https://nregabot.com/updates/NREGABot-v2.7.9-Setup.exe",
+  "download_url_macos": "https://nregabot.com/updates/NREGABot-v2.7.9-macOS.dmg",
   "changelog": {
-    "2.7.8": [
-      "✨ **New Feature (Core): MR Fill** - A new automation to automatically fill Muster Rolls. It intelligently marks holidays as absent and includes a manual mode for custom attendance.",
-      "✨ **New Feature (Reports): MR Tracking** - Track Muster Roll status in real-time. Includes options to export reports to PDF, Excel, and PNG, plus a workcode extractor.",
-      "✨ **New Feature (Reports): Dashboard Report** - A new tool to fetch and view dashboard reports, with full export capabilities (PDF, Excel, PNG) and a workcode extractor.",
-      "✨ **New Feature (UI): Sound Effects** - Added audible sound effects for key actions (e.g., automation complete, error). This can be toggled on/off in the settings.",
-      "🚀 **Enhancement (Workflow):** A new workflow allows you to send workcodes directly from the **MR Tracking** report to the **eMB Entry** and **MSR Processor** tabs.",
-      "🚀 **Enhancement (Workflow):** Send workcodes and panchayat names directly from the **Dashboard Report** to the **MR Fill** automation.",
-      "🚀 **Enhancement (Demand):** Demand Automation now automatically adjusts for laborers with 100 mandays and fully supports **GP logins**.",
-      "🚀 **Enhancement (Wagelist):** The Wagelist Automation tab now includes an option to **save the generated wagelist as a PDF** document.",
-      "🐞 **Bug Fix (ABPS Verify):** Resolved a critical bug where the automation failed to verify multiple laborers registered under the same job card."
+    "2.7.9": [
+      "✨ **New Feature (Reports): Issued MR Details** - Added a new automation to fetch the 'MGNREGS daily status as per e-muster issued' report. It drills down into the 'No. Of Ongoing Works' for a specific panchayat and extracts all work codes.",
+      "✨ **New Feature (Utility): PDF Merger** - Added a new standalone utility tab to merge multiple PDF files into a single document.",
+      "🚀 **Enhancement (Workflow):** Added a new workflow. After running FTO Generation, a 'Check Pending ABPS Labour' button appears, directing you to the MR Tracking tab, pre-configured to find ABPS pendency.",
+      "🚀 **Enhancement (Workflow):** You can now send workcodes and the panchayat name directly from the new 'Issued MR Details' report to the 'Duplicate MR Print' tab.",
+      "🚀 **Enhancement (MR Tracking):** The MR Tracking automation is now more intelligent. It can identify and report on specific laborers pending for ABPS by drilling down into wagelist details.",
+      "🚀 **Enhancement (Duplicate MR):** Added a 'Merge Saved PDFs' button in the 'Results' tab. This allows merging all PDFs saved during the automation run into a single, combined PDF file.",
+      "🚀 **Enhancement (Demand):** The Demand automation is now smarter. If demand is requested for multiple laborers approaching 100 mandays, it will automatically divide the remaining available mandays between them.",
+      "🐞 **Bug Fix (PDF Export):** Fixed a critical bug where PDF exporting would fail with an 'Undefined font' error. The system now correctly loads both regular and bold fonts for PDF generation.",
+      "🐞 **Bug Fix (Wagelist Gen/Send):** Fixed a bug that could cause the 'Generate Wagelist' automation to crash. Also corrected the status reporting for the 'Send Wagelist' automation.",
+      "🐞 **Bug Fix (Scheme Closing):** Added missing imports to the Scheme Closing tab to prevent potential crashes."
     ]
   }
 }

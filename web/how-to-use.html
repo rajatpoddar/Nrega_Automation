@@ -89,6 +89,7 @@
                                     leave this box empty.</li>
                                 <li>Choose an output action (Save as PDF or Print).</li>
                                 <li>Click "Start Automation".</li>
+                                <li><b>New:</b> After the run, go to the "Results" tab and click "Merge Saved PDFs" to combine all generated muster rolls into one file.</li>
                             </ol>
                         </div>
                         <div class="order-1 md:order-1"><img src="/assets/Muster_Roll_Generator.png"
@@ -116,9 +117,10 @@
                             <ol class="list-decimal list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
                                 <li>Enter the Panchayat Name.</li>
                                 <li>Choose an output action (Save or Print).</li>
-                                <li>Paste a list of work code search keys (e.g., 94297).</li>
+                                <li>Paste a list of work code search keys (e.g., 94297) or full workcodes.</li>
                                 <li>Click "Start Automation". The app will find and process all MSRs for each work code.
                                 </li>
+                                <li><b>New:</b> After the run, go to the "Results" tab and click "Merge Saved PDFs" to combine all saved muster rolls into one file.</li>
                             </ol>
                         </div>
                         <div class="order-1 md:order-1"><img src="/assets/Duplicate_MR_Print.png"
@@ -144,12 +146,10 @@
                         <div class="order-2 md:order-2">
                             <h3 class="text-2xl font-bold text-gray-900 dark:text-white">6. FTO Generation</h3>
                             <ol class="list-decimal list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
-                                <li>Enter your User ID in the app (optional, can log in manually).</li>
-                                <li>Click "Start FTO Generation".</li>
-                                <li>The automation will navigate to the login page. Enter your password and any captcha
-                                    directly in the browser.</li>
-                                <li>The app will then automatically visit the required verification pages and process
-                                    all entries.</li>
+                                <li>First, log in to the 1st Signatory account in the launched browser.</li>
+                                <li>Return to the app and click "Start FTO Generation".</li>
+                                <li>The app will automatically visit the 'Aadhaar FTO' and 'Top-Up FTO' verification pages and process all entries.</li>
+                                <li><b>Workflow:</b> After completion, a "Check Pending ABPS Labour" button will appear. Click it to go to the MR Tracking tab and find pending ABPS laborers.</li>
                             </ol>
                         </div>
                         <div class="order-1 md:order-1"><img src="/assets/FTO_Generation.png" alt="FTO Generation"
@@ -385,11 +385,11 @@
                             <h3 class="text-2xl font-bold text-gray-900 dark:text-white">21. MR Tracking</h3>
                             <ol class="list-decimal list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
                                 <li>Select your State, District, Block, and Panchayat.</li>
-                                <li>(Optional) Check "Show only 'Pending for filling' workcodes" to filter the report results.</li>
+                                <li>Check "Show only 'Pending for filling'" OR "Show only 'Pending for ABPS'" to filter results.</li>
                                 <li>Click "Start Automation".</li>
-                                <li>The bot will fetch the report and display it in the "Results Table".</li>
-                                <li>Go to the "Workcode List" tab to see all unique workcodes from the report.</li>
-                                <li><b>Workflow:</b> From the list, click "Run MR Payment" to send the codes to the MSR Processor, or "Run eMB Entry" to send them to the eMB Entry tab.</li>
+                                <li>If "Pending for ABPS" is checked, the bot will find all pending wagelists and then scan each one to find the specific laborers causing the pendency.</li>
+                                <li>Results are shown in the "Results Table" and "ABPS Pendency Results" tabs.</li>
+                                <li><b>Workflow:</b> From the "Workcode List" tab, click "Run MR Payment" to send codes to the MSR Processor, or "Run eMB Entry" to send them to the eMB Entry tab.</li>
                             </ol>
                         </div>
                         <div class="order-1 md:order-2"><img src="/assets/MR_Tracking.png" alt="MR Tracking Report"
@@ -411,6 +411,40 @@
                                 class="rounded-lg shadow-md border dark:border-gray-700"></div>
                     </div>
                 </div>
+                <div
+                        class="instruction-card grid md:grid-cols-2 gap-8 lg:gap-12 items-center bg-white dark:bg-gray-800 p-8 rounded-lg border dark:border-gray-700">
+                        <div class="order-2 md:order-1">
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white">23. Issued MR Details</h3>
+                            <ol class="list-decimal list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
+                                <li>Select your State, District, Block, and Panchayat.</li>
+                                <li>Click "Start Automation".</li>
+                                <li>The bot will navigate to the 'MGNREGS daily status as per e-muster issued' report for your block.</li>
+                                <li>It will find your panchayat and click the link under "No. Of Ongoing Works on which MR Issued".</li>
+                                <li>The bot will scrape all work details from the final page and list them in the "Results Table".</li>
+                                <li><b>Workflow:</b> Go to the "Workcode List" tab and click "Run Duplicate MR Print" to send all extracted workcodes and the panchayat name to the 'Duplicate MR Print' tab.</li>
+                            </ol>
+                        </div>
+                        <div class="order-1 md:order-2"><img src="/assets/Issued_MR_Details.png"
+                                alt="Issued MR Details Report" class="rounded-lg shadow-md border dark:border-gray-700">
+                        </div>
+                    </div>
+                    
+                    <div
+                        class="instruction-card grid md:grid-cols-2 gap-8 lg:gap-12 items-center bg-white dark:bg-gray-800 p-8 rounded-lg border dark:border-gray-700">
+                        <div class="order-2 md:order-2">
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white">24. PDF Merger</h3>
+                            <ol class="list-decimal list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
+                                <li>This is a standalone utility to combine multiple PDF files.</li>
+                                <li>Click "Select PDF Files..." and choose two or more PDFs.</li>
+                                <li>The files will appear in the list. You can use "Move Up", "Move Down", or "Remove" to set the correct merge order.</li>
+                                <li>Enter a base "Output File Name" (e.g., "Merged_MRs").</li>
+                                <li>Click "Merge Selected PDFs".</li>
+                                <li>The final, combined PDF will be saved in your "Downloads/NregaBot/Merged_Pdf_Output" folder.</li>
+                            </ol>
+                        </div>
+                        <div class="order-1 md:order-1"><img src="/assets/PDF_Merger.png" alt="PDF Merger"
+                                class="rounded-lg shadow-md border dark:border-gray-700"></div>
+                    </div>
             </div>
         </section>
     </main>

@@ -15,6 +15,7 @@ from .base_tab import BaseAutomationTab
 class FtoGenerationTab(BaseAutomationTab):
     def __init__(self, parent, app_instance):
         super().__init__(parent, app_instance, automation_key="fto_gen")
+        self.automation_has_run = False # To control new button visibility
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
         self._create_widgets()
@@ -29,6 +30,11 @@ class FtoGenerationTab(BaseAutomationTab):
         
         action_frame = self._create_action_buttons(parent_frame=controls_frame)
         action_frame.grid(row=1, column=0, sticky='ew', pady=10, padx=15)
+
+        # --- NEW: Button to check ABPS ---
+        self.check_abps_button = ctk.CTkButton(action_frame, text="Check Pending ABPS Labour", command=self._go_to_mr_tracking)
+        self.check_abps_button.pack_forget() # Hide it initially
+        # --- END NEW ---
         
         notebook = ctk.CTkTabview(self)
         notebook.grid(row=1, column=0, sticky="nsew")
@@ -51,9 +57,17 @@ class FtoGenerationTab(BaseAutomationTab):
 
     def set_ui_state(self, running: bool):
         self.set_common_ui_state(running)
+        # --- MODIFIED: Show/hide new button based on state ---
+        if running:
+            self.check_abps_button.pack_forget()
+        elif self.automation_has_run: # Only show if not running AND automation has run
+            self.check_abps_button.pack(side="left", padx=5)
+        # --- END MODIFIED ---
 
     def reset_ui(self):
         if messagebox.askokcancel("Reset?", "This will clear all results and logs."):
+            self.automation_has_run = False # <-- ADD THIS
+            self.check_abps_button.pack_forget() # <-- ADD THIS
             self.app.clear_log(self.log_display)
             for item in self.results_tree.get_children(): self.results_tree.delete(item)
             self.update_status("Ready", 0)
@@ -61,6 +75,8 @@ class FtoGenerationTab(BaseAutomationTab):
             self.app.after(0, self.app.set_status, "Ready")
 
     def start_automation(self):
+        self.automation_has_run = False # <-- ADD THIS
+        self.check_abps_button.pack_forget() # <-- ADD THIS
         self.app.start_automation_thread(self.automation_key, self.run_automation_logic)
         
     def _log_result(self, page_name, fto_number):
@@ -141,6 +157,15 @@ class FtoGenerationTab(BaseAutomationTab):
             self.app.log_message(self.log_display, error_msg, "error")
             messagebox.showerror("Automation Error", error_msg)
         finally:
+            self.automation_has_run = True # <-- ADD THIS
             self.app.after(0, self.set_ui_state, False)
             self.app.after(0, self.update_status, "Finished.", 1.0)
             self.app.after(0, self.app.set_status, "Automation Finished")
+
+    # --- NEW METHOD ---
+    def _go_to_mr_tracking(self):
+        """
+        Calls the main app to switch to the MR Tracking tab
+        and set it up for ABPS checking.
+        """
+        self.app.switch_to_mr_tracking_for_abps()

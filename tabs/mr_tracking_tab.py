@@ -35,6 +35,11 @@ class MrTrackingTab(BaseAutomationTab):
             "Date of 1st sign", "Date of 2nd sign"
         ]
         
+        # --- NEW: Headers for the ABPS results tab ---
+        self.abps_report_headers = [
+            "Panchayat Name", "Muster Roll No.", "Work Code", "Wagelist Number", "Labour Name", "Jobcard Number"
+        ]
+        
         self._create_widgets()
         self.load_inputs()
 
@@ -69,21 +74,35 @@ class MrTrackingTab(BaseAutomationTab):
                                                  app_instance=self.app, history_key="mr_track_panchayat")
         self.panchayat_entry.grid(row=3, column=1, sticky='ew', padx=15, pady=5)
 
+        # --- Filter Checkboxes ---
+        filter_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
+        filter_frame.grid(row=4, column=1, sticky="w", padx=15, pady=10)
+
         self.pending_only_var = tkinter.IntVar(value=0)
-        self.pending_only_check = ctk.CTkCheckBox(controls_frame, text="Show only 'Pending for filling' workcodes", variable=self.pending_only_var)
-        self.pending_only_check.grid(row=4, column=1, sticky='w', padx=15, pady=10)
+        self.pending_only_check = ctk.CTkCheckBox(filter_frame, text="Show only 'Pending for filling'", variable=self.pending_only_var)
+        self.pending_only_check.pack(side="left")
+
+        # --- NEW ABPS Checkbox ---
+        self.abps_pending_var = tkinter.IntVar(value=0)
+        self.abps_pending_check = ctk.CTkCheckBox(filter_frame, 
+                                                  text="Show only 'Pending for ABPS'", 
+                                                  variable=self.abps_pending_var,
+                                                  command=self._on_abps_check_changed)
+        self.abps_pending_check.pack(side="left", padx=(20, 0))
+        # --- End New Checkbox ---
 
         action_frame = self._create_action_buttons(parent_frame=controls_frame)
         action_frame.grid(row=5, column=0, columnspan=2, pady=10)
 
-        # --- Output Tabs (FIX: Reordered tabs) ---
+        # --- Output Tabs ---
         notebook = ctk.CTkTabview(self)
         notebook.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
-        workcode_tab = notebook.add("Workcode List")     # <-- FIRST TAB
-        results_tab = notebook.add("Results Table")      # <-- SECOND TAB
+        workcode_tab = notebook.add("Workcode List")
+        results_tab = notebook.add("Results Table")
+        abps_results_tab = notebook.add("ABPS Pendency Results") # --- NEW TAB ---
         self._create_log_and_status_area(parent_notebook=notebook)
 
-        # 1. Workcode List Tab (Now created first)
+        # 1. Workcode List Tab
         workcode_tab.grid_columnconfigure(0, weight=1)
         workcode_tab.grid_rowconfigure(1, weight=1)
         
@@ -93,27 +112,24 @@ class MrTrackingTab(BaseAutomationTab):
         self.copy_wc_button = ctk.CTkButton(copy_frame, text="Copy Workcodes", command=self._copy_workcodes)
         self.copy_wc_button.pack(side="left")
 
-        # --- NEW BUTTON ---
         self.run_mr_payment_button = ctk.CTkButton(copy_frame, 
                                                    text="Run MR Payment", 
                                                    command=self._run_mr_payment, 
                                                    fg_color="#108842", 
                                                    hover_color="#1A994C")
-        self.run_mr_payment_button.pack_forget() # Hide it initially
+        self.run_mr_payment_button.pack_forget() 
         
-        # --- ADDED: 'Run eMB Entry' button ---
         self.run_emb_entry_button = ctk.CTkButton(copy_frame,
                                                     text="Run eMB Entry",
                                                     command=self._run_emb_entry,
-                                                    fg_color="#0A708C", # Different color
+                                                    fg_color="#0A708C", 
                                                     hover_color="#0E95BA")
-        self.run_emb_entry_button.pack_forget() # Hide it initially
-        # --- END ADDED ---
+        self.run_emb_entry_button.pack_forget() 
 
         self.workcode_textbox = ctk.CTkTextbox(workcode_tab, state="disabled")
         self.workcode_textbox.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
 
-        # 2. Results Tab (Table) (Now created second)
+        # 2. Results Tab (Table)
         results_tab.grid_columnconfigure(0, weight=1)
         results_tab.grid_rowconfigure(1, weight=1)
         
@@ -121,9 +137,7 @@ class MrTrackingTab(BaseAutomationTab):
         export_frame.grid(row=0, column=0, sticky="w", padx=5, pady=5)
         self.export_button = ctk.CTkButton(export_frame, text="Export Report", command=self.export_report)
         self.export_button.pack(side="left")
-        # --- UPDATED EXPORT OPTIONS ---
         self.export_format_menu = ctk.CTkOptionMenu(export_frame, values=["Excel (.xlsx)", "PDF (.pdf)", "PNG (.png)"])
-        # --- END UPDATED EXPORT OPTIONS ---
         self.export_format_menu.pack(side="left", padx=5)
 
         self.results_tree = ttk.Treeview(results_tab, columns=self.report_headers, show='headings')
@@ -138,6 +152,41 @@ class MrTrackingTab(BaseAutomationTab):
         scrollbar = ctk.CTkScrollbar(results_tab, command=self.results_tree.yview)
         self.results_tree.configure(yscroll=scrollbar.set); scrollbar.grid(row=1, column=1, sticky='ns')
         self.style_treeview(self.results_tree)
+        
+        # 3. --- NEW: ABPS Pendency Results Tab ---
+        abps_results_tab.grid_columnconfigure(0, weight=1)
+        abps_results_tab.grid_rowconfigure(1, weight=1)
+        
+        abps_export_frame = ctk.CTkFrame(abps_results_tab, fg_color="transparent")
+        abps_export_frame.grid(row=0, column=0, sticky="w", padx=5, pady=5)
+        self.abps_export_button = ctk.CTkButton(abps_export_frame, text="Export ABPS Report", command=self._export_abps_report)
+        self.abps_export_button.pack(side="left")
+        self.abps_export_format_menu = ctk.CTkOptionMenu(abps_export_frame, values=["Excel (.xlsx)"])
+        self.abps_export_format_menu.pack(side="left", padx=5)
+
+        self.abps_results_tree = ttk.Treeview(abps_results_tab, columns=self.abps_report_headers, show='headings')
+        for col in self.abps_report_headers: self.abps_results_tree.heading(col, text=col)
+        self.abps_results_tree.column("Panchayat Name", width=120)
+        self.abps_results_tree.column("Muster Roll No.", width=100)
+        self.abps_results_tree.column("Work Code", width=250)
+        self.abps_results_tree.column("Wagelist Number", width=150)
+        self.abps_results_tree.column("Labour Name", width=150)
+        self.abps_results_tree.column("Jobcard Number", width=150)
+        
+        self.abps_results_tree.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
+        abps_scrollbar = ctk.CTkScrollbar(abps_results_tab, command=self.abps_results_tree.yview)
+        self.abps_results_tree.configure(yscroll=abps_scrollbar.set); abps_scrollbar.grid(row=1, column=1, sticky='ns')
+        self.style_treeview(self.abps_results_tree)
+        # --- END NEW TAB ---
+
+    def _on_abps_check_changed(self):
+        if self.abps_pending_var.get() == 1:
+            # If ABPS is checked, disable and uncheck "pending for filling"
+            self.pending_only_check.configure(state="disabled")
+            self.pending_only_var.set(0)
+        else:
+            # If ABPS is unchecked, re-enable "pending for filling"
+            self.pending_only_check.configure(state="normal")
 
     def set_ui_state(self, running: bool):
         self.set_common_ui_state(running)
@@ -146,21 +195,58 @@ class MrTrackingTab(BaseAutomationTab):
         self.district_entry.configure(state=state)
         self.block_entry.configure(state=state)
         self.panchayat_entry.configure(state=state)
-        self.pending_only_check.configure(state=state)
-        # Also disable the payment button if running
+        
+        self.abps_pending_check.configure(state=state)
+        # Only enable 'pending_only_check' if 'abps_pending' is NOT checked
+        if state == "normal" and self.abps_pending_var.get() == 0:
+            self.pending_only_check.configure(state="normal")
+        else:
+            self.pending_only_check.configure(state="disabled")
+        
         self.run_mr_payment_button.configure(state=state)
         self.run_emb_entry_button.configure(state=state)
         
+        # --- NEW: Disable export buttons for new tab ---
+        self.abps_export_button.configure(state=state)
+        self.abps_export_format_menu.configure(state=state)
+
+    def set_for_abps_check(self):
+        """
+        Pre-sets the UI to check for 'Pending for ABPS'.
+        Called from another tab (e.g., FTO Generation).
+        """
+        # Clear previous results but don't reset filters
+        self.reset_ui(reset_all_filters=False) 
+        
+        # Now, set the ABPS filter
+        self.abps_pending_var.set(1)
+        self._on_abps_check_changed()
 
 
-    def reset_ui(self):
-        # We can implement a specific reset if needed, for now, just pass
-        pass
+    def reset_ui(self, reset_all_filters=True):
+        # Clear inputs (optional, based on user preference)
+        # self.state_entry.delete(0, tkinter.END)
+        # ...
+        
+        if reset_all_filters:
+            # Reset checkboxes
+            self.pending_only_var.set(0)
+            self.abps_pending_var.set(0)
+            self._on_abps_check_changed() # Update UI state
+        
+        # Clear all results
+        for item in self.results_tree.get_children(): self.results_tree.delete(item)
+        for item in self.abps_results_tree.get_children(): self.abps_results_tree.delete(item)
+        self._update_workcode_textbox("")
+        
+        self.app.log_message(self.log_display, "Form has been reset.")
+        self.update_status("Ready", 0.0)
         
     def start_automation(self):
         self.run_mr_payment_button.pack_forget() # Hide button on new run
         self.run_emb_entry_button.pack_forget() # Hide button on new run
         for item in self.results_tree.get_children(): self.results_tree.delete(item)
+        for item in self.abps_results_tree.get_children(): self.abps_results_tree.delete(item) # --- NEW ---
         self._update_workcode_textbox("") # Clear workcode list
         
         inputs = {
@@ -168,8 +254,14 @@ class MrTrackingTab(BaseAutomationTab):
             'district': self.district_entry.get().strip(), 
             'block': self.block_entry.get().strip(),
             'panchayat': self.panchayat_entry.get().strip(),
-            'pending_only': self.pending_only_var.get() == 1
+            'pending_only': self.pending_only_var.get() == 1,
+            'abps_pending': self.abps_pending_var.get() == 1
         }
+        
+        # --- NEW: Get State Code for search ---
+        # We need the state *value* (e.g., 'JHARKHAND') not the code for the first page,
+        # but we'll need the district *code* for the wagelist search.
+        # Let's assume for now the wagelist search uses names.
         
         if not all([inputs['state'], inputs['district'], inputs['block'], inputs['panchayat']]):
             messagebox.showwarning("Input Error", "State, District, Block, and Panchayat are required."); return
@@ -203,6 +295,8 @@ class MrTrackingTab(BaseAutomationTab):
             self.app.log_message(self.log_display, f"Navigating to MR Tracking page...")
             driver.get(url)
             
+            main_window_handle = driver.current_window_handle # Store main window
+            
             # --- Define element IDs from the HTML ---
             STATE_ID = "ctl00_ContentPlaceHolder1_ddl_state"
             DIST_ID = "ctl00_ContentPlaceHolder1_ddl_dist"
@@ -225,13 +319,16 @@ class MrTrackingTab(BaseAutomationTab):
             self.app.after(0, self.app.set_status, f"Selecting State: {inputs['state']}")
             self.app.after(0, self.update_status, "Selecting State...", 0.15)
             self.app.log_message(self.log_display, f"Selecting State: {inputs['state']}")
-            Select(wait.until(EC.element_to_be_clickable((By.ID, STATE_ID)))).select_by_visible_text(inputs['state'].upper())
+            state_select = Select(wait.until(EC.element_to_be_clickable((By.ID, STATE_ID))))
+            state_select.select_by_visible_text(inputs['state'].upper())
             wait_for_dropdown(DIST_ID, "Districts", 0.2)
 
             self.app.after(0, self.app.set_status, f"Selecting District: {inputs['district']}")
             self.app.after(0, self.update_status, "Selecting District...", 0.25)
             self.app.log_message(self.log_display, f"Selecting District: {inputs['district']}")
-            Select(wait.until(EC.element_to_be_clickable((By.ID, DIST_ID)))).select_by_visible_text(inputs['district'].upper())
+            dist_select = Select(wait.until(EC.element_to_be_clickable((By.ID, DIST_ID))))
+            dist_select.select_by_visible_text(inputs['district'].upper())
+            # --- The problematic line that caused the error has been REMOVED ---
             wait_for_dropdown(BLOCK_ID, "Blocks", 0.3)
 
             self.app.after(0, self.app.set_status, f"Selecting Block: {inputs['block']}")
@@ -272,14 +369,17 @@ class MrTrackingTab(BaseAutomationTab):
             
             workcode_list = []
             displayed_rows = 0
+            abps_pending_count = 0
+            pending_filling_count = 0
+            abps_pending_mrs = [] # --- NEW: To store data for drill-down ---
             
             for i, row in enumerate(rows):
                 if self.app.stop_events[self.automation_key].is_set():
                     self.app.log_message(self.log_display, "Stop signal received.", "warning")
                     break
                 
-                # Progress from 0.6 to 0.95
-                progress = 0.6 + ( (i + 1) / total_rows ) * 0.35
+                # Progress from 0.6 to 0.8
+                progress = 0.6 + ( (i + 1) / total_rows ) * 0.2
                 status_msg = f"Processing row {i+1}/{total_rows}"
                 self.app.after(0, self.app.set_status, status_msg)
                 self.app.after(0, self.update_status, status_msg, progress)
@@ -290,30 +390,95 @@ class MrTrackingTab(BaseAutomationTab):
                     
                 row_data = [cell.text.strip() for cell in cells]
                 
-                muster_status = row_data[7]
                 work_code = row_data[5]
+                muster_status = row_data[7]
+                wagelist_no = row_data[9]
+                fto_no = row_data[10]
+                fto_date = row_data[11]
+                first_sign_date = row_data[12]
 
-                # Apply filter if checkbox is ticked
-                if inputs['pending_only'] and "Pending for filling" not in muster_status:
-                    continue # Skip this row
+                is_abps_pending = "Pending for signature of 1st Signatory" in first_sign_date and not fto_no and not fto_date
+                is_pending_filling = "Pending for filling" in muster_status
+
+                # Apply filter logic
+                if inputs['abps_pending']:
+                    if not is_abps_pending:
+                        continue 
+                elif inputs['pending_only']:
+                    if not is_pending_filling:
+                        continue 
                 
-                # Add to results
+                # Row passes filters
                 self.app.after(0, lambda data=tuple(row_data): self.results_tree.insert("", "end", values=data))
                 displayed_rows += 1
+                
                 if work_code:
                     workcode_list.append(work_code)
+                
+                if is_abps_pending:
+                    abps_pending_count += 1
+                    # --- NEW: Store data for drill-down ---
+                    abps_pending_mrs.append({
+                        "panchayat": row_data[1],
+                        "mr_no": row_data[2],
+                        "work_code": work_code,
+                        "wagelist_no": wagelist_no
+                    })
+                if is_pending_filling:
+                    pending_filling_count += 1
 
             if self.app.stop_events[self.automation_key].is_set():
                  self.app.log_message(self.log_display, "Automation stopped by user.", "warning")
-                 self.success_message = None # Prevent success message
-                 return # Exit cleanly
+                 self.success_message = None 
+                 return 
 
             # Update workcode list
             unique_workcodes = list(dict.fromkeys(workcode_list)) # Remove duplicates
             self.app.after(0, self._update_workcode_textbox, "\n".join(unique_workcodes))
+            
+            # --- NEW: ABPS Drill-Down Logic ---
+            if inputs['abps_pending'] and abps_pending_mrs:
+                self.app.log_message(self.log_display, f"Found {abps_pending_count} MRs pending for ABPS. Now finding workers...")
+                
+                # De-duplicate wagelists
+                wagelists_to_search = {}
+                for mr in abps_pending_mrs:
+                  wl = mr["wagelist_no"]
+                  if not wl: # Skip if wagelist is blank
+                      self.app.log_message(self.log_display, f"Skipping MR {mr['mr_no']} (Workcode: {mr['work_code']}) as Wagelist No. is blank.", "warning")
+                      continue
+                  if wl not in wagelists_to_search:
+                    wagelists_to_search[wl] = []
+                  wagelists_to_search[wl].append(mr)
+                
+                self.app.log_message(self.log_display, f"Found {len(wagelists_to_search)} unique wagelists to scan.")
+                
+                total_wl = len(wagelists_to_search)
+                for i, (wagelist_no, mr_list) in enumerate(wagelists_to_search.items()):
+                    if self.app.stop_events[self.automation_key].is_set(): break
+                    
+                    # Progress from 0.8 to 1.0
+                    progress = 0.8 + ( (i + 1) / total_wl ) * 0.2
+                    status_msg = f"Scanning Wagelist {i+1}/{total_wl} ({wagelist_no})"
+                    self.app.after(0, self.app.set_status, status_msg)
+                    self.app.after(0, self.update_status, status_msg, progress)
+                    
+                    self._search_wagelist_for_pending_abps(driver, wait, inputs, wagelist_no, mr_list, main_window_handle)
 
-            self.app.log_message(self.log_display, f"Processing complete. Displayed {displayed_rows} records.", "success")
-            self.success_message = f"MR Tracking automation has finished.\nDisplayed {displayed_rows} records."
+                # Switch back to main window just in case
+                if driver.current_window_handle != main_window_handle:
+                    driver.switch_to.window(main_window_handle)
+            # --- END ABPS Drill-Down ---
+
+            # Dynamic success message
+            if inputs['abps_pending']:
+                self.success_message = f"MR Tracking complete. Found {abps_pending_count} MRs pending for ABPS."
+            elif inputs['pending_only']:
+                self.success_message = f"MR Tracking complete. Found {pending_filling_count} MRs pending for filling."
+            else:
+                self.success_message = f"MR Tracking complete. Displayed {displayed_rows} total records."
+            
+            self.app.log_message(self.log_display, f"Processing complete. {self.success_message.replace('MR Tracking complete. ', '')}", "success")
             
         except (TimeoutException, NoSuchElementException, StaleElementReferenceException) as e:
             error_msg = f"A browser error occurred: {str(e).splitlines()[0]}"
@@ -343,9 +508,129 @@ class MrTrackingTab(BaseAutomationTab):
 
             if hasattr(self, 'success_message') and self.success_message and not self.app.stop_events[self.automation_key].is_set():
                 self.app.after(100, lambda: messagebox.showinfo("Complete", self.success_message))
-                # --- SHOW THE BUTTON ON SUCCESS (FIXED) ---
                 self.app.after(0, lambda: self.run_mr_payment_button.pack(side="left", padx=(10, 0)))
                 self.app.after(0, lambda: self.run_emb_entry_button.pack(side="left", padx=(10, 0)))
+
+    # --- NEW METHOD to search wagelist ---
+    def _search_wagelist_for_pending_abps(self, driver, wait, inputs, wagelist_no, mr_list, main_window_handle):
+        try:
+            # Open homesearch in a new tab to avoid issues
+            self.app.log_message(self.log_display, f"   Opening homesearch tab for {wagelist_no}...")
+            driver.execute_script("window.open(arguments[0], '_blank');", "https://mnregaweb4.nic.in/netnrega/homesearch.htm")
+            time.sleep(1) # Give tab time to open
+            
+            popup_handle = [handle for handle in driver.window_handles if handle != main_window_handle][-1]
+            driver.switch_to.window(popup_handle)
+
+            # Wait for the iframe to be present and switch to it
+            self.app.log_message(self.log_display, "   Waiting for iframe...")
+            wait.until(EC.frame_to_be_available_and_switch_to_it((By.TAG_NAME, "iframe")))
+            self.app.log_message(self.log_display, "   ...Switched to iframe.")
+            
+            # Now we are inside the iframe
+            # Action 1: Select "WageList" (This causes a postback)
+            self.app.log_message(self.log_display, "   Selecting 'WageList' from dropdown...")
+            Select(wait.until(EC.element_to_be_clickable((By.ID, "ddl_search")))).select_by_value("WageList")
+            
+            # Wait for the *content* of the next dropdown to be ready after Postback 1.
+            self.app.log_message(self.log_display, "   Waiting for State dropdown to populate (Postback 1)...")
+            wait.until(EC.presence_of_element_located((By.XPATH, "//select[@id='ddl_state']/option[text()='ANDAMAN AND NICOBAR']")))
+            self.app.log_message(self.log_display, "   ...State dropdown populated.")
+            
+            # Action 2: Now it's safe to select the state (This causes Postback 2)
+            self.app.log_message(self.log_display, f"   Selecting State: {inputs['state'].upper()}...")
+            state_select = Select(wait.until(EC.element_to_be_clickable((By.ID, "ddl_state"))))
+            state_select.select_by_visible_text(inputs['state'].upper())
+            
+            # Wait for district to be populated (this is the 2nd wait)
+            self.app.log_message(self.log_display, "   Waiting for District dropdown to populate (Postback 2)...")
+            wait.until(EC.presence_of_element_located((By.XPATH, f"//select[@id='ddl_district']/option[text()='{inputs['district'].upper()}']")))
+            self.app.log_message(self.log_display, "   ...District dropdown populated.")
+            
+            # Action 3: Select District (This causes Postback 3)
+            self.app.log_message(self.log_display, f"   Selecting District: {inputs['district'].upper()}...")
+            dist_select = Select(driver.find_element(By.ID, "ddl_district"))
+            dist_select.select_by_visible_text(inputs['district'].upper()) # Use text
+            
+            # Add the simple time.sleep(2) to wait for Postback 3
+            self.app.log_message(self.log_display, "   Waiting for final postback (2 sec)...")
+            time.sleep(2)
+            self.app.log_message(self.log_display, "   ...Wait complete.")
+
+            # Action 4: Enter Wagelist (using your corrected ID)
+            self.app.log_message(self.log_display, f"   Entering Wagelist No: {wagelist_no}...")
+            # Re-find the element to be safe
+            keyword_box = wait.until(EC.element_to_be_clickable((By.ID, "txt_keyword2")))
+            keyword_box.send_keys(wagelist_no)
+            
+            # Action 5: Click "GO" button (which is also inside the iframe)
+            self.app.log_message(self.log_display, "   Clicking 'GO'...")
+            driver.find_element(By.XPATH, "//input[@value='GO']").click()
+
+            # Wait for the *new* window (the actual popup) to open
+            self.app.log_message(self.log_display, "   Waiting for search result popup...")
+            wait.until(EC.number_of_windows_to_be(3))
+            self.app.log_message(self.log_display, "   ...Search result popup appeared.")
+            
+            # Find the handle for this new popup
+            wagelist_search_popup_handle = [h for h in driver.window_handles if h != main_window_handle and h != popup_handle][0]
+            driver.switch_to.window(wagelist_search_popup_handle)
+
+            # Click wagelist link in popup
+            self.app.log_message(self.log_display, "   Clicking wagelist link in popup...")
+            wl_link = wait.until(EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, wagelist_no)))
+            wl_link.click()
+
+            # --- FIX: Wait for an element on the details page, not the title ---
+            self.app.log_message(self.log_display, "   Waiting for wagelist details page...")
+            wait.until(EC.presence_of_element_located((By.ID, "lb_main")))
+            self.app.log_message(self.log_display, "   ...Wagelist details page loaded.")
+            
+            # Analyze details table
+            self.app.log_message(self.log_display, f"   Scanning {wagelist_no} for pending workers...")
+            # Use the 'lb_main' span to find the table, as it's a sibling/parent
+            details_table = wait.until(EC.presence_of_element_located((By.XPATH, "//span[@id='lb_main']/ancestor::center/table[1]")))
+            worker_rows = details_table.find_elements(By.XPATH, ".//tr[position() > 1]") # Skip header
+            
+            found_workers = set() # De-duplicate workers *within* this wagelist
+            
+            for row in worker_rows:
+                cells = row.find_elements(By.TAG_NAME, "td")
+                
+                # --- FIX: Check cell count based on the provided HTML (15 columns) ---
+                if len(cells) < 15: continue 
+                
+                # --- FIX: Update column indices based on wagelist details page.htm ---
+                # 8 = Reg No. (JH-22-003...)
+                # 9 = Applicant Name
+                # 12 = FTO No.
+                jobcard_no = cells[8].text.strip()
+                applicant_name = cells[9].text.strip()
+                fto_no = cells[12].text.strip()
+                
+                if not fto_no and (jobcard_no, applicant_name) not in found_workers:
+                    found_workers.add((jobcard_no, applicant_name))
+                    self.app.log_message(self.log_display, f"      > Found pending: {applicant_name} ({jobcard_no})")
+                    # Log this worker for *each* MR that uses this wagelist
+                    for mr in mr_list:
+                        result_data = (mr["panchayat"], mr["mr_no"], mr["work_code"], wagelist_no, applicant_name, jobcard_no)
+                        self.app.after(0, lambda data=result_data: self.abps_results_tree.insert("", "end", values=data))
+            
+            if not found_workers:
+                 self.app.log_message(self.log_display, f"   No pending workers found in {wagelist_no}.")
+
+        except Exception as e:
+            self.app.log_message(self.log_display, f"   ERROR scanning wagelist {wagelist_no}: {type(e).__name__} {str(e).splitlines()[0]}", "error")
+        finally:
+            # Close all popups and switch back
+            self.app.log_message(self.log_display, "   Closing popup windows...")
+            for handle in driver.window_handles:
+                if handle != main_window_handle:
+                    driver.switch_to.window(handle)
+                    driver.close()
+            driver.switch_to.window(main_window_handle)
+            self.app.log_message(self.log_display, "   ...Finished wagelist scan.")
+            time.sleep(0.5) # Small pause
 
     def _run_mr_payment(self):
         """Called when the 'Run MR Payment' button is clicked."""
@@ -484,12 +769,55 @@ class MrTrackingTab(BaseAutomationTab):
             if success:
                 messagebox.showinfo("Success", f"PNG report saved successfully to:\n{file_path}")
 
+    # --- NEW: Export for ABPS Tab ---
+    def _export_abps_report(self):
+        if not self.abps_results_tree.get_children():
+            messagebox.showinfo("No Data", "There are no ABPS results to export.")
+            return
+            
+        panchayat = self.panchayat_entry.get().strip() or "Report"
+        safe_panchayat = re.sub(r'[\\/*?:"<>|]', '_', panchayat) 
+        
+        current_year = datetime.now().strftime("%Y")
+        current_date_str = datetime.now().strftime("%d-%b-%Y")
+        
+        headers = self.abps_report_headers
+        data = [self.abps_results_tree.item(item, 'values') for item in self.abps_results_tree.get_children()]
+        
+        title = f"ABPS Pendency Report - {panchayat}"
+        date_str = f"Date - {datetime.now().strftime('%d-%m-%Y')}"
+        
+        downloads_path = self.app.get_user_downloads_path()
+        target_dir = os.path.join(downloads_path, f"Reports {current_year}", safe_panchayat)
+        try:
+            os.makedirs(target_dir, exist_ok=True)
+        except OSError as e:
+             messagebox.showerror("Folder Error", f"Could not create report directory:\n{target_dir}\nError: {e}")
+             return
+
+        ext = ".xlsx"
+        file_type_tuple = ("Excel Workbook", "*.xlsx")
+        default_filename = f"ABPS_Pendency_{safe_panchayat}-{current_date_str}{ext}"
+        
+        file_path = filedialog.asksaveasfilename(
+            initialdir=target_dir,
+            initialfile=default_filename,
+            defaultextension=ext,
+            filetypes=[file_type_tuple, ("All Files", "*.*")],
+            title="Save ABPS Report As"
+        )
+        if not file_path: return
+        success = self._save_to_excel(data, headers, f"{title} {date_str}", file_path)
+        if success:
+            messagebox.showinfo("Success", f"ABPS Excel report saved successfully to:\n{file_path}")
+    # --- END NEW METHOD ---
+
     def _save_to_excel(self, data, headers, full_title, file_path):
         """Saves the data to an Excel file with formatting."""
         try:
             df = pd.DataFrame(data, columns=headers)
             with pd.ExcelWriter(file_path, engine='openpyxl') as writer:
-                sheet_name = 'MR Tracking'
+                sheet_name = 'Report'
                 df.to_excel(writer, sheet_name=sheet_name, index=False, startrow=1)
                 worksheet = writer.sheets[sheet_name]
                 
@@ -510,10 +838,11 @@ class MrTrackingTab(BaseAutomationTab):
                 for col_idx, col in enumerate(df.columns, 1):
                     column_letter = get_column_letter(col_idx)
                     try:
+                        # Get max length of header or data
                         max_length = max(len(str(col)), df[col].astype(str).map(len).max())
                     except (TypeError, ValueError):
                          max_length = len(str(col)) # Fallback to header length
-                    adjusted_width = min((max_length + 2), 50) 
+                    adjusted_width = min((max_length + 2), 50) # Cap width at 50
                     worksheet.column_dimensions[column_letter].width = adjusted_width
             return True
         except Exception as e:
@@ -824,4 +1153,3 @@ class MrTrackingTab(BaseAutomationTab):
             self.panchayat_entry.insert(0, data.get('panchayat', ''))
         except Exception as e:
             print(f"Error loading MR Tracking inputs: {e}")
-

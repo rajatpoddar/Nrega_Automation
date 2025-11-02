@@ -51,6 +51,8 @@ from tabs.demand_tab import DemandTab
 from tabs.mr_tracking_tab import MrTrackingTab
 from tabs.dashboard_report_tab import DashboardReportTab
 from tabs.mr_fill_tab import MrFillTab
+from tabs.pdf_merger_tab import PdfMergerTab
+from tabs.issued_mr_report_tab import IssuedMrReportTab
 
 from utils import resource_path, get_data_path, get_user_downloads_path, get_config, save_config
 
@@ -291,6 +293,8 @@ class NregaBotApp(ctk.CTk):
         self._load_icon("emoji_mr_tracking", "assets/icons/emojis/mr_tracking.png", size=(16,16))
         self._load_icon("emoji_dashboard_report", "assets/icons/emojis/dashboard_report.png", size=(16,16))
         self._load_icon("emoji_mr_fill", "assets/icons/emojis/mr_fill.png", size=(16,16))
+        self._load_icon("emoji_pdf_merger", "assets/icons/emojis/pdf_merger.png", size=(16,16))
+        self._load_icon("emoji_issued_mr_report", "assets/icons/emojis/issued_mr_report.png", size=(16,16))
 
 
         self.bind("<FocusIn>", self._on_window_focus)
@@ -834,12 +838,14 @@ class NregaBotApp(ctk.CTk):
                 "Verify ABPS": {"creation_func": AbpsVerifyTab, "icon": self.icon_images.get("emoji_verify_abps"), "key": "abps_verify"},
                 "Workcode Extractor": {"creation_func": WorkcodeExtractorTab, "icon": self.icon_images.get("emoji_wc_extractor"), "key": "wc_extract"},
                 "Resend Rejected WG": {"creation_func": ResendRejectedWgTab, "icon": self.icon_images.get("emoji_resend_wg"), "key": "resend_wg"},
+                "PDF Merger": {"creation_func": PdfMergerTab, "icon": self.icon_images.get("emoji_pdf_merger"), "key": "pdf_merger"},
                 "File Manager": {"creation_func": FileManagementTab, "icon": self.icon_images.get("emoji_file_manager"), "key": "file_manager"},
             },
             "Reporting": {
                 "Social Audit Report": {"creation_func": SAReportTab, "icon": self.icon_images.get("emoji_social_audit"), "key": "social_audit_respond"},
                 "MIS Reports": {"creation_func": MisReportsTab, "icon": self.icon_images.get("emoji_mis_reports"), "key": "mis_reports"},
                 "MR Tracking": {"creation_func": MrTrackingTab, "icon": self.icon_images.get("emoji_mr_tracking"), "key": "mr_tracking"},
+                "Issued MR Details": {"creation_func": IssuedMrReportTab, "icon": self.icon_images.get("emoji_issued_mr_report"), "key": "issued_mr_report"},
                 "Dashboard Report": {"creation_func": DashboardReportTab, "icon": self.icon_images.get("emoji_dashboard_report"), "key": "dashboard_report"},
             },
             "Application": {
@@ -958,6 +964,52 @@ class NregaBotApp(ctk.CTk):
             messagebox.showerror("Error", "Could not find the MR Fill tab instance or it's missing the required method.")
     # --- END NEW METHOD ---
 
+    # --- NEW METHOD to send user to MR Tracking for ABPS ---
+    def switch_to_mr_tracking_for_abps(self):
+        """
+        Switches to the MR Tracking tab and pre-sets it
+        for checking ABPS pendency.
+        """
+        # Ensure the frame and instance exist
+        self.show_frame("MR Tracking")
+        
+        mr_tracking_instance = self.tab_instances.get("MR Tracking")
+        
+        if mr_tracking_instance and hasattr(mr_tracking_instance, 'set_for_abps_check'):
+            mr_tracking_instance.set_for_abps_check()
+            # Play sound *before* the popup
+            self.play_sound("success")
+            messagebox.showinfo(
+                "Action Required",
+                "fill the details to check ABPS Labour",
+                parent=self
+            )
+        else:
+            self.play_sound("error")
+            messagebox.showerror("Error", "Could not find the MR Tracking tab instance or it's missing the required method.")
+    # --- END NEW METHOD ---
+
+    def switch_to_duplicate_mr_with_data(self, workcodes: str, panchayat_name: str):
+        """Switches to the Duplicate MR Print tab and passes data."""
+        
+        # Ensure the frame and instance exist
+        self.show_frame("Duplicate MR Print")
+        
+        dup_mr_instance = self.tab_instances.get("Duplicate MR Print")
+        
+        if dup_mr_instance and hasattr(dup_mr_instance, 'load_data_from_report'):
+            dup_mr_instance.load_data_from_report(workcodes, panchayat_name)
+            self.play_sound("success")
+            messagebox.showinfo(
+                "Data Transferred",
+                f"{len(workcodes.splitlines())} workcode(s) and Panchayat '{panchayat_name}' have been transferred to the Duplicate MR Print tab.",
+                parent=self
+            )
+        else:
+            self.play_sound("error")
+            messagebox.showerror("Error", "Could not find the Duplicate MR Print tab instance or it's missing the required method 'load_data_from_report'.")
+    # --- END NEW METHOD ---
+    
     def _create_footer(self):
         footer = ctk.CTkFrame(self, height=40, corner_radius=0)
         footer.grid(row=2, column=0, sticky="ew", padx=20, pady=(10, 15))

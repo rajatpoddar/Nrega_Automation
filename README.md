@@ -5,7 +5,7 @@
 # <div align="center">NREGA Bot</div>
 
 <p align="center">
-  <b>Version 2.7.8 | The ultimate tool to automate your repetitive NREGA portal tasks.</b><br />
+  <b>Version 2.7.9 | The ultimate tool to automate your repetitive NREGA portal tasks.</b><br />
   <a href="https://nregabot.com/#downloads"><strong>Download Now »</strong></a><br /><br />
   <a href="https://nregabot.com/how-to-use.html">View Instructions</a> ·
   <a href="https://nregabot.com/contact.html">Report Bug</a> ·
@@ -27,14 +27,14 @@ The application works by securely controlling a web browser on your computer, al
 An intuitive, tab-based interface for every automation task:
 
 - ✨ **MR Fill (New!)** - A new automation to automatically fill Muster Rolls. It intelligently marks holidays as absent and includes a manual mode for custom attendance.
-- ✨ **Demand Automation (Enhanced!)** - Demand laborers from a CSV. Now smarter, it auto-adjusts for 100-manday laborers and fully supports **GP logins**.
+- ✨ **Demand Automation (Enhanced!)** - Demand laborers from a CSV. Now smarter, it intelligently auto-adjusts for laborers approaching 100 mandays (dividing remaining days) and fully supports **GP logins**.
 - ✨ **Resend Rejected Wagelist** - A brand new automation to reprocess wagelist payments that have been rejected by the bank.
-- ✨ **Duplicate MR Print** – Find, save as PDF, and print all Muster Rolls for one or more work codes in a single batch operation.
+- ✨ **Duplicate MR Print (Enhanced!)** – Find, save as PDF, and print all Muster Rolls for one or more work codes. Now includes a **Merge PDFs** button in the results tab to combine all saved files.
 - ✨ **Update Estimated Outcome** – Quickly update the 'Estimated Outcome' for a list of work codes without manual entry.
-- 🗂️ **Muster Roll (MR) Generator** – Automatically generate and download Muster Roll PDFs for specified work codes.
+- 🗂️ **Muster Roll (MR) Generator (Enhanced!)** – Automatically generate and download Muster Roll PDFs. Now includes a **Merge PDFs** button to combine all generated files from a single run.
 - ⚙️ **MSR Processor** – Process and save Muster Rolls from the MSR Payment page for a list of work codes.
-- 📤 **FTO Generation** – Automates the login and two-step verification process to generate and capture FTO numbers.
-- 📋 **Wagelist Automation (Enhanced!)** – Generate new wagelists and send them for e-FMS payment. Now includes an option to **save the wagelist as a PDF**.
+- 📤 **FTO Generation (Enhanced!)** – Automates the login and two-step verification to generate FTO numbers. Now includes a workflow to **Check Pending ABPS Labour** via the MR Tracking tab after completion.
+- 📋 **Wagelist Automation (Enhanced!)** – Generate new wagelists and send them for e-FMS payment. Includes an option to **save as PDF** and is now more stable (fixed crashes and status reporting).
 - ✅ **Jobcard Verification & Photo Upload** – Verify job cards for an entire village (or all villages in a panchayat) and automatically upload the correct family photo for each card.
 - ✏️ **eMB Entry** – Automate filling the Measurement Book (MB) entry page for multiple work codes.
 - 🔍 **eMB Verify** – Quickly verify Measurement Book (MB) entries in bulk.
@@ -44,13 +44,15 @@ An intuitive, tab-based interface for every automation task:
 - 💳 **Verify ABPS (Fixed!)** – Automate checking worker Aadhaar numbers with NPCI. Now correctly processes multiple laborers on a single job card.
 - ✂️ **Workcode Extractor** – A handy utility to parse and extract clean lists of work codes from any block of text.
 - 🗑️ **Delete Work Allocation** - Remove work allocations for specified job cards in bulk.
-- 🏁 **Scheme Closing** - Automate the process of closing schemes for completed work.
+- 🏁 **Scheme Closing (Fixed!)** - Automate the process of closing schemes for completed work (Now more stable with fixed imports).
 - 📁 **File Manager with Sharing** - A built-in cloud file manager to save, organize, and share your important documents like Muster Roll PDFs.
 - 🎨 **Dynamic UI (Enhanced!)** – A modern interface with a dynamic footer, Dark/Light theme support, real-time status updates, and new **audible sound effects** (with a mute toggle).
 - 📊 **MIS Reports Downloader:** Solves the portal's CAPTCHA automatically and downloads multiple MIS reports for a specified District and Block into a single, multi-sheet Excel file.
-- ✨ **MR Tracking (New!)** - Track Muster Roll status in real-time. Export reports (PDF/Excel/PNG) and send workcodes directly to eMB Entry or MSR Processor.
+- ✨ **MR Tracking (Enhanced!)** - Track Muster Roll status in real-time. Can now **drill down to find specific laborers pending for ABPS**. Export reports (PDF/Excel/PNG) and send workcodes to eMB Entry or MSR Processor.
 - ✨ **Dashboard Report (New!)** - Fetch and view comprehensive dashboard reports with full export capabilities (PDF/Excel/PNG).
 - 📈 **Social Audit Reports:** Automates the process of fetching Social Audit issue details. The bot navigates, clicks 'View' on each issue in the list, extracts the detailed description, and compiles it into a comprehensive report.
+- ✨ **Issued MR Details (New!)** - A new report to fetch all 'e-muster issued' works for a panchayat. Includes a workflow to send all workcodes directly to 'Duplicate MR Print'.
+- ✨ **PDF Merger (New!)** - A standalone utility to quickly merge multiple selected PDF files into a single document.
 ---
 
 ## 🛠 Prerequisites
@@ -69,8 +71,8 @@ You only need to have a supported web browser installed on your system:
 Download the latest version from the official website:
 
 - Website: [nregabot.com/#downloads](https://nregabot.com/#downloads)
-- **For Windows**: `NREGABot-v2.7.8-Setup.exe`
-- **For macOS**: `NREGABot-v2.7.8-macOS.dmg`
+- **For Windows**: `NREGABot-v2.7.9-Setup.exe`
+- **For macOS**: `NREGABot-v2.7.9-macOS.dmg`
 
 ### 2️⃣ First-Time Launch & Trial
 
