@@ -317,29 +317,24 @@ class DashboardReportTab(BaseAutomationTab):
 
             try:
                 target_link = target_cell.find_element(By.TAG_NAME, "a")
-                link_text = target_link.text.strip()
-                if link_text == '0':
-                    self.app.log_message(self.log_display, f"Column '{inputs['delay_column']}' has value 0. No data to fetch.", "warning")
-                    messagebox.showinfo("No Data", f"The selected column '{inputs['delay_column']}' has a value of 0 for {inputs['panchayat']}. No details to display.")
-                    self.success_message = None
-                    # --- Status Update on early exit ---
-                    self.app.after(0, self.app.set_status, "No data found")
-                    return
-
+                # We don't care about the text, just click it.
+                self.app.log_message(self.log_display, f"Found link (text: '{target_link.text.strip()}'). Clicking...")
                 driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", target_link)
                 time.sleep(0.5)
                 target_link.click()
 
             except NoSuchElementException:
+                 # This means there is no <a> tag in the cell.
                  cell_text = target_cell.text.strip()
                  if cell_text == '0':
+                    # This is the *only* place we should check for '0' (when it's not a link).
                     self.app.log_message(self.log_display, f"Column '{inputs['delay_column']}' has value 0 (not a link). No data to fetch.", "warning")
                     messagebox.showinfo("No Data", f"The selected column '{inputs['delay_column']}' has a value of 0 for {inputs['panchayat']}. No details to display.")
                     self.success_message = None
-                    # --- Status Update on early exit ---
                     self.app.after(0, self.app.set_status, "No data found")
                     return
                  else:
+                    # The cell has text, but it's not '0' and not a link. This is an error.
                     raise ValueError(f"Target cell for column '{inputs['delay_column']}' does not contain a clickable link (text: {cell_text}).")
 
             # --- Status Update ---
@@ -401,8 +396,8 @@ class DashboardReportTab(BaseAutomationTab):
 
 
             # Update workcode list
-            unique_workcodes = list(dict.fromkeys(workcode_list))
-            self.app.after(0, self._update_workcode_textbox, "\n".join(unique_workcodes))
+            # unique_workcodes = list(dict.fromkeys(workcode_list)) # <-- DONT remove duplicates
+            self.app.after(0, self._update_workcode_textbox, "\n".join(workcode_list)) # <-- Use the full list
 
             self.app.log_message(self.log_display, f"Processing complete. Found {pending_mr_count} pending MRs listed.", "success")
             self.success_message = f"Dashboard Report automation has finished.\n{pending_mr_count} Pending MR to Fill in {inputs['panchayat']}."

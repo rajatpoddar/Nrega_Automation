@@ -181,7 +181,12 @@ class MsrTab(BaseAutomationTab):
             total = len(work_keys)
             for i, work_key in enumerate(work_keys, 1):
                 if self.app.stop_events[self.automation_key].is_set(): self.app.log_message(self.log_display, "Automation stopped by user.", "warning"); break
-                self.app.after(0, self.update_status, f"Processing {i}/{total}: {work_key}", (i/total))
+                # --- MODIFICATION ---
+                status_msg = f"Processing {i}/{total}: {work_key}"
+                progress = (i / total)
+                self.app.after(0, self.app.set_status, status_msg) # मुख्य (main) स्टेटस बार को अपडेट करें
+                self.app.after(0, self.update_status, status_msg, progress) # टैब के स्टेटस बार को अपडेट करें
+                # --- END MODIFICATION ---
                 self._process_single_work_code(driver, wait, work_key, verify_amount)
                 
             if not self.app.stop_events[self.automation_key].is_set(): messagebox.showinfo("Completed", "Automation finished! Check the 'Results' tab for details.")

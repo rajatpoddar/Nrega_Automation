@@ -2,7 +2,7 @@
 import tkinter
 from tkinter import ttk, messagebox, filedialog
 import customtkinter as ctk
-import os, csv, time, pyperclip, sys, threading, json
+import os, csv, time, pyperclip, sys, threading, json, webbrowser
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs
 from collections import defaultdict
@@ -121,7 +121,12 @@ class WcGenTab(BaseAutomationTab):
         self.select_button.pack(side="left", padx=(0, 10))
 
         self.demo_csv_button = ctk.CTkButton(file_buttons_frame, text="Download Demo CSV", command=lambda: self.app.save_demo_csv("wc_gen"), fg_color="#2E8B57", hover_color="#257247")
-        self.demo_csv_button.pack(side="left")
+        self.demo_csv_button.pack(side="left", padx=(0, 10)) # <-- Modified this line
+
+        # --- NEW BUTTON ---
+        self.online_csv_button = ctk.CTkButton(file_buttons_frame, text="Generate CSV Online", command=self._open_wc_tool_link, fg_color="#1F618D", hover_color="#154360")
+        self.online_csv_button.pack(side="left")
+        # --- END NEW BUTTON ---
         
         self.file_label = ctk.CTkLabel(step3_frame, text="No file selected", text_color="gray")
         self.file_label.grid(row=2, column=0, columnspan=2, sticky="w", padx=15, pady=(0, 10))
@@ -147,6 +152,9 @@ class WcGenTab(BaseAutomationTab):
         self.style_treeview(self.results_tree)
         
         self._create_log_and_status_area(notebook)
+
+    def _open_wc_tool_link(self):
+        webbrowser.open_new_tab("https://tools.nregabot.com/work_code_generator")
 
     # --- MODIFIED: Log result now takes the full data dictionary ---
     def _log_result(self, result_data):

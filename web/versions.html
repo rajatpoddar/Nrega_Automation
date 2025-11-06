@@ -56,9 +56,32 @@
                 </div>
 
                 <div id="version-list" class="max-w-4xl mx-auto space-y-8">
-                    
+
                     <div
                         class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border-2 border-blue-500 dark:border-blue-500 shadow-lg">
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.7.10 (NREGA Bot)</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: November 06, 2025</p>
+                        <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
+                            <li>✨ <strong>New Automation: Zero MR</strong> - Added a new tab to submit 'Zero MR' for muster rolls that have not been filled between T+8 and T+15 days.</li>
+                            <li>🚀 <strong>Enhancement (MR Tracking):</strong> Added a 'Find T+8 to T+15 (for Zero MR)' filter to find muster rolls eligible for Zero MR processing.</li>
+                            <li>🚀 <strong>Enhancement (Workflow):</strong> After running the 'T+8 to T+15' filter in MR Tracking, a 'Forward to Zero MR' button appears. This sends the work code and MSR no. for all found items directly to the new 'Zero MR' tab.</li>
+                            <li>🐞 <strong>Bug Fix (Status & Reports):</strong> Fixed detailed status reporting for MSR, Wagelist Gen, and Scheme Closing tabs. Ensured duplicate workcodes are correctly extracted in MR Tracking and Dashboard Report. Fixed Dashboard Report automation to correctly click on links that show a '0' count.</li>
+                            <li>🐞 <strong>Bug Fix (MR Tracking):</strong> Fixed a bug where the automation would fail if the Block name on the website used different capitalization (e.g., 'Mandro' vs 'MANDRO').</li>
+                            <li>🐞 <strong>Bug Fix (Extractors):</strong> Fixed the 'Extract from Text' button on the Scheme Closing tab.</li>
+                            <li>🐞 <strong>Bug Fix (UI):</strong> Added 'Generate CSV Online' helper links to the Demand and WC Gen tabs.</li>
+                        </ul>
+                        <div class="mt-6 flex flex-col sm:flex-row gap-4">
+                            <a href="https://nregabot.com/updates/NREGABot-v2.7.10-Setup.exe"
+                                class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download
+                                for Windows</a>
+                            <a href="https://nregabot.com/updates/NREGABot-v2.7.10-macOS.dmg"
+                                class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download
+                                for macOS</a>
+                        </div>
+                    </div>
+                    
+                    <div
+                    class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.7.9 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: November 02, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">

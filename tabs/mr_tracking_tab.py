@@ -79,15 +79,26 @@ class MrTrackingTab(BaseAutomationTab):
         filter_frame.grid(row=4, column=1, sticky="w", padx=15, pady=10)
 
         self.pending_only_var = tkinter.IntVar(value=0)
-        self.pending_only_check = ctk.CTkCheckBox(filter_frame, text="Show only 'Pending for filling'", variable=self.pending_only_var)
+        self.pending_only_check = ctk.CTkCheckBox(filter_frame, 
+                                                  text="Show only 'Pending for filling'", 
+                                                  variable=self.pending_only_var,
+                                                  command=self._on_filter_check_changed) # <-- Updated
         self.pending_only_check.pack(side="left")
 
-        # --- NEW ABPS Checkbox ---
+        # --- NEW Zero MR Checkbox ---
+        self.zero_mr_filter_var = tkinter.IntVar(value=0)
+        self.zero_mr_filter_check = ctk.CTkCheckBox(filter_frame,
+                                                    text="Find T+8 to T+15 (for Zero MR)",
+                                                    variable=self.zero_mr_filter_var,
+                                                    command=self._on_filter_check_changed)
+        self.zero_mr_filter_check.pack(side="left", padx=(20, 0))
+        # --- End New Checkbox ---
+
         self.abps_pending_var = tkinter.IntVar(value=0)
         self.abps_pending_check = ctk.CTkCheckBox(filter_frame, 
                                                   text="Show only 'Pending for ABPS'", 
                                                   variable=self.abps_pending_var,
-                                                  command=self._on_abps_check_changed)
+                                                  command=self._on_filter_check_changed) # <-- Updated
         self.abps_pending_check.pack(side="left", padx=(20, 0))
         # --- End New Checkbox ---
 
@@ -125,6 +136,15 @@ class MrTrackingTab(BaseAutomationTab):
                                                     fg_color="#0A708C", 
                                                     hover_color="#0E95BA")
         self.run_emb_entry_button.pack_forget() 
+
+        # --- NEW Zero MR Button ---
+        self.run_zero_mr_button = ctk.CTkButton(copy_frame,
+                                                  text="Forward to Zero MR",
+                                                  command=self._run_zero_mr,
+                                                  fg_color="#D9534F", 
+                                                  hover_color="#C9302C")
+        self.run_zero_mr_button.pack_forget()
+        # --- End New Button ---
 
         self.workcode_textbox = ctk.CTkTextbox(workcode_tab, state="disabled")
         self.workcode_textbox.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
@@ -179,32 +199,58 @@ class MrTrackingTab(BaseAutomationTab):
         self.style_treeview(self.abps_results_tree)
         # --- END NEW TAB ---
 
-    def _on_abps_check_changed(self):
-        if self.abps_pending_var.get() == 1:
-            # If ABPS is checked, disable and uncheck "pending for filling"
+    def _on_filter_check_changed(self):
+        """Handles clicks for all three filter checkboxes to make them mutually exclusive."""
+        
+        # Determine which checkbox (if any) is now checked
+        if self.zero_mr_filter_var.get() == 1:
+            # Zero MR is checked, disable others
             self.pending_only_check.configure(state="disabled")
+            self.abps_pending_check.configure(state="disabled")
             self.pending_only_var.set(0)
+            self.abps_pending_var.set(0)
+        
+        elif self.abps_pending_var.get() == 1:
+            # ABPS is checked, disable others
+            self.pending_only_check.configure(state="disabled")
+            self.zero_mr_filter_check.configure(state="disabled")
+            self.pending_only_var.set(0)
+            self.zero_mr_filter_var.set(0)
+            
+        elif self.pending_only_var.get() == 1:
+            # Pending for filling is checked, disable others
+            self.abps_pending_check.configure(state="disabled")
+            self.zero_mr_filter_check.configure(state="disabled")
+            self.abps_pending_var.set(0)
+            self.zero_mr_filter_var.set(0)
+            
         else:
-            # If ABPS is unchecked, re-enable "pending for filling"
+            # No checkbox is checked, enable all
             self.pending_only_check.configure(state="normal")
+            self.abps_pending_check.configure(state="normal")
+            self.zero_mr_filter_check.configure(state="normal")
 
     def set_ui_state(self, running: bool):
         self.set_common_ui_state(running)
         state = "disabled" if running else "normal"
+        
         self.state_entry.configure(state=state)
         self.district_entry.configure(state=state)
         self.block_entry.configure(state=state)
         self.panchayat_entry.configure(state=state)
         
+        # Disable all filter checkboxes when running
+        self.pending_only_check.configure(state=state)
         self.abps_pending_check.configure(state=state)
-        # Only enable 'pending_only_check' if 'abps_pending' is NOT checked
-        if state == "normal" and self.abps_pending_var.get() == 0:
-            self.pending_only_check.configure(state="normal")
-        else:
-            self.pending_only_check.configure(state="disabled")
+        self.zero_mr_filter_check.configure(state=state) # <-- New
+        
+        # If stopping, re-apply mutual exclusion logic
+        if state == "normal":
+            self._on_filter_check_changed()
         
         self.run_mr_payment_button.configure(state=state)
         self.run_emb_entry_button.configure(state=state)
+        self.run_zero_mr_button.configure(state=state) # <-- New
         
         # --- NEW: Disable export buttons for new tab ---
         self.abps_export_button.configure(state=state)
@@ -220,7 +266,7 @@ class MrTrackingTab(BaseAutomationTab):
         
         # Now, set the ABPS filter
         self.abps_pending_var.set(1)
-        self._on_abps_check_changed()
+        self._on_filter_check_changed()
 
 
     def reset_ui(self, reset_all_filters=True):
@@ -232,7 +278,8 @@ class MrTrackingTab(BaseAutomationTab):
             # Reset checkboxes
             self.pending_only_var.set(0)
             self.abps_pending_var.set(0)
-            self._on_abps_check_changed() # Update UI state
+            self.zero_mr_filter_var.set(0) # <-- New
+            self._on_filter_check_changed() # Update UI state (enables all)
         
         # Clear all results
         for item in self.results_tree.get_children(): self.results_tree.delete(item)
@@ -245,6 +292,8 @@ class MrTrackingTab(BaseAutomationTab):
     def start_automation(self):
         self.run_mr_payment_button.pack_forget() # Hide button on new run
         self.run_emb_entry_button.pack_forget() # Hide button on new run
+        self.run_zero_mr_button.pack_forget() # <-- New: Hide button
+        
         for item in self.results_tree.get_children(): self.results_tree.delete(item)
         for item in self.abps_results_tree.get_children(): self.abps_results_tree.delete(item) # --- NEW ---
         self._update_workcode_textbox("") # Clear workcode list
@@ -255,7 +304,8 @@ class MrTrackingTab(BaseAutomationTab):
             'block': self.block_entry.get().strip(),
             'panchayat': self.panchayat_entry.get().strip(),
             'pending_only': self.pending_only_var.get() == 1,
-            'abps_pending': self.abps_pending_var.get() == 1
+            'abps_pending': self.abps_pending_var.get() == 1,
+            'zero_mr_filter': self.zero_mr_filter_var.get() == 1 # <-- New
         }
         
         # --- NEW: Get State Code for search ---
@@ -281,6 +331,8 @@ class MrTrackingTab(BaseAutomationTab):
         self.app.clear_log(self.log_display)
         self.app.log_message(self.log_display, "Starting MR Tracking automation...")
         
+        self.zero_mr_data = [] # <-- NEW: Initialize list for Zero MR data
+        
         try:
             driver = self.app.get_driver()
             if not driver:
@@ -302,7 +354,8 @@ class MrTrackingTab(BaseAutomationTab):
             DIST_ID = "ctl00_ContentPlaceHolder1_ddl_dist"
             BLOCK_ID = "ctl00_ContentPlaceHolder1_ddl_blk"
             PANCH_ID = "ctl00_ContentPlaceHolder1_ddl_pan"
-            RADIO_PENDING_ID = "ctl00_ContentPlaceHolder1_Rbtn_pay_1"
+            RADIO_PAYMENT_PENDING_ID = "ctl00_ContentPlaceHolder1_Rbtn_pay_1" # <-- Renamed
+            RADIO_T8_T15_ID = "ctl00_ContentPlaceHolder1_Rbtn_pay_2" # <-- NEW
             SUBMIT_BTN_ID = "ctl00_ContentPlaceHolder1_Button1"
             TABLE_XPATH = "//table[@bordercolor='#EBEBEB' and .//b[text()='SNo.']]"
 
@@ -328,14 +381,12 @@ class MrTrackingTab(BaseAutomationTab):
             self.app.log_message(self.log_display, f"Selecting District: {inputs['district']}")
             dist_select = Select(wait.until(EC.element_to_be_clickable((By.ID, DIST_ID))))
             dist_select.select_by_visible_text(inputs['district'].upper())
-            # --- The problematic line that caused the error has been REMOVED ---
             wait_for_dropdown(BLOCK_ID, "Blocks", 0.3)
 
             self.app.after(0, self.app.set_status, f"Selecting Block: {inputs['block']}")
             self.app.after(0, self.update_status, "Selecting Block...", 0.35)
             self.app.log_message(self.log_display, f"Selecting Block: {inputs['block']}")
-            Select(wait.until(EC.element_to_be_clickable((By.ID, BLOCK_ID)))).select_by_visible_text(inputs['block'].upper())
-            wait_for_dropdown(PANCH_ID, "Panchayats", 0.4)
+            Select(wait.until(EC.element_to_be_clickable((By.ID, BLOCK_ID)))).select_by_visible_text(inputs['block'])
             
             self.app.after(0, self.app.set_status, f"Selecting Panchayat: {inputs['panchayat']}")
             self.app.after(0, self.update_status, "Selecting Panchayat...", 0.45)
@@ -344,8 +395,16 @@ class MrTrackingTab(BaseAutomationTab):
             
             self.app.after(0, self.app.set_status, "Setting filter...")
             self.app.after(0, self.update_status, "Setting filter...", 0.5)
-            self.app.log_message(self.log_display, "Selecting 'Where payment is pending'")
-            wait.until(EC.element_to_be_clickable((By.ID, RADIO_PENDING_ID))).click()
+            
+            # --- NEW: Radio button selection logic ---
+            if inputs['zero_mr_filter']:
+                self.app.log_message(self.log_display, "Selecting '...T+8 and T+15'")
+                wait.until(EC.element_to_be_clickable((By.ID, RADIO_T8_T15_ID))).click()
+            else:
+                # Both 'Pending for filling' and 'Pending for ABPS' use this same base report
+                self.app.log_message(self.log_display, "Selecting 'Where payment is pending'")
+                wait.until(EC.element_to_be_clickable((By.ID, RADIO_PAYMENT_PENDING_ID))).click()
+            # --- END NEW logic ---
             
             self.app.after(0, self.app.set_status, "Submitting form...")
             self.app.after(0, self.update_status, "Submitting form...", 0.55)
@@ -371,7 +430,7 @@ class MrTrackingTab(BaseAutomationTab):
             displayed_rows = 0
             abps_pending_count = 0
             pending_filling_count = 0
-            abps_pending_mrs = [] # --- NEW: To store data for drill-down ---
+            abps_pending_mrs = [] # --- To store data for drill-down ---
             
             for i, row in enumerate(rows):
                 if self.app.stop_events[self.automation_key].is_set():
@@ -390,6 +449,8 @@ class MrTrackingTab(BaseAutomationTab):
                     
                 row_data = [cell.text.strip() for cell in cells]
                 
+                panchayat_name = row_data[1] # <-- For Zero MR
+                muster_roll_no = row_data[2] # <-- For Zero MR
                 work_code = row_data[5]
                 muster_status = row_data[7]
                 wagelist_no = row_data[9]
@@ -407,6 +468,13 @@ class MrTrackingTab(BaseAutomationTab):
                 elif inputs['pending_only']:
                     if not is_pending_filling:
                         continue 
+                elif inputs['zero_mr_filter']:
+                    # Store data including the panchayat name from the row
+                    self.zero_mr_data.append({
+                        "panchayat": panchayat_name,
+                        "work_code": work_code,
+                        "msr_no": muster_roll_no
+                    })
                 
                 # Row passes filters
                 self.app.after(0, lambda data=tuple(row_data): self.results_tree.insert("", "end", values=data))
@@ -417,7 +485,7 @@ class MrTrackingTab(BaseAutomationTab):
                 
                 if is_abps_pending:
                     abps_pending_count += 1
-                    # --- NEW: Store data for drill-down ---
+                    # --- Store data for drill-down ---
                     abps_pending_mrs.append({
                         "panchayat": row_data[1],
                         "mr_no": row_data[2],
@@ -433,8 +501,8 @@ class MrTrackingTab(BaseAutomationTab):
                  return 
 
             # Update workcode list
-            unique_workcodes = list(dict.fromkeys(workcode_list)) # Remove duplicates
-            self.app.after(0, self._update_workcode_textbox, "\n".join(unique_workcodes))
+            # unique_workcodes = list(dict.fromkeys(workcode_list)) # Remove duplicates <-- DONT remove duplicates
+            self.app.after(0, self._update_workcode_textbox, "\n".join(workcode_list)) # <-- Use the full list
             
             # --- NEW: ABPS Drill-Down Logic ---
             if inputs['abps_pending'] and abps_pending_mrs:
@@ -470,11 +538,13 @@ class MrTrackingTab(BaseAutomationTab):
                     driver.switch_to.window(main_window_handle)
             # --- END ABPS Drill-Down ---
 
-            # Dynamic success message
+            # --- NEW: Dynamic success message ---
             if inputs['abps_pending']:
                 self.success_message = f"MR Tracking complete. Found {abps_pending_count} MRs pending for ABPS."
             elif inputs['pending_only']:
                 self.success_message = f"MR Tracking complete. Found {pending_filling_count} MRs pending for filling."
+            elif inputs['zero_mr_filter']:
+                self.success_message = f"MR Tracking complete. Found {len(self.zero_mr_data)} MRs for Zero MR processing."
             else:
                 self.success_message = f"MR Tracking complete. Displayed {displayed_rows} total records."
             
@@ -506,10 +576,17 @@ class MrTrackingTab(BaseAutomationTab):
                  self.app.after(5000, lambda: self.app.set_status("Ready")) # Reset app status
                  self.app.after(5000, lambda: self.update_status("Ready", 0.0)) # Reset tab status
 
+            # --- NEW: Logic to show correct button ---
             if hasattr(self, 'success_message') and self.success_message and not self.app.stop_events[self.automation_key].is_set():
                 self.app.after(100, lambda: messagebox.showinfo("Complete", self.success_message))
-                self.app.after(0, lambda: self.run_mr_payment_button.pack(side="left", padx=(10, 0)))
-                self.app.after(0, lambda: self.run_emb_entry_button.pack(side="left", padx=(10, 0)))
+                
+                # Check which buttons to show
+                if inputs.get('zero_mr_filter', False):
+                    self.app.after(0, lambda: self.run_zero_mr_button.pack(side="left", padx=(10, 0)))
+                else:
+                    self.app.after(0, lambda: self.run_mr_payment_button.pack(side="left", padx=(10, 0)))
+                    self.app.after(0, lambda: self.run_emb_entry_button.pack(side="left", padx=(10, 0)))
+            # --- END NEW logic ---
 
     # --- NEW METHOD to search wagelist ---
     def _search_wagelist_for_pending_abps(self, driver, wait, inputs, wagelist_no, mr_list, main_window_handle):
@@ -641,8 +718,8 @@ class MrTrackingTab(BaseAutomationTab):
             messagebox.showwarning("No Data", "There are no workcodes to send to the MR Payment tab.", parent=self)
             return
         
-        if not panchayat_name:
-            messagebox.showwarning("No Data", "Panchayat name is missing. Cannot send to MR Payment tab.", parent=self)
+        if not panchayat_name or panchayat_name.upper() == "ALL":
+            messagebox.showwarning("Invalid Panchayat", "A specific Panchayat name must be selected to run MR Payment.", parent=self)
             return
 
         # Call the new method in the main app
@@ -657,12 +734,28 @@ class MrTrackingTab(BaseAutomationTab):
             messagebox.showwarning("No Data", "There are no workcodes to send to the eMB Entry tab.", parent=self)
             return
         
-        if not panchayat_name:
-            messagebox.showwarning("No Data", "Panchayat name is missing. Cannot send to eMB Entry tab.", parent=self)
+        if not panchayat_name or panchayat_name.upper() == "ALL":
+            messagebox.showwarning("Invalid Panchayat", "A specific Panchayat name must be selected to run eMB Entry.", parent=self)
             return
 
         # Call the new method in the main app
         self.app.switch_to_emb_entry_with_data(workcodes, panchayat_name)
+
+    # --- NEW: Updated function to send data to Zero MR tab ---
+    def _run_zero_mr(self):
+        """Called when the 'Forward to Zero MR' button is clicked."""
+        if not hasattr(self, 'zero_mr_data') or not self.zero_mr_data:
+            messagebox.showwarning("No Data", "No Workcode/MSR data found to forward.", parent=self)
+            return
+
+        # The panchayat name is *inside* self.zero_mr_data for each row.
+        # No need to get it from the entry box.
+        
+        self.app.log_message(self.log_display, f"Sending {len(self.zero_mr_data)} MRs to Zero MR tab...")
+        
+        # This assumes you will add a 'switch_to_zero_mr_tab_with_data' method
+        # to your main App class that accepts a list of dictionaries.
+        self.app.switch_to_zero_mr_tab_with_data(self.zero_mr_data)
 
     def _update_workcode_textbox(self, text):
         self.workcode_textbox.configure(state="normal")
@@ -700,8 +793,9 @@ class MrTrackingTab(BaseAutomationTab):
         date_str = f"Date - {datetime.now().strftime('%d-%m-%Y')}"
         
         # --- Folder Creation Logic ---
-        downloads_path = self.app.get_user_downloads_path()
-        target_dir = os.path.join(downloads_path, f"Reports {current_year}", safe_panchayat)
+        downloads_path = self.app.get_user_downloads_path() # <-- Use Downloads path
+        # Path: Downloads/NregaBot/Reports 2025/Panchayat
+        target_dir = os.path.join(downloads_path, "NregaBot", f"Reports {current_year}", safe_panchayat) # <-- Add "NregaBot"
         try:
             os.makedirs(target_dir, exist_ok=True)
         except OSError as e:
@@ -787,8 +881,10 @@ class MrTrackingTab(BaseAutomationTab):
         title = f"ABPS Pendency Report - {panchayat}"
         date_str = f"Date - {datetime.now().strftime('%d-%m-%Y')}"
         
-        downloads_path = self.app.get_user_downloads_path()
-        target_dir = os.path.join(downloads_path, f"Reports {current_year}", safe_panchayat)
+        # --- UPDATED Folder Creation Logic ---
+        downloads_path = self.app.get_user_downloads_path() # <-- Use Downloads path
+        # Path: Downloads/NregaBot/Reports 2025/Panchayat
+        target_dir = os.path.join(downloads_path, "NregaBot", f"Reports {current_year}", safe_panchayat) # <-- Add "NregaBot"
         try:
             os.makedirs(target_dir, exist_ok=True)
         except OSError as e:

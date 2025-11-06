@@ -7,6 +7,7 @@ import customtkinter as ctk
 import os
 import json
 import time
+import re
 from datetime import datetime
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -123,8 +124,15 @@ class SchemeClosingTab(BaseAutomationTab):
         wc_header_frame = ctk.CTkFrame(work_codes_tab, fg_color="transparent")
         wc_header_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=(5,0))
         
+        # --- Botton "Clear" ---
         clear_wc_button = ctk.CTkButton(wc_header_frame, text="Clear", width=80, command=lambda: self.work_codes_textbox.delete("1.0", "end"))
-        clear_wc_button.pack(side="right")
+        clear_wc_button.pack(side="right", padx=5)
+
+        # --- Botton "Extract" (MODIFIED) ---
+        extract_button = ctk.CTkButton(wc_header_frame, text="Extract from Text", width=120,
+                                       command=self._extract_work_codes_local)
+        extract_button.pack(side='right', padx=(0, 5))
+        # ---
         
         self.work_codes_textbox = ctk.CTkTextbox(work_codes_tab, height=150)
         self.work_codes_textbox.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
@@ -155,6 +163,31 @@ class SchemeClosingTab(BaseAutomationTab):
         scrollbar = ctk.CTkScrollbar(results_tab, command=self.results_tree.yview)
         self.results_tree.configure(yscroll=scrollbar.set)
         scrollbar.grid(row=1, column=1, sticky='ns')
+
+    def _extract_work_codes_local(self):
+        """
+        Extracts full work codes from the textbox.
+        Uses a specific regex for full codes and does not remove duplicates.
+        """
+        input_content = self.work_codes_textbox.get("1.0", tkinter.END)
+        if not input_content.strip():
+            return
+
+        # Regex for full work code, e.g., 3401001/IF/12345/1
+        FULL_WC_REGEX = re.compile(r'\b(34\d{8}(?:/\w+)+/\d+)\b')
+        found_work_codes = FULL_WC_REGEX.findall(input_content)
+        
+        # Do not remove duplicates
+        final_results = found_work_codes
+
+        # Display results
+        self.work_codes_textbox.configure(state="normal")
+        self.work_codes_textbox.delete("1.0", tkinter.END)
+        if final_results:
+            self.work_codes_textbox.insert("1.0", "\n".join(final_results))
+        else:
+            self.work_codes_textbox.insert("1.0", "No matching full work codes found.")
+        self.work_codes_textbox.configure(state="disabled")
 
     def _on_format_change(self, selected_format):
         if "CSV" in selected_format: self.export_filter_menu.configure(state="disabled")
@@ -247,7 +280,13 @@ class SchemeClosingTab(BaseAutomationTab):
                     self.app.log_message(self.log_display, "Automation stopped by user.", "warning")
                     break
                 
-                self.update_status(f"Processing {i+1}/{total_codes}: {work_code}", (i + 1) / total_codes)
+                # --- MODIFICATION: Improved Status Reporting ---
+                status_msg = f"Processing {i+1}/{total_codes}: {work_code}"
+                progress = (i + 1) / total_codes
+                self.app.after(0, self.app.set_status, status_msg) # मुख्य (main) स्टेटस बार
+                self.app.after(0, self.update_status, status_msg, progress) # टैब का स्टेटस बार
+                # --- END MODIFICATION ---
+                
                 self.app.log_message(self.log_display, f"\n--- Processing Work Code: {work_code} ---")
                 
                 status, details = self._process_single_work_code(driver, inputs, work_code, current_cert_no)

@@ -147,7 +147,11 @@ class WagelistGenTab(BaseAutomationTab):
 
             total_errors_to_skip = 0
             while not self.app.stop_events[self.automation_key].is_set():
-                self.app.after(0, self.update_status, "Navigating and selecting agency...")
+                # --- MODIFICATION ---
+                status_msg = "Navigating and selecting agency..."
+                self.app.after(0, self.app.set_status, status_msg) # Main status bar
+                self.app.after(0, self.update_status, status_msg, 0.1) # Tab status bar
+                # --- END MODIFICATION ---
                 driver.get(config.WAGELIST_GEN_CONFIG["base_url"])
                 agency_select_element = wait.until(EC.presence_of_element_located((By.ID, 'ctl00_ContentPlaceHolder1_exe_agency')))
                 select = Select(agency_select_element)
@@ -185,7 +189,13 @@ class WagelistGenTab(BaseAutomationTab):
                         break
                     # --- END FIX 1 ---
 
-                    self.app.after(0, self.update_status, f"Processing work code {work_code}...")
+                    # --- MODIFICATION ---
+                    status_msg = f"Processing {total_errors_to_skip + 1}/{len(rows)}: {work_code}"
+                    progress = (total_errors_to_skip + 1) / len(rows) if len(rows) > 0 else 0
+                    self.app.after(0, self.app.set_status, status_msg) # Main status bar
+                    self.app.after(0, self.update_status, status_msg, progress) # Tab status bar
+                    # --- END MODIFICATION ---
+
                     self.app.log_message(self.log_display, f"Processing row {total_errors_to_skip + 1} (Work Code: {work_code})")
                     driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", checkbox)
                     if not checkbox.is_selected(): checkbox.click()

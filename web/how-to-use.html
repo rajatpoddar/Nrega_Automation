@@ -385,11 +385,11 @@
                             <h3 class="text-2xl font-bold text-gray-900 dark:text-white">21. MR Tracking</h3>
                             <ol class="list-decimal list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
                                 <li>Select your State, District, Block, and Panchayat.</li>
-                                <li>Check "Show only 'Pending for filling'" OR "Show only 'Pending for ABPS'" to filter results.</li>
+                                <li>Check one of the filters: "Pending for filling", "Pending for ABPS", or "Find T+8 to T+15 (for Zero MR)".</li>
                                 <li>Click "Start Automation".</li>
                                 <li>If "Pending for ABPS" is checked, the bot will find all pending wagelists and then scan each one to find the specific laborers causing the pendency.</li>
                                 <li>Results are shown in the "Results Table" and "ABPS Pendency Results" tabs.</li>
-                                <li><b>Workflow:</b> From the "Workcode List" tab, click "Run MR Payment" to send codes to the MSR Processor, or "Run eMB Entry" to send them to the eMB Entry tab.</li>
+                                <li><b>Workflow:</b> Depending on your filter, a button will appear. "Run MR Payment" (sends to MSR Processor), "Run eMB Entry" (sends to eMB Entry), or "Forward to Zero MR" (sends to Zero MR tab).</li>
                             </ol>
                         </div>
                         <div class="order-1 md:order-2"><img src="/assets/MR_Tracking.png" alt="MR Tracking Report"
@@ -410,7 +410,7 @@
                         <div class="order-1 md:order-1"><img src="/assets/Dashboard_Report.png" alt="Dashboard Report"
                                 class="rounded-lg shadow-md border dark:border-gray-700"></div>
                     </div>
-                </div>
+                
                 <div
                         class="instruction-card grid md:grid-cols-2 gap-8 lg:gap-12 items-center bg-white dark:bg-gray-800 p-8 rounded-lg border dark:border-gray-700">
                         <div class="order-2 md:order-1">
@@ -445,6 +445,24 @@
                         <div class="order-1 md:order-1"><img src="/assets/PDF_Merger.png" alt="PDF Merger"
                                 class="rounded-lg shadow-md border dark:border-gray-700"></div>
                     </div>
+
+                    <div
+                        class="instruction-card grid md:grid-cols-2 gap-8 lg:gap-12 items-center bg-white dark:bg-gray-800 p-8 rounded-lg border dark:border-gray-700">
+                        <div class="order-2 md:order-1">
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white">25. Zero MR</h3>
+                            <ol class="list-decimal list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
+                                <li>Select the correct "Financial Year".</li>
+                                <li>Enter the "Panchayat Name" exactly as it appears on the website.</li>
+                                <li>In the "Work List" tab, paste your items. Each line must be in the format: <b>SearchKey,MSRNo</b> (e.g., 58744,32158).</li>
+                                <li><b>Workflow:</b> You can get this data automatically by using the "Find T+8 to T+15" filter in the "MR Tracking" tab and clicking "Forward to Zero MR".</li>
+                                <li>Click "Start Automation". The bot will process each item, select the correct work code and MSR, and save it as a Zero MR.</li>
+                            </ol>
+                        </div>
+                        <div class="order-1 md:order-2"><img src="/assets/Zero_MR.png" alt="Zero MR"
+                                class="rounded-lg shadow-md border dark:border-gray-700"></div>
+                    </div>
+                    
+                </div>
             </div>
         </section>
     </main>

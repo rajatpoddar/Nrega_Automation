@@ -1,4 +1,13 @@
 {
+  "2.7.10": [
+      "✨ **New Automation: Zero MR** - Added a new tab to submit 'Zero MR' for muster rolls that have not been filled between T+8 and T+15 days.",
+      "🚀 **Enhancement (MR Tracking):** Added a 'Find T+8 to T+15 (for Zero MR)' filter to find muster rolls eligible for Zero MR processing.",
+      "🚀 **Enhancement (Workflow):** After running the 'T+8 to T+15' filter in MR Tracking, a 'Forward to Zero MR' button appears. This sends the work code and MSR no. for all found items directly to the new 'Zero MR' tab.",
+      "🐞 **Bug Fix (Status & Reports):** Fixed detailed status reporting for MSR, Wagelist Gen, and Scheme Closing tabs. Ensured duplicate workcodes are correctly extracted in MR Tracking and Dashboard Report. Fixed Dashboard Report automation to correctly click on links that show a '0' count.",
+      "🐞 **Bug Fix (MR Tracking):** Fixed a bug where the automation would fail if the Block name on the website used different capitalization (e.g., 'Mandro' vs 'MANDRO').",
+      "🐞 **Bug Fix (Extractors):** Fixed the 'Extract from Text' button on the Scheme Closing tab.",
+      "🐞 **Bug Fix (UI):** Added 'Generate CSV Online' helper links to the Demand and WC Gen tabs."
+    ],
   "2.7.9": [
       "✨ **New Feature (Reports): Issued MR Details** - Added a new automation to fetch the 'MGNREGS daily status as per e-muster issued' report. It drills down into the 'No. Of Ongoing Works' for a specific panchayat and extracts all work codes.",
       "✨ **New Feature (Utility): PDF Merger** - Added a new standalone utility tab to merge multiple PDF files into a single document.",

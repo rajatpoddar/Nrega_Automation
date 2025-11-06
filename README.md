@@ -5,7 +5,7 @@
 # <div align="center">NREGA Bot</div>
 
 <p align="center">
-  <b>Version 2.7.9 | The ultimate tool to automate your repetitive NREGA portal tasks.</b><br />
+  <b>Version 2.7.10 | The ultimate tool to automate your repetitive NREGA portal tasks.</b><br />
   <a href="https://nregabot.com/#downloads"><strong>Download Now »</strong></a><br /><br />
   <a href="https://nregabot.com/how-to-use.html">View Instructions</a> ·
   <a href="https://nregabot.com/contact.html">Report Bug</a> ·
@@ -48,11 +48,12 @@ An intuitive, tab-based interface for every automation task:
 - 📁 **File Manager with Sharing** - A built-in cloud file manager to save, organize, and share your important documents like Muster Roll PDFs.
 - 🎨 **Dynamic UI (Enhanced!)** – A modern interface with a dynamic footer, Dark/Light theme support, real-time status updates, and new **audible sound effects** (with a mute toggle).
 - 📊 **MIS Reports Downloader:** Solves the portal's CAPTCHA automatically and downloads multiple MIS reports for a specified District and Block into a single, multi-sheet Excel file.
-- ✨ **MR Tracking (Enhanced!)** - Track Muster Roll status in real-time. Can now **drill down to find specific laborers pending for ABPS**. Export reports (PDF/Excel/PNG) and send workcodes to eMB Entry or MSR Processor.
+- ✨ **MR Tracking (Enhanced!)** - Track Muster Roll status in real-time. Includes a new filter for **'T+8 to T+15 (for Zero MR)'**. Can drill down to find specific laborers pending for ABPS. Export reports (PDF/Excel/PNG) and send workcodes to eMB Entry, MSR Processor, or the new Zero MR tab.
 - ✨ **Dashboard Report (New!)** - Fetch and view comprehensive dashboard reports with full export capabilities (PDF/Excel/PNG).
 - 📈 **Social Audit Reports:** Automates the process of fetching Social Audit issue details. The bot navigates, clicks 'View' on each issue in the list, extracts the detailed description, and compiles it into a comprehensive report.
 - ✨ **Issued MR Details (New!)** - A new report to fetch all 'e-muster issued' works for a panchayat. Includes a workflow to send all workcodes directly to 'Duplicate MR Print'.
 - ✨ **PDF Merger (New!)** - A standalone utility to quickly merge multiple selected PDF files into a single document.
+- ✨ **Zero MR (New!)** - A new automation to submit 'Zero MR' for muster rolls that have not been filled between T+8 and T+15 days.
 ---
 
 ## 🛠 Prerequisites
@@ -71,8 +72,8 @@ You only need to have a supported web browser installed on your system:
 Download the latest version from the official website:
 
 - Website: [nregabot.com/#downloads](https://nregabot.com/#downloads)
-- **For Windows**: `NREGABot-v2.7.9-Setup.exe`
-- **For macOS**: `NREGABot-v2.7.9-macOS.dmg`
+- **For Windows**: `NREGABot-v2.7.10-Setup.exe`
+- **For macOS**: `NREGABot-v2.7.10-macOS.dmg`
 
 ### 2️⃣ First-Time Launch & Trial
 

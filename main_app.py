@@ -53,6 +53,7 @@ from tabs.dashboard_report_tab import DashboardReportTab
 from tabs.mr_fill_tab import MrFillTab
 from tabs.pdf_merger_tab import PdfMergerTab
 from tabs.issued_mr_report_tab import IssuedMrReportTab
+from tabs.zero_mr_tab import ZeroMrTab
 
 from utils import resource_path, get_data_path, get_user_downloads_path, get_config, save_config
 
@@ -295,6 +296,7 @@ class NregaBotApp(ctk.CTk):
         self._load_icon("emoji_mr_fill", "assets/icons/emojis/mr_fill.png", size=(16,16))
         self._load_icon("emoji_pdf_merger", "assets/icons/emojis/pdf_merger.png", size=(16,16))
         self._load_icon("emoji_issued_mr_report", "assets/icons/emojis/issued_mr_report.png", size=(16,16))
+        self._load_icon("emoji_zero_mr", "assets/icons/emojis/zero_mr.png", size=(16,16))
 
 
         self.bind("<FocusIn>", self._on_window_focus)
@@ -839,6 +841,7 @@ class NregaBotApp(ctk.CTk):
                 "Workcode Extractor": {"creation_func": WorkcodeExtractorTab, "icon": self.icon_images.get("emoji_wc_extractor"), "key": "wc_extract"},
                 "Resend Rejected WG": {"creation_func": ResendRejectedWgTab, "icon": self.icon_images.get("emoji_resend_wg"), "key": "resend_wg"},
                 "PDF Merger": {"creation_func": PdfMergerTab, "icon": self.icon_images.get("emoji_pdf_merger"), "key": "pdf_merger"},
+                "Zero Mr": {"creation_func": ZeroMrTab, "icon": self.icon_images.get("emoji_zero_mr"), "key": "zero_mr"},
                 "File Manager": {"creation_func": FileManagementTab, "icon": self.icon_images.get("emoji_file_manager"), "key": "file_manager"},
             },
             "Reporting": {
@@ -1008,6 +1011,28 @@ class NregaBotApp(ctk.CTk):
         else:
             self.play_sound("error")
             messagebox.showerror("Error", "Could not find the Duplicate MR Print tab instance or it's missing the required method 'load_data_from_report'.")
+    # --- END NEW METHOD ---
+
+    # --- NEW METHOD to send data to Zero MR ---
+    def switch_to_zero_mr_tab_with_data(self, data_list: list):
+        """Switches to the Zero MR tab and passes data from MR Tracking."""
+        
+        # Ensure the frame and instance exist
+        self.show_frame("Zero Mr")
+        
+        zero_mr_instance = self.tab_instances.get("Zero Mr")
+        
+        if zero_mr_instance and hasattr(zero_mr_instance, 'load_data_from_mr_tracking'):
+            zero_mr_instance.load_data_from_mr_tracking(data_list)
+            self.play_sound("success")
+            messagebox.showinfo(
+                "Data Transferred",
+                f"{len(data_list)} MR(s) have been transferred to the Zero MR tab.",
+                parent=self
+            )
+        else:
+            self.play_sound("error")
+            messagebox.showerror("Error", "Could not find the Zero MR tab instance or it's missing the required method 'load_data_from_mr_tracking'.")
     # --- END NEW METHOD ---
     
     def _create_footer(self):
