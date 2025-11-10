@@ -10,8 +10,8 @@ from getmac import get_mac_address
 from datetime import datetime
 from dotenv import load_dotenv
 
-# --- ADD THIS IMPORT ---
 import pygame
+from location_data import STATE_DISTRICT_MAP
 
 from selenium import webdriver
 from selenium.common.exceptions import WebDriverException
@@ -54,6 +54,7 @@ from tabs.mr_fill_tab import MrFillTab
 from tabs.pdf_merger_tab import PdfMergerTab
 from tabs.issued_mr_report_tab import IssuedMrReportTab
 from tabs.zero_mr_tab import ZeroMrTab
+from tabs.work_allocation_tab import WorkAllocationTab
 
 from utils import resource_path, get_data_path, get_user_downloads_path, get_config, save_config
 
@@ -297,8 +298,9 @@ class NregaBotApp(ctk.CTk):
         self._load_icon("emoji_pdf_merger", "assets/icons/emojis/pdf_merger.png", size=(16,16))
         self._load_icon("emoji_issued_mr_report", "assets/icons/emojis/issued_mr_report.png", size=(16,16))
         self._load_icon("emoji_zero_mr", "assets/icons/emojis/zero_mr.png", size=(16,16))
+        self._load_icon("emoji_work_alloc", "assets/icons/emojis/work_allocation.png", size=(16,16))
 
-
+        self.bind("<Button-1>", self._on_global_click, add="+")
         self.bind("<FocusIn>", self._on_window_focus)
         self.after(0, self.start_app)
 
@@ -403,12 +405,26 @@ class NregaBotApp(ctk.CTk):
         # This new sequence correctly centers the window BEFORE showing it
         self.update_idletasks()
 
-        screen_width = self.winfo_screenwidth()
-        screen_height = self.winfo_screenheight()
-        x = (screen_width // 2) - (self.initial_width // 2)
-        y = (screen_height // 2) - (self.initial_height // 2)
+        work_x, work_y, work_width, work_height = self._get_work_area()
+        
+        # --- MODIFIED: Fix TypeError by using hardcoded minsize values ---
+        # Instead of calling self.minsize(), we use the values from __init__
+        min_w, min_h = 1000, 700 
+        # --- END MODIFIED ---
 
-        self.geometry(f'{self.initial_width}x{self.initial_height}+{x}+{y}')
+        # Ensure app is not larger than the work area (with a small buffer)
+        app_height = min(self.initial_height, work_height - 40 if work_height > min_h else work_height)
+        app_width = min(self.initial_width, work_width - 40 if work_width > min_w else work_width)
+        
+        # Ensure app is not smaller than minsize
+        app_height = max(app_height, min_h)
+        app_width = max(app_width, min_w)
+
+        # Center the app within the work area
+        x = work_x + (work_width // 2) - (app_width // 2)
+        y = work_y + (work_height // 2) - (app_height // 2)
+
+        self.geometry(f'{app_width}x{app_height}+{x}+{y}')
 
         # We no longer need self.deiconify() because the window was never hidden
 
@@ -513,6 +529,45 @@ class NregaBotApp(ctk.CTk):
         save_config('sound_enabled', is_enabled)
         if is_enabled:
             self.play_sound("success") # Play a sound to confirm
+
+    # --- ADD THIS ENTIRE NEW METHOD ---
+    def _on_global_click(self, event):
+        """Plays a click sound when a button-like widget is pressed."""
+        widget = event.widget
+        
+        # Click target se shuru karke, parent widget tak check karein
+        while widget:
+            try:
+                # Check karein ki widget ek clickable type hai ya nahi
+                if isinstance(widget, (ctk.CTkButton, ctk.CTkOptionMenu, ctk.CTkSwitch, ctk.CTkCheckBox)):
+                    
+                    # --- EXCLUSIONS ---
+                    # Jin buttons ka apna sound hai (jaise 'Start') ya 
+                    # jinke liye click sound nahi chahiye (jaise 'Stop'), unhe skip karein.
+                    
+                    button_text = ""
+                    if hasattr(widget, 'cget'):
+                        try:
+                            # Widget ka text check karein
+                            button_text = widget.cget("text").lower()
+                        except (AttributeError, tkinter.TclError):
+                            pass # Kuch widgets mein text nahi hota
+
+                    # Agar text mein yeh words hain, toh sound mat bajayein
+                    if "stop" in button_text or "start automation" in button_text:
+                        return # Inke apne sounds hain
+
+                    # Agar exclusion list mein nahi hai, toh 'click' sound bajayein
+                    self.play_sound("click")
+                    return # Sound baj gaya, ab aage check nahi karna
+                
+                # Agle parent widget par jaayein
+                widget = widget.master
+            
+            except Exception:
+                # Agar widget check karte waqt destroy ho gaya toh safely exit karein
+                return
+    # --- END NEW METHOD ---
 
     # --- THIS METHOD IS NOW UPDATED FOR PYGAME ---
     def play_sound(self, sound_name: str):
@@ -692,6 +747,29 @@ class NregaBotApp(ctk.CTk):
         except WebDriverException as e: 
             self.play_sound("error")
             messagebox.showerror("Connection Failed", f"Could not connect to Chrome.\nError: {e}"); return None
+        
+    def _get_work_area(self):
+        """Returns the usable work area (x, y, width, height) respecting taskbars."""
+        if config.OS_SYSTEM == "Windows":
+            try:
+                SPI_GETWORKAREA = 0x0030
+                rect = (ctypes.c_long * 4)() # Creates a RECT structure: (left, top, right, bottom)
+                ctypes.windll.user32.SystemParametersInfoW(SPI_GETWORKAREA, 0, ctypes.byref(rect), 0)
+                work_x = rect[0]
+                work_y = rect[1]
+                work_width = rect[2] - rect[0]
+                work_height = rect[3] - rect[1]
+                return (work_x, work_y, work_width, work_height)
+            except Exception as e:
+                print(f"Could not get Windows work area, falling back: {e}")
+                # Fallback to screen size
+        
+        # Fallback for non-Windows or ctype errors
+        # --- MODIFIED: Removed faulty try/except. This is more reliable. ---
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        return (0, 0, screen_width, screen_height)
+        # --- END MODIFIED ---
 
     def _get_machine_id(self):
         try: return get_mac_address() or "unknown-" + str(uuid.getnode())
@@ -796,6 +874,9 @@ class NregaBotApp(ctk.CTk):
 
     def _on_category_filter_change(self, selected_category: str):
         """Called when the user selects a new category from the dropdown."""
+        # --- ADD THIS LINE ---
+        self.play_sound("select") 
+        
         save_config('last_selected_category', selected_category)
         self._filter_nav_menu(selected_category)
 
@@ -824,6 +905,7 @@ class NregaBotApp(ctk.CTk):
                 "Del Work Alloc": {"creation_func": DelWorkAllocTab, "icon": self.icon_images.get("emoji_del_work_alloc"), "key": "del_work_alloc"},
                 "Duplicate MR Print": {"creation_func": DuplicateMrTab, "icon": self.icon_images.get("emoji_duplicate_mr"), "key": "dup_mr"},
                 "Demand": {"creation_func": DemandTab, "icon": self.icon_images.get("emoji_demand"), "key": "demand"},
+                "Allocation": {"creation_func": WorkAllocationTab, "icon": self.icon_images.get("emoji_work_alloc"), "key": "allocation"},
             },
             "JE & AE Automation": {
                 "eMB Entry": {"creation_func": MbEntryTab, "icon": self.icon_images.get("emoji_emb_entry"), "key": "mb_entry"},
@@ -884,6 +966,8 @@ class NregaBotApp(ctk.CTk):
             self.play_sound("error")
             messagebox.showerror("Error", "License key not found. Please log in to use the web file manager.")
 
+    
+
     def switch_to_if_edit_with_data(self, data):
         """Switches to the IF Editor tab and passes data from the WC Gen tab."""
         if not data:
@@ -904,6 +988,43 @@ class NregaBotApp(ctk.CTk):
         else:
             self.play_sound("error")
             messagebox.showerror("Error", "Could not find the IF Editor tab instance or it's missing the required method.")
+
+    # --- ADD THIS NEW METHOD ---
+    def run_work_allocation_from_demand(self, panchayat_name: str, work_key: str):
+        """
+        Switches to the Work Allocation tab and starts its automation.
+        Called by DemandTab after it finishes.
+        """
+        
+        # 1. Switch to the tab (Name is 'Allocation' in get_tabs_definition)
+        self.show_frame("Allocation")
+        
+        # 2. Get the tab instance
+        alloc_instance = self.tab_instances.get("Allocation")
+        
+        # 3. Check and run
+        if alloc_instance and hasattr(alloc_instance, 'run_automation_from_demand'):
+            # --- FIX: Log to the correct tab's log display ---
+            if hasattr(alloc_instance, 'log_display'):
+                self.log_message(alloc_instance.log_display, "--- Handoff from Demand Tab received ---")
+            # --- END FIX ---
+                
+            # Use `after` to ensure the tab is fully raised before starting
+            self.after(200, alloc_instance.run_automation_from_demand, panchayat_name, work_key)
+            self.play_sound("success") # Play a sound for the handoff
+            messagebox.showinfo(
+                "Automation Handoff",
+                "Demand complete. Starting Work Allocation automatically...",
+                parent=self
+            )
+        else:
+            self.play_sound("error")
+            messagebox.showerror(
+                "Handoff Error", 
+                "Could not find the 'Allocation' tab or it's missing the required 'run_automation_from_demand' method.",
+                parent=self
+            )
+    # --- END NEW METHOD ---
 
     def switch_to_msr_tab_with_data(self, workcodes: str, panchayat_name: str):
         """Switches to the MSR Payment tab and passes data from MR Tracking."""
@@ -1085,7 +1206,9 @@ class NregaBotApp(ctk.CTk):
         self._update_header_welcome_message()
         about_tab = self.tab_instances.get("About")
         if about_tab:
+            # --- MODIFIED: Pass the whole license_info map ---
             about_tab.update_subscription_details(self.license_info)
+            # --- END MODIFIED ---
             info = self.update_info
             if info['status'] == 'available':
                 about_tab.latest_version_label.configure(text=f"Latest Version: {info['version']}")
@@ -1106,9 +1229,11 @@ class NregaBotApp(ctk.CTk):
             data = resp.json()
 
             if resp.status_code == 200 and data.get("status") == "valid":
+                # --- MODIFIED: Store all data from server ---
                 self.license_info = {**data, 'key': key}
                 with open(get_data_path('license.dat'), 'w') as f:
                     json.dump(self.license_info, f)
+                # --- END MODIFIED ---
                 if not is_startup_check:
                     self.play_sound("success")
                     messagebox.showinfo("License Valid", f"Activation successful!\nExpires on: {self.license_info['expires_at'].split('T')[0]}")
@@ -1119,7 +1244,26 @@ class NregaBotApp(ctk.CTk):
                     os.remove(lic_file)
                 if not is_startup_check:
                     self.play_sound("error")
-                    messagebox.showerror("Validation Failed", data.get('reason', 'Unknown error.'))
+                    # --- START: Reseller Info Logic ---
+                    reason = data.get('reason', 'Unknown error.')
+                    reseller_info = data.get('reseller_info') # Check for reseller info
+                    
+                    if reseller_info:
+                        name = reseller_info.get('name', 'N/A')
+                        email = reseller_info.get('email', 'N/A')
+                        mobile = reseller_info.get('mobile', 'N/A')
+                        
+                        display_message = (
+                            f"Aapka license block kar diya gaya hai.\n\n"
+                            f"Kripaya apne reseller se sampark karein:\n\n"
+                            f"Naam: {name}\n"
+                            f"Email: {email}\n"
+                            f"Mobile: {mobile}"
+                        )
+                        messagebox.showerror("License Blocked", display_message)
+                    else:
+                        messagebox.showerror("Validation Failed", reason) # Fallback to generic reason
+                    # --- END: Reseller Info Logic ---
                 return False
 
         except requests.exceptions.RequestException:
@@ -1138,63 +1282,117 @@ class NregaBotApp(ctk.CTk):
 
     def show_activation_window(self):
         win = ctk.CTkToplevel(self); win.title("Activate Product")
-        w, h = 450, 500; x, y = (self.winfo_screenwidth()//2) - (w//2), (self.winfo_screenheight()//2) - (h//2)
-        win.geometry(f'{w}x{h}+{x}+{y}'); win.resizable(False, False); win.transient(self); win.grab_set()
+        # --- MODIFIED: Reduced height as tabs are removed ---
+        w, h = 450, 420
+        
+        # --- MODIFIED: Force update AND get dimensions from self (parent) ---
+        win.update_idletasks() # <-- YEH LINE ADD KAREIN
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        
+        final_h = min(h, screen_height - 40)
+        final_w = min(w, screen_width - 40)
+        
+        x = (screen_width // 2) - (final_w // 2)
+        y = (screen_height // 2) - (final_h // 2)
+        
+        win.geometry(f'{final_w}x{final_h}+{x}+{y}')
+        # --- END MODIFIED ---
+        
+        win.resizable(False, False); win.transient(self); win.grab_set()
 
         main = ctk.CTkFrame(win, fg_color="transparent"); main.pack(expand=True, fill="both", padx=20, pady=20)
         ctk.CTkLabel(main, text="Product Activation", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(0, 10))
         activated = tkinter.BooleanVar(value=False)
-        tabs = ctk.CTkTabview(main); tabs.pack(expand=True, fill="both"); tabs.add("New User"); tabs.add("Existing User")
+        
+        # --- MODIFIED: Removed TabView ---
 
         def on_trial():
             win.withdraw()
             if self.show_trial_registration_window(): activated.set(True); win.destroy()
             else: win.deiconify()
 
-        def on_activate():
-            key = key_entry.get().strip()
-            if not key: 
+        # --- UNIFIED ACTIVATION LOGIC ---
+        def on_unified_activate():
+            input_val = entry.get().strip()
+            if not input_val:
                 self.play_sound("error")
-                messagebox.showwarning("Input Required", "Please enter a license key.", parent=win); return
-            if self.validate_on_server(key): activated.set(True); win.destroy()
-
-        def on_login():
-            email = email_entry.get().strip()
-            if not email: 
-                self.play_sound("error")
-                messagebox.showwarning("Input Required", "Please enter your email.", parent=win); return
-            login_btn.configure(state="disabled", text="Activating...")
-            try:
-                resp = requests.post(f"{config.LICENSE_SERVER_URL}/api/login-for-activation", json={"email": email, "machine_id": self.machine_id}, timeout=15)
-                data = resp.json()
-                if resp.status_code == 200 and data.get("status") == "success":
-                    self.license_info = data
-                    with open(get_data_path('license.dat'), 'w') as f: json.dump(self.license_info, f)
-                    self.play_sound("success")
-                    messagebox.showinfo("Success", f"Device activated!\nWelcome back, {data.get('user_name', 'User')}.")
+                messagebox.showwarning("Input Required", "Please enter a license key or your registered email.", parent=win)
+                return
+            
+            activate_btn.configure(state="disabled", text="Activating...")
+            
+            # --- Check if input is email or key ---
+            if "@" in input_val and "." in input_val:
+                # --- This is the LOGIN (on_login) logic ---
+                email = input_val
+                try:
+                    resp = requests.post(f"{config.LICENSE_SERVER_URL}/api/login-for-activation", json={"email": email, "machine_id": self.machine_id}, timeout=15)
+                    data = resp.json()
+                    if resp.status_code == 200 and data.get("status") == "success":
+                        save_config('last_used_email', email) # Remember email
+                        self.license_info = data
+                        with open(get_data_path('license.dat'), 'w') as f: json.dump(self.license_info, f)
+                        self.play_sound("success")
+                        messagebox.showinfo("Success", f"Device activated!\nWelcome back, {data.get('user_name', 'User')}.")
+                        activated.set(True); win.destroy()
+                    else:
+                        reason = data.get("reason", "Unknown error.")
+                        reseller_info = data.get('reseller_info')
+                        self.play_sound("error")
+                        
+                        if reseller_info:
+                            name = reseller_info.get('name', 'N/A')
+                            email = reseller_info.get('email', 'N/A')
+                            mobile = reseller_info.get('mobile', 'N/A')
+                            display_message = (
+                                f"Your license has been blocked.\n\n"
+                                f"Please contact your reseller:\n\n"
+                                f"Name: {name}\n"
+                                f"Email: {email}\n"
+                                f"Mobile: {mobile}"
+                            )
+                            messagebox.showerror("License Blocked", display_message, parent=win)
+                        else:
+                            messagebox.showerror("Activation Failed", reason, parent=win)
+                            if data.get("action") == "redirect" and data.get("url"):
+                                webbrowser.open_new_tab(data["url"])
+                except requests.exceptions.RequestException as e: 
+                    self.play_sound("error")
+                    messagebox.showerror("Connection Error", f"Could not connect: {e}", parent=win)
+                finally:
+                    if activate_btn.winfo_exists(): activate_btn.configure(state="normal", text="Login & Activate")
+            
+            else:
+                # --- This is the KEY (on_activate) logic ---
+                key = input_val
+                if self.validate_on_server(key): 
+                    email = self.license_info.get('user_email', '')
+                    if email:
+                        save_config('last_used_email', email) # Remember email
                     activated.set(True); win.destroy()
                 else:
-                    reason = data.get("reason", "Unknown error.")
-                    self.play_sound("error")
-                    messagebox.showerror("Activation Failed", reason, parent=win)
-                    if data.get("action") == "redirect" and data.get("url"):
-                        webbrowser.open_new_tab(data["url"])
-            except requests.exceptions.RequestException as e: 
-                self.play_sound("error")
-                messagebox.showerror("Connection Error", f"Could not connect: {e}", parent=win)
-            finally:
-                if login_btn.winfo_exists(): login_btn.configure(state="normal", text="Login & Activate Device")
+                    # validate_on_server shows its own error, just re-enable button
+                    if activate_btn.winfo_exists(): activate_btn.configure(state="normal", text="Login & Activate")
 
-        new_user = tabs.tab("New User")
-        ctk.CTkButton(new_user, text="Start 30-Day Free Trial", command=on_trial).pack(pady=(20, 5), ipady=4, fill='x', padx=10)
-        ctk.CTkLabel(new_user, text="— OR —").pack(pady=10); ctk.CTkLabel(new_user, text="Enter a purchased license key:").pack(pady=(5, 5))
-        key_entry = ctk.CTkEntry(new_user, width=300); key_entry.pack(pady=5, padx=10, fill='x')
-        ctk.CTkButton(new_user, text="Activate with Key", command=on_activate).pack(pady=10, ipady=4, fill='x', padx=10)
+        # --- END UNIFIED LOGIC ---
+        
+        # --- NEW LAYOUT ---
+        ctk.CTkButton(main, text="Start 30-Day Free Trial", command=on_trial).pack(pady=(20, 5), ipady=4, fill='x', padx=10)
+        ctk.CTkLabel(main, text="— OR —").pack(pady=10)
+        ctk.CTkLabel(main, text="Activate with your License Key or Email:").pack(pady=(5, 5))
 
-        existing_user = tabs.tab("Existing User")
-        ctk.CTkLabel(existing_user, text="Activate this device by logging in with your registered email.", wraplength=380, justify="center").pack(pady=(20, 15))
-        email_entry = ctk.CTkEntry(existing_user, placeholder_text="Enter your registered email"); email_entry.pack(pady=5, fill='x', padx=10); email_entry.focus_set()
-        login_btn = ctk.CTkButton(existing_user, text="Login & Activate Device", command=on_login); login_btn.pack(pady=15, ipady=4, fill='x', padx=10)
+        # Pre-fill with last email
+        last_email = get_config('last_used_email', '') # Get saved email
+        entry = ctk.CTkEntry(main, width=300, placeholder_text="Enter License Key or Email")
+        if last_email:
+            entry.insert(0, last_email) # Pre-fill
+        entry.pack(pady=5, padx=10, fill='x')
+        entry.focus_set()
+
+        activate_btn = ctk.CTkButton(main, text="Login & Activate", command=on_unified_activate)
+        activate_btn.pack(pady=10, ipady=4, fill='x', padx=10)
+        # --- END NEW LAYOUT ---
 
         links = ctk.CTkFrame(main, fg_color="transparent"); links.pack(pady=(15,0), fill="x")
         buy_link = ctk.CTkLabel(links, text="Purchase a License Key", text_color=("blue", "cyan"), cursor="hand2"); buy_link.pack()
@@ -1202,75 +1400,223 @@ class NregaBotApp(ctk.CTk):
 
         self.wait_window(win); return activated.get()
 
+    # main_app.py (REPLACE this function)
     def show_trial_registration_window(self):
         win = ctk.CTkToplevel(self); win.title("Trial Registration")
-        w, h = 480, 600; x, y = (self.winfo_screenwidth()//2) - (w//2), (self.winfo_screenheight()//2) - (h//2)
-        win.geometry(f'{w}x{h}+{x}+{y}'); win.resizable(False, False); win.transient(self); win.grab_set()
+        w, h = 540, 600
+        
+        # --- MODIFIED: Force update AND get dimensions from self (parent) ---
+        win.update_idletasks() # <-- YEH LINE ADD KAREIN
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        
+        final_h = min(h, screen_height - 40) # Use 40px buffer
+        final_w = min(w, screen_width - 40)
+        
+        x = (screen_width // 2) - (final_w // 2)
+        y = (screen_height // 2) - (final_h // 2)
+        
+        win.geometry(f'{final_w}x{final_h}+{x}+{y}')
+        # --- END MODIFIED ---
+        
+        win.resizable(False, False); win.transient(self); win.grab_set()
 
         scroll = ctk.CTkScrollableFrame(win, fg_color="transparent", label_fg_color="transparent"); scroll.pack(expand=True, fill="both", padx=10, pady=10)
         ctk.CTkLabel(scroll, text="Start Your Free Trial", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(0, 5))
         ctk.CTkLabel(scroll, text="Please provide your details to begin.", text_color="gray50").pack(pady=(0, 15))
 
+        # --- NEW: Mobile validation function ---
+        def _validate_mobile_input(P, S):
+            # P = value if allowed
+            # S = string being inserted
+            # Allow input if it's a digit AND the total length is 10 or less
+            if S.isdigit() and len(P) <= 10:
+                return True
+            # Allow backspace (S is empty)
+            if S == "" and len(P) <= 10:
+                return True
+            # Otherwise, reject the input
+            self.play_sound("error") # Play a small error beep
+            return False
+        
+        # Register the validation command
+        vcmd_mobile = (win.register(_validate_mobile_input), '%P', '%S')
+        # --- END NEW ---
+
         entries = {}
-        fields = ["Full Name", "Email", "Mobile", "Block"]
-        for field in fields:
-            key = field.lower().replace(" ", "_")
-            ctk.CTkLabel(scroll, text=field, anchor="w").pack(fill="x", padx=10)
-            entry = ctk.CTkEntry(scroll)
-            entry.pack(fill="x", padx=10, pady=(0, 10))
-            entries[key] = entry
+        
+        # --- START: MODIFIED LAYOUT ---
+        # Full Name
+        ctk.CTkLabel(scroll, text="Full Name", anchor="w").pack(fill="x", padx=10)
+        entry_name = ctk.CTkEntry(scroll)
+        entry_name.pack(fill="x", padx=10, pady=(0, 10))
+        entries['full_name'] = entry_name
 
-        ctk.CTkLabel(scroll, text="State", anchor="w").pack(fill="x", padx=10)
-        state_menu = ctk.CTkOptionMenu(scroll, values=["Jharkhand"])
-        state_menu.set("Jharkhand")
-        state_menu.configure(state="disabled")
-        state_menu.pack(fill="x", padx=10, pady=(0, 10))
-        entries['state'] = state_menu 
+        # --- Email and Mobile in one row ---
+        row_frame_1 = ctk.CTkFrame(scroll, fg_color="transparent")
+        row_frame_1.pack(fill="x", padx=10)
+        row_frame_1.grid_columnconfigure((0, 1), weight=1)
 
-        jharkhand_districts = [
-            "Bokaro", "Chatra", "Deoghar", "Dhanbad", "Dumka", "East Singhbhum",
-            "Garhwa", "Giridih", "Godda", "Gumla", "Hazaribagh", "Jamtara",
-            "Khunti", "Koderma", "Latehar", "Lohardaga", "Pakur", "Palamu",
-            "Ramgarh", "Ranchi", "Sahebganj", "Saraikela Kharsawan", "Simdega",
-            "West Singhbhum", "Others"
-        ]
-        ctk.CTkLabel(scroll, text="District", anchor="w").pack(fill="x", padx=10)
-        district_menu = ctk.CTkOptionMenu(scroll, values=jharkhand_districts)
-        district_menu.set("Select a District") 
-        district_menu.pack(fill="x", padx=10, pady=(0, 10))
-        entries['district'] = district_menu 
+        # Email
+        email_frame = ctk.CTkFrame(row_frame_1, fg_color="transparent")
+        email_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
+        ctk.CTkLabel(email_frame, text="Email", anchor="w").pack(fill="x")
+        entry_email = ctk.CTkEntry(email_frame)
+        entry_email.pack(fill="x", pady=(0, 10))
+        entries['email'] = entry_email
 
-        ctk.CTkLabel(scroll, text="Pincode", anchor="w").pack(fill="x", padx=10)
-        pincode_entry = ctk.CTkEntry(scroll)
-        pincode_entry.pack(fill="x", padx=10, pady=(0, 10))
+        # Mobile
+        mobile_frame = ctk.CTkFrame(row_frame_1, fg_color="transparent")
+        mobile_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
+        ctk.CTkLabel(mobile_frame, text="Mobile", anchor="w").pack(fill="x")
+        entry_mobile = ctk.CTkEntry(mobile_frame, validate="key", validatecommand=vcmd_mobile)
+        entry_mobile.pack(fill="x", pady=(0, 10))
+        entries['mobile'] = entry_mobile
+
+        # --- Block and Pincode in one row ---
+        row_frame_2 = ctk.CTkFrame(scroll, fg_color="transparent")
+        row_frame_2.pack(fill="x", padx=10)
+        row_frame_2.grid_columnconfigure((0, 1), weight=1)
+        
+        # Block
+        block_frame = ctk.CTkFrame(row_frame_2, fg_color="transparent")
+        block_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
+        ctk.CTkLabel(block_frame, text="Block", anchor="w").pack(fill="x")
+        entry_block = ctk.CTkEntry(block_frame)
+        entry_block.pack(fill="x", pady=(0, 10))
+        entries['block'] = entry_block
+
+        # Pincode
+        pincode_frame = ctk.CTkFrame(row_frame_2, fg_color="transparent")
+        pincode_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
+        ctk.CTkLabel(pincode_frame, text="Pincode", anchor="w").pack(fill="x")
+        pincode_entry = ctk.CTkEntry(pincode_frame)
+        pincode_entry.pack(fill="x", pady=(0, 10))
         entries['pincode'] = pincode_entry
+
+        # --- DYNAMIC STATE AND DISTRICT LOGIC ---
+        all_states = sorted(list(STATE_DISTRICT_MAP.keys()))
+
+        # --- State and District in one row ---
+        row_frame_3 = ctk.CTkFrame(scroll, fg_color="transparent")
+        row_frame_3.pack(fill="x", padx=10)
+        row_frame_3.grid_columnconfigure((0, 1), weight=1)
+
+        # State
+        state_frame = ctk.CTkFrame(row_frame_3, fg_color="transparent")
+        state_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
+        ctk.CTkLabel(state_frame, text="State", anchor="w").pack(fill="x")
+        state_var = tkinter.StringVar(value="Select a State")
+        state_menu = ctk.CTkOptionMenu(state_frame, values=all_states, variable=state_var)
+        state_menu.pack(fill="x", pady=(0, 10))
+        entries['state'] = state_var # Store the variable
+
+        # District
+        district_frame = ctk.CTkFrame(row_frame_3, fg_color="transparent")
+        district_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
+        ctk.CTkLabel(district_frame, text="District", anchor="w").pack(fill="x")
+        district_var = tkinter.StringVar(value="Select a State first")
+        district_menu = ctk.CTkOptionMenu(district_frame, values=["Select a State first"], variable=district_var)
+        district_menu.configure(state="disabled")
+        district_menu.pack(fill="x", pady=(0, 10))
+        entries['district'] = district_var # Store the variable
+        # --- END DYNAMIC LOGIC ---
+
+        def on_state_select(selected_state):
+            districts = STATE_DISTRICT_MAP.get(selected_state, [])
+            if districts:
+                district_menu.configure(values=districts, state="normal")
+                district_var.set("Select a District")
+            else:
+                district_menu.configure(values=["Select a State first"], state="disabled")
+                district_var.set("Select a State first")
+
+        # Link the on_state_select function to the state_menu
+        state_var.trace_add("write", lambda *args: on_state_select(state_var.get()))
+        
+        # --- START: NEW REFERRAL CODE FIELD ---
+        ctk.CTkLabel(scroll, text="Referral Code (Optional)", anchor="w").pack(fill="x", padx=10)
+        ref_entry = ctk.CTkEntry(scroll, placeholder_text="Enter referrer's code")
+        ref_entry.pack(fill="x", padx=10, pady=(0, 10))
+        entries['referral_code'] = ref_entry # Add to dict
+        # --- END: NEW REFERRAL CODE FIELD ---
+        # --- END: MODIFIED LAYOUT ---
 
         successful = tkinter.BooleanVar(value=False)
         def submit_request():
             import re
-            user_data = {k: e.get().strip() for k, e in entries.items()}
+            # Get values from entries AND variables
+            user_data = {}
+            for k, e in entries.items():
+                if isinstance(e, tkinter.StringVar):
+                    user_data[k] = e.get().strip()
+                else:
+                    user_data[k] = e.get().strip()
+            
+            # --- START: Auto-formatting input fields ---
+            # Format Name
+            if 'full_name' in user_data:
+                formatted_name = user_data['full_name'].title()
+                entries['full_name'].delete(0, 'end')
+                entries['full_name'].insert(0, formatted_name)
+                user_data['full_name'] = formatted_name
+                
+            # Format Email
+            if 'email' in user_data:
+                formatted_email = user_data['email'].lower()
+                entries['email'].delete(0, 'end')
+                entries['email'].insert(0, formatted_email)
+                user_data['email'] = formatted_email
+
+            # Format Block
+            if 'block' in user_data:
+                formatted_block = user_data['block'].title()
+                entries['block'].delete(0, 'end')
+                entries['block'].insert(0, formatted_block)
+                user_data['block'] = formatted_block
+                
+            # Format Referral Code
+            if 'referral_code' in user_data:
+                user_data['referral_code'] = user_data['referral_code'].upper()
+            # --- END: Auto-formatting ---
+
             email, mobile = user_data.get('email', ''), user_data.get('mobile', '')
+            
             if not re.match(r"[^@]+@[^@]+\.[^@]+", email): 
                 self.play_sound("error")
                 messagebox.showwarning("Invalid Input", "Valid email is required.", parent=win); return
+            
+            # --- UPDATED: Mobile validation check ---
             if not (mobile.isdigit() and len(mobile) == 10): 
                 self.play_sound("error")
                 messagebox.showwarning("Invalid Input", "Valid 10-digit mobile is required.", parent=win); return
-            if user_data.get('district') == "Select a District": 
+            # --- END UPDATED ---
+            
+            # Check dynamic menus
+            if user_data.get('state') == "Select a State":
+                self.play_sound("error")
+                messagebox.showwarning("Input Required", "Please select a state.", parent=win); return
+            if user_data.get('district') == "Select a District" or user_data.get('district') == "Select a State first":
                 self.play_sound("error")
                 messagebox.showwarning("Input Required", "Please select a district.", parent=win); return
 
             user_data["name"] = user_data.pop("full_name")
             user_data["machine_id"] = self.machine_id
-            if not all(user_data.values()): 
+            
+            # Check for empty fields (except pincode which can be optional, and referral_code)
+            required_fields = ["name", "email", "mobile", "block", "state", "district"]
+            if not all(user_data.get(f) for f in required_fields):
                 self.play_sound("error")
-                messagebox.showwarning("Input Required", "All fields are required.", parent=win); return
+                messagebox.showwarning("Input Required", "All fields (except Pincode and Referral) are required.", parent=win); return
 
             submit_btn.configure(state="disabled", text="Requesting...")
             try:
                 resp = requests.post(f"{config.LICENSE_SERVER_URL}/api/request-trial", json=user_data, timeout=15, headers={'User-Agent': f'{config.APP_NAME}/{config.APP_VERSION}'})
                 data = resp.json()
                 if resp.status_code == 200 and data.get("status") == "success":
+                    # --- ADDED: Remember email on trial success ---
+                    save_config('last_used_email', email)
+                    # --- END ADDED ---
                     self.license_info = {'key': data.get("key"), 'expires_at': data.get('expires_at'), 'user_name': user_data['name'], 'key_type': 'trial'}
                     with open(get_data_path('license.dat'), 'w') as f: json.dump(self.license_info, f)
                     self.play_sound("success")
@@ -1343,6 +1689,11 @@ class NregaBotApp(ctk.CTk):
 
     def on_closing(self, force=False):
         if force or messagebox.askokcancel("Quit", "Quit? This will stop running automations."):
+            # --- YEH DO LINES ADD KAREIN ---
+            self.play_sound("shutdown") # Close sound bajayega
+            time.sleep(2) # Sound ko bajne ke liye 0.5 sec ka time dega
+            # --- ADD ENDS ---
+            
             self.attributes("-alpha", 0.0); self.active_automations.clear(); self.allow_sleep()
             if self.driver:
                 try: self.driver.quit()

@@ -8,7 +8,7 @@ APP_TAGLINE = "Your NREGA Task Management Companion"
 APP_DESCRIPTION = "A comprehensive tool for managing NREGA tasks efficiently."
 APP_AUTHOR = "Rajat Poddar"
 APP_AUTHOR_EMAIL = "Rajatpoddar@outlook.com"
-APP_VERSION = "2.7.10"
+APP_VERSION = "2.8.0"
 LICENSE_SERVER_URL = "https://license.nregabot.com"
 MAIN_WEBSITE_URL = "https://nregabot.com"
 SUPPORT_EMAIL = "nregabot@gmail.com"
@@ -186,6 +186,11 @@ MR_FILL_CONFIG = {
 # --- NEW: Zero MR Configuration ---
 ZERO_MR_CONFIG = {
     "url": "https://nregade4.nic.in/Netnrega/musteraszero.aspx"
+}
+
+# ---NEW: Work Allocation Configuration ---
+WORK_ALLOCATION_CONFIG = {
+    "url": "https://nregade4.nic.in/Netnrega/workalloc.aspx"
 }
 
 import os

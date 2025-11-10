@@ -1,16 +1,17 @@
 {
-  "latest_version": "2.7.10",
-  "download_url_windows": "https://nregabot.com/updates/NREGABot-v2.7.10-Setup.exe",
-  "download_url_macos": "https://nregabot.com/updates/NREGABot-v2.7.10-macOS.dmg",
+  "latest_version": "2.8.0",
+  "download_url_windows": "https://nregabot.com/updates/NREGABot-v2.8.0-Setup.exe",
+  "download_url_macos": "https://nregabot.com/updates/NREGABot-v2.8.0-macOS.dmg",
   "changelog": {
-    "2.7.10": [
-      "✨ **New Automation: Zero MR** - Added a new tab to submit 'Zero MR' for muster rolls that have not been filled between T+8 and T+15 days.",
-      "🚀 **Enhancement (MR Tracking):** Added a 'Find T+8 to T+15 (for Zero MR)' filter to find muster rolls eligible for Zero MR processing.",
-      "🚀 **Enhancement (Workflow):** After running the 'T+8 to T+15' filter in MR Tracking, a 'Forward to Zero MR' button appears. This sends the work code and MSR no. for all found items directly to the new 'Zero MR' tab.",
-      "🐞 **Bug Fix (Status & Reports):** Fixed detailed status reporting for MSR, Wagelist Gen, and Scheme Closing tabs. Ensured duplicate workcodes are correctly extracted in MR Tracking and Dashboard Report. Fixed Dashboard Report automation to correctly click on links that show a '0' count.",
-      "🐞 **Bug Fix (MR Tracking):** Fixed a bug where the automation would fail if the Block name on the website used different capitalization (e.g., 'Mandro' vs 'MANDRO').",
-      "🐞 **Bug Fix (Extractors):** Fixed the 'Extract from Text' button on the Scheme Closing tab.",
-      "🐞 **Bug Fix (UI):** Added 'Generate CSV Online' helper links to the Demand and WC Gen tabs."
+    "2.8.0": [
+      "✨ **Major Feature: Referral Program** - Get 15 days of extra validity when a user you refer purchases their first plan! Find your referral code in the 'My Account' page.",
+      "✨ **New Automation: Work Allocation** - A new tab to automatically handle work allocation for a list of work keys right after demand is placed.",
+      "🚀 **Enhancement (Workflow):** Added an optional 'Work Key (Auto-Allocate)' field to the 'Demand' tab. After demand is completed, the bot will automatically switch to the 'Allocation' tab and run it for that work key.",
+      "💳 **Major Feature: Auto-Renewal (Subscriptions)** - You can now enable auto-renewal when purchasing a plan from the website to ensure your license never expires. Manage it from your 'My Account' page.",
+      "🚀 **Enhancement (Trial Activation):** Updated the trial registration system. The new web-based trial page now supports users from more states, including Rajasthan and West Bengal.",
+      "🚀 **Enhancement (Reseller Panel):** The web-based Reseller Panel now displays user statistics (active, expired, blocked) and includes a new 'Poke' tool to send email reminders to expired users.",
+      "🚀 **Enhancement (Device Renaming):** You can now rename your activated devices from the 'About' tab in the app and from the 'My Account' page on the website. Names will sync across your account.",
+      "🐞 **Bug Fix (Zero MR):** Fixed a stability issue in the Zero MR automation to better handle page refreshes and prevent timeouts."
     ]
   }
 }

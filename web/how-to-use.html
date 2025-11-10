@@ -66,10 +66,13 @@
                             <h3 class="text-2xl font-bold text-gray-900 dark:text-white">1. Demand Automation
                             </h3>
                             <ol class="list-decimal list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
-                                <li>Prepare a CSV file containing two columns: `Applicant Name` and `Jobcard No`.</li>
-                                <li>In the app, select the 'From' and 'To' dates for the demand period.</li>
-                                <li>Select your prepared CSV file.</li>
-                                <li>Click "Start Automation". The app will log in and fill the demand for each worker in the CSV.</li>
+                                <li>Prepare a CSV file containing two columns: `Name of Applicant` and `Job card number`.</li>
+                                <li>In the app, select the 'State', 'Panchayat', 'Demand/Work Date', and 'Days'.</li>
+                                <li>(Optional) 'Work Key (Auto-Allocate)' field mein ek work key search key (e.g., 94297) enter karein.</li>
+                                <li>Click "Load Applicants CSV" and select your prepared CSV file.</li>
+                                <li>Select the applicants you want to process.</li>
+                                <li>Click "Start Automation".</li>
+                                <li><b>Workflow:</b> Agar aapne 'Work Key' enter kiya hai, toh demand poora hone ke baad bot automatically 'Work Allocation' tab par switch karega aur uss key ke liye allocation run karega.</li>
                             </ol>
                         </div>
                         <div class="order-1 md:order-2"><img src="/assets/Demand_Automation.png"
@@ -460,6 +463,23 @@
                         </div>
                         <div class="order-1 md:order-2"><img src="/assets/Zero_MR.png" alt="Zero MR"
                                 class="rounded-lg shadow-md border dark:border-gray-700"></div>
+                    </div>
+
+                    <div
+                        class="instruction-card grid md:grid-cols-2 gap-8 lg:gap-12 items-center bg-white dark:bg-gray-800 p-8 rounded-lg border dark:border-gray-700">
+                        <div class="order-2 md:order-2">
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white">26. Work Allocation</h3>
+                            <ol class="list-decimal list-inside mt-4 space-y-2 text-gray-700 dark:text-gray-300">
+                                <li>(Optional) Agar PO/Block login hai toh "Panchayat Name" enter karein. GP login ke liye yeh zaroori nahi hai.</li>
+                                <li>"Work Category" select karein (default 'Provision of Irrigation...' hai).</li>
+                                <li>"Work Key List" tab mein ek ya zyada Work Keys (search keys, e.g., 94297) paste karein.</li>
+                                <li>Click "Start Automation". Bot har work key ke liye 'Allocate All' karega aur 'Save' par click karega.</li>
+                                <li><b>Note:</b> Yeh automation "Demand" tab se automatically bhi run ho sakta hai (upar dekhein).</li>
+                            </ol>
+                        </div>
+                        <div class="order-1 md:order-1"><img src="/assets/Work_Allocation.png"
+                                alt="Work Allocation" class="rounded-lg shadow-md border dark:border-gray-700">
+                        </div>
                     </div>
                     
                 </div>

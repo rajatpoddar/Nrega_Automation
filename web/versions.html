@@ -55,20 +55,69 @@
                         previous releases of NREGA Bot.</p>
                 </div>
 
+                <div
+                    class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border-2 border-blue-500 dark:border-blue-500 shadow-lg">
+                    <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.8.0 (NREGA Bot)</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: November 11, 2025</p>
+                    <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
+                        <li>✨ <strong>Major Feature: Referral Program</strong> - Get 15 days of extra validity when a
+                            user you refer purchases their first plan! Find your referral code in the 'My Account' page.
+                        </li>
+                        <li>✨ <strong>New Automation: Work Allocation</strong> - A new tab to automatically handle work
+                            allocation for a list of work keys right after demand is placed.</li>
+                        <li>🚀 <strong>Enhancement (Workflow):</strong> Added an optional 'Work Key (Auto-Allocate)'
+                            field to the 'Demand' tab. After demand is completed, the bot will automatically switch to
+                            the 'Allocation' tab and run it for that work key.</li>
+                        <li>💳 <strong>Major Feature: Auto-Renewal (Subscriptions)</strong> - You can now enable
+                            auto-renewal when purchasing a plan from the website to ensure your license never expires.
+                            Manage it from your 'My Account' page.</li>
+                        <li>🚀 <strong>Enhancement (Trial Activation):</strong> Updated the trial registration system.
+                            The new web-based trial page now supports users from more states, including Rajasthan and
+                            West Bengal.</li>
+                        <li>🚀 <strong>Enhancement (Reseller Panel):</strong> The web-based Reseller Panel now displays
+                            user statistics (active, expired, blocked) and includes a new 'Poke' tool to send email
+                            reminders to expired users.</li>
+                        <li>🚀 <strong>Enhancement (Device Renaming):</strong> You can now rename your activated devices
+                            from the 'About' tab in the app and from the 'My Account' page on the website. Names will
+                            sync across your account.</li>
+                        <li>🐞 <strong>Bug Fix (Zero MR):</strong> Fixed a stability issue in the Zero MR automation to
+                            better handle page refreshes and prevent timeouts.</li>
+                    </ul>
+                    <div class="mt-6 flex flex-col sm:flex-row gap-4">
+                        <a href="https://nregabot.com/updates/NREGABot-v2.8.0-Setup.exe"
+                            class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors text-center">Download
+                            for Windows</a>
+                        <a href="https://nregabot.com/updates/NREGABot-v2.8.0-macOS.dmg"
+                            class="bg-gray-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors text-center">Download
+                            for macOS</a>
+                    </div>
+                </div>
+
                 <div id="version-list" class="max-w-4xl mx-auto space-y-8">
 
                     <div
-                        class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border-2 border-blue-500 dark:border-blue-500 shadow-lg">
+                        class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.7.10 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: November 06, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
-                            <li>✨ <strong>New Automation: Zero MR</strong> - Added a new tab to submit 'Zero MR' for muster rolls that have not been filled between T+8 and T+15 days.</li>
-                            <li>🚀 <strong>Enhancement (MR Tracking):</strong> Added a 'Find T+8 to T+15 (for Zero MR)' filter to find muster rolls eligible for Zero MR processing.</li>
-                            <li>🚀 <strong>Enhancement (Workflow):</strong> After running the 'T+8 to T+15' filter in MR Tracking, a 'Forward to Zero MR' button appears. This sends the work code and MSR no. for all found items directly to the new 'Zero MR' tab.</li>
-                            <li>🐞 <strong>Bug Fix (Status & Reports):</strong> Fixed detailed status reporting for MSR, Wagelist Gen, and Scheme Closing tabs. Ensured duplicate workcodes are correctly extracted in MR Tracking and Dashboard Report. Fixed Dashboard Report automation to correctly click on links that show a '0' count.</li>
-                            <li>🐞 <strong>Bug Fix (MR Tracking):</strong> Fixed a bug where the automation would fail if the Block name on the website used different capitalization (e.g., 'Mandro' vs 'MANDRO').</li>
-                            <li>🐞 <strong>Bug Fix (Extractors):</strong> Fixed the 'Extract from Text' button on the Scheme Closing tab.</li>
-                            <li>🐞 <strong>Bug Fix (UI):</strong> Added 'Generate CSV Online' helper links to the Demand and WC Gen tabs.</li>
+                            <li>✨ <strong>New Automation: Zero MR</strong> - Added a new tab to submit 'Zero MR' for
+                                muster rolls that have not been filled between T+8 and T+15 days.</li>
+                            <li>🚀 <strong>Enhancement (MR Tracking):</strong> Added a 'Find T+8 to T+15 (for Zero MR)'
+                                filter to find muster rolls eligible for Zero MR processing.</li>
+                            <li>🚀 <strong>Enhancement (Workflow):</strong> After running the 'T+8 to T+15' filter in MR
+                                Tracking, a 'Forward to Zero MR' button appears. This sends the work code and MSR no.
+                                for all found items directly to the new 'Zero MR' tab.</li>
+                            <li>🐞 <strong>Bug Fix (Status & Reports):</strong> Fixed detailed status reporting for MSR,
+                                Wagelist Gen, and Scheme Closing tabs. Ensured duplicate workcodes are correctly
+                                extracted in MR Tracking and Dashboard Report. Fixed Dashboard Report automation to
+                                correctly click on links that show a '0' count.</li>
+                            <li>🐞 <strong>Bug Fix (MR Tracking):</strong> Fixed a bug where the automation would fail
+                                if the Block name on the website used different capitalization (e.g., 'Mandro' vs
+                                'MANDRO').</li>
+                            <li>🐞 <strong>Bug Fix (Extractors):</strong> Fixed the 'Extract from Text' button on the
+                                Scheme Closing tab.</li>
+                            <li>🐞 <strong>Bug Fix (UI):</strong> Added 'Generate CSV Online' helper links to the Demand
+                                and WC Gen tabs.</li>
                         </ul>
                         <div class="mt-6 flex flex-col sm:flex-row gap-4">
                             <a href="https://nregabot.com/updates/NREGABot-v2.7.10-Setup.exe"
@@ -79,22 +128,39 @@
                                 for macOS</a>
                         </div>
                     </div>
-                    
+
                     <div
-                    class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                        class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.7.9 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: November 02, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
-                            <li>✨ <strong>New Feature (Reports): Issued MR Details</strong> - Added a new automation to fetch the 'MGNREGS daily status as per e-muster issued' report, drill down into 'No. Of Ongoing Works', and extract all related work codes.</li>
-                            <li>✨ <strong>New Feature (Utility): PDF Merger</strong> - Added a new standalone utility tab to merge multiple PDF files into a single document.</li>
-                            <li>🚀 <strong>Enhancement (Workflow):</strong> After FTO Generation, a 'Check Pending ABPS Labour' button now appears, linking directly to the MR Tracking tab pre-configured for ABPS pendency.</li>
-                            <li>🚀 <strong>Enhancement (Workflow):</strong> You can now send workcodes and the panchayat name directly from the new 'Issued MR Details' report to the 'Duplicate MR Print' tab.</li>
-                            <li>🚀 <strong>Enhancement (MR Gen &amp; Duplicate MR):</strong> Added a 'Merge Saved PDFs' button to the 'Results' tab in both Muster Roll Generator and Duplicate MR Print. This allows merging all generated PDFs from a single run into one file.</li>
-                            <li>🚀 <strong>Enhancement (MR Tracking):</strong> The MR Tracking automation is now more intelligent. It can identify and report on specific laborers pending for ABPS by drilling down into wagelist details.</li>
-                            <li>🚀 <strong>Enhancement (Demand):</strong> The Demand automation is now smarter. If demand is requested for multiple laborers approaching 100 mandays, it will automatically divide the remaining available mandays between them.</li>
-                            <li>🐞 <strong>Bug Fix (PDF Export):</strong> Fixed a critical bug where PDF exporting would fail with an 'Undefined font' error.</li>
-                            <li>🐞 <strong>Bug Fix (Wagelist Gen/Send):</strong> Fixed a bug that could cause the 'Generate Wagelist' automation to crash and corrected status reporting for 'Send Wagelist'.</li>
-                            <li>🐞 <strong>Bug Fix (Scheme Closing):</strong> Added missing imports to the Scheme Closing tab to prevent potential crashes.</li>
+                            <li>✨ <strong>New Feature (Reports): Issued MR Details</strong> - Added a new automation to
+                                fetch the 'MGNREGS daily status as per e-muster issued' report, drill down into 'No. Of
+                                Ongoing Works', and extract all related work codes.</li>
+                            <li>✨ <strong>New Feature (Utility): PDF Merger</strong> - Added a new standalone utility
+                                tab to merge multiple PDF files into a single document.</li>
+                            <li>🚀 <strong>Enhancement (Workflow):</strong> After FTO Generation, a 'Check Pending ABPS
+                                Labour' button now appears, linking directly to the MR Tracking tab pre-configured for
+                                ABPS pendency.</li>
+                            <li>🚀 <strong>Enhancement (Workflow):</strong> You can now send workcodes and the panchayat
+                                name directly from the new 'Issued MR Details' report to the 'Duplicate MR Print' tab.
+                            </li>
+                            <li>🚀 <strong>Enhancement (MR Gen &amp; Duplicate MR):</strong> Added a 'Merge Saved PDFs'
+                                button to the 'Results' tab in both Muster Roll Generator and Duplicate MR Print. This
+                                allows merging all generated PDFs from a single run into one file.</li>
+                            <li>🚀 <strong>Enhancement (MR Tracking):</strong> The MR Tracking automation is now more
+                                intelligent. It can identify and report on specific laborers pending for ABPS by
+                                drilling down into wagelist details.</li>
+                            <li>🚀 <strong>Enhancement (Demand):</strong> The Demand automation is now smarter. If
+                                demand is requested for multiple laborers approaching 100 mandays, it will automatically
+                                divide the remaining available mandays between them.</li>
+                            <li>🐞 <strong>Bug Fix (PDF Export):</strong> Fixed a critical bug where PDF exporting would
+                                fail with an 'Undefined font' error.</li>
+                            <li>🐞 <strong>Bug Fix (Wagelist Gen/Send):</strong> Fixed a bug that could cause the
+                                'Generate Wagelist' automation to crash and corrected status reporting for 'Send
+                                Wagelist'.</li>
+                            <li>🐞 <strong>Bug Fix (Scheme Closing):</strong> Added missing imports to the Scheme
+                                Closing tab to prevent potential crashes.</li>
                         </ul>
                         <div class="mt-6 flex flex-col sm:flex-row gap-4">
                             <a href="https://nregabot.com/updates/NREGABot-v2.7.9-Setup.exe"
@@ -107,19 +173,34 @@
                     </div>
 
                     <div
-                    class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
+                        class="version-entry bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700 shadow-sm">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Version 2.7.8 (NREGA Bot)</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Released: October 31, 2025</p>
                         <ul class="list-disc list-inside mt-4 space-y-3 text-gray-700 dark:text-gray-300">
-                            <li>✨ <strong>New Feature (Core): MR Fill</strong> - A new automation to automatically fill Muster Rolls. It intelligently marks holidays as absent and includes a manual mode for custom attendance.</li>
-                            <li>✨ <strong>New Feature (Reports): MR Tracking</strong> - Track Muster Roll status in real-time. Includes options to export reports to PDF, Excel, and PNG, plus a workcode extractor.</li>
-                            <li>✨ <strong>New Feature (Reports): Dashboard Report</strong> - A new tool to fetch and view dashboard reports, with full export capabilities (PDF, Excel, PNG) and a workcode extractor.</li>
-                            <li>✨ <strong>New Feature (UI): Sound Effects</strong> - Added audible sound effects for key actions (e.g., automation complete, error). This can be toggled on/off in the settings.</li>
-                            <li>🚀 <strong>Enhancement (Workflow):</strong> A new workflow allows you to send workcodes directly from the <strong>MR Tracking</strong> report to the <strong>eMB Entry</strong> and <strong>MSR Processor</strong> tabs.</li>
-                            <li>🚀 <strong>Enhancement (Workflow):</strong> Send workcodes and panchayat names directly from the <strong>Dashboard Report</strong> to the <strong>MR Fill</strong> automation.</li>
-                            <li>🚀 <strong>Enhancement (Demand):</strong> Demand Automation now automatically adjusts for laborers with 100 mandays and fully supports <strong>GP logins</strong>.</li>
-                            <li>🚀 <strong>Enhancement (Wagelist):</strong> The Wagelist Automation tab now includes an option to <strong>save the generated wagelist as a PDF</strong> document.</li>
-                            <li>🐞 <strong>Bug Fix (ABPS Verify):</strong> Resolved a critical bug where the automation failed to verify multiple laborers registered under the same job card.</li>
+                            <li>✨ <strong>New Feature (Core): MR Fill</strong> - A new automation to automatically fill
+                                Muster Rolls. It intelligently marks holidays as absent and includes a manual mode for
+                                custom attendance.</li>
+                            <li>✨ <strong>New Feature (Reports): MR Tracking</strong> - Track Muster Roll status in
+                                real-time. Includes options to export reports to PDF, Excel, and PNG, plus a workcode
+                                extractor.</li>
+                            <li>✨ <strong>New Feature (Reports): Dashboard Report</strong> - A new tool to fetch and
+                                view dashboard reports, with full export capabilities (PDF, Excel, PNG) and a workcode
+                                extractor.</li>
+                            <li>✨ <strong>New Feature (UI): Sound Effects</strong> - Added audible sound effects for key
+                                actions (e.g., automation complete, error). This can be toggled on/off in the settings.
+                            </li>
+                            <li>🚀 <strong>Enhancement (Workflow):</strong> A new workflow allows you to send workcodes
+                                directly from the <strong>MR Tracking</strong> report to the <strong>eMB Entry</strong>
+                                and <strong>MSR Processor</strong> tabs.</li>
+                            <li>🚀 <strong>Enhancement (Workflow):</strong> Send workcodes and panchayat names directly
+                                from the <strong>Dashboard Report</strong> to the <strong>MR Fill</strong> automation.
+                            </li>
+                            <li>🚀 <strong>Enhancement (Demand):</strong> Demand Automation now automatically adjusts
+                                for laborers with 100 mandays and fully supports <strong>GP logins</strong>.</li>
+                            <li>🚀 <strong>Enhancement (Wagelist):</strong> The Wagelist Automation tab now includes an
+                                option to <strong>save the generated wagelist as a PDF</strong> document.</li>
+                            <li>🐞 <strong>Bug Fix (ABPS Verify):</strong> Resolved a critical bug where the automation
+                                failed to verify multiple laborers registered under the same job card.</li>
                         </ul>
                         <div class="mt-6 flex flex-col sm:flex-row gap-4">
                             <a href="https://nregabot.com/updates/NREGABot-v2.7.8-Setup.exe"

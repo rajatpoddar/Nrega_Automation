@@ -155,7 +155,7 @@
                 <div class="container mx-auto px-4 sm:px-6 py-3 text-center text-white">
                     <p>
                         <span class="font-bold bg-white text-blue-600 rounded-full px-2 py-0.5 text-xs mr-2">NEW</span>
-                        <strong>Version 2.7.10 is here!</strong> Introducing <strong>Zero MR</strong> processing and a new <strong>T+8 to T+15</strong> filter in MR Tracking!
+                        <strong>Version 2.8.0 is here!</strong> Introducing <strong>Referral Program</strong>, <strong>Work Allocation</strong>, and <strong>Auto-Renewal</strong>!
                         <a href="#downloads" class="underline ml-2 hover:text-blue-200">Download Now &rarr;</a>
                     </p>
                 </div>
@@ -173,10 +173,10 @@
                         instantly.</p>
                     <div
                         class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4">
-                        <a href="https://nregabot.com/updates/NREGABot-v2.7.10-Setup.exe"
+                        <a href="https://nregabot.com/updates/NREGABot-v2.8.0-Setup.exe"
                             class="bg-blue-600 text-white font-bold px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors text-lg w-full sm:w-auto dark:bg-blue-500 dark:hover:bg-blue-600">Download
                             for Windows</a>
-                        <a href="https://nregabot.com/updates/NREGABot-v2.7.10-macOS.dmg"
+                        <a href="https://nregabot.com/updates/NREGABot-v2.8.0-macOS.dmg"
                             class="bg-gray-700 text-white font-bold px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors text-lg w-full sm:w-auto dark:bg-gray-600 dark:hover:bg-gray-700">Download
                             for macOS</a>
                     </div>
@@ -423,6 +423,10 @@
                             <h4>Zero MR <span class="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 font-semibold px-2 py-0.5 rounded-full ml-1">NEW</span></h4>
                             <p class="text-gray-600 dark:text-gray-400 mt-2">A new automation to submit 'Zero MR' for muster rolls that have not been filled between T+8 and T+15 days.</p>
                         </div>
+                        <div class="feature-card bg-white dark:bg-gray-800 p-6 rounded-lg border dark:border-gray-700" data-aos="fade-up" data-aos-delay="???">
+                            <h4>Work Allocation <span class="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 font-semibold px-2 py-0.5 rounded-full ml-1">NEW</span></h4>
+                            <p class="text-gray-600 dark:text-gray-400 mt-2">New automation to allocate work to job cards. Includes a workflow to run automatically after 'Demand' is completed.</p>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -528,38 +532,87 @@
         </section>
     </div>
 
-    <footer class="bg-white border-t dark:bg-gray-900 dark:border-gray-800">
+    <footer class="bg-gray-100 dark:bg-gray-900 border-t border-gray-300 dark:border-gray-800">
         <div class="container mx-auto px-6 py-10">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
-                <div>
-                    <h3 class="font-bold text-gray-900 dark:text-white">NREGA Bot</h3>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">&copy; 2025 Rajat Poddar. All rights
-                        reserved.</p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
+            <!-- Left: Logo & tagline -->
+            <div class="flex flex-col items-center md:items-start">
+                <div class="flex items-center gap-2 mb-3">
+                  <!-- Light mode logo -->
+                  <img src="assets/logo-dark.png" alt="NREGA Bot Logo (Light)" class="h-10 w-10 rounded-full dark:hidden">
+                  <!-- Dark mode logo -->
+                  <img src="assets/logo-white.png" alt="NREGA Bot Logo (Dark)" class="h-10 w-10 rounded-full hidden dark:inline-block">
+                  <h3 class="text-xl font-bold text-gray-900 dark:text-white">NREGA Bot</h3>
                 </div>
-                <div>
-                    <h3 class="font-semibold text-gray-900 dark:text-white">Legal</h3>
-                    <nav class="mt-4 space-y-2"><a href="about.html"
-                            class="text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 block">About Us</a><a
-                            href="privacy.html"
-                            class="text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 block">Privacy
-                            Policy</a><a href="terms.html"
-                            class="text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 block">Terms &
-                            Conditions</a><a href="refund.html"
-                            class="text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 block">Refund Policy</a>
-                    </nav>
-                </div>
-                <div>
-                    <h3 class="font-semibold text-gray-900 dark:text-white">Support</h3>
-                    <nav class="mt-4 space-y-2"><a href="contact.html"
-                            class="text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 block">Contact Us</a><a
-                            href="#faq" class="text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 block">FAQ</a>
-                    </nav>
-                </div>
+      
+              <!-- 24x7 Support badge -->
+              <div class="inline-flex items-center gap-2 text-sm">
+                <span class="px-3 py-1 rounded-full border border-green-500/40 bg-green-50 text-green-700 font-semibold
+                             dark:bg-green-900/30 dark:text-green-300 dark:border-green-600/40">
+                  📞 24×7 Support
+                </span>
+              </div>
+      
+              <p class="text-sm text-gray-600 dark:text-gray-400 mt-3">
+                &copy; 2025 Poddar Solutions. All rights reserved.
+              </p>
             </div>
+      
+            <!-- Middle: Quick Links -->
+            <div>
+              <h3 class="font-semibold text-gray-900 dark:text-white">Quick Links</h3>
+              <nav class="mt-4 space-y-2">
+                <a href="about.html"   class="block text-gray-500 hover:text-blue-600 dark:hover:text-blue-400">About Us</a>
+                <a href="privacy.html" class="block text-gray-500 hover:text-blue-600 dark:hover:text-blue-400">Privacy Policy</a>
+                <a href="terms.html"   class="block text-gray-500 hover:text-blue-600 dark:hover:text-blue-400">Terms &amp; Conditions</a>
+                <a href="refund.html"  class="block text-gray-500 hover:text-blue-600 dark:hover:text-blue-400">Refund Policy</a>
+              </nav>
+            </div>
+      
+            <!-- Right: Support & Payments -->
+            <div class="flex flex-col items-center md:items-end">
+              <h3 class="font-semibold text-gray-900 dark:text-white">Support</h3>
+              <nav class="mt-4 space-y-2 text-center md:text-right">
+                <a href="contact.html" class="block text-gray-500 hover:text-blue-600 dark:hover:text-blue-400">Contact Us</a>
+                <a href="#faq"         class="block text-gray-500 hover:text-blue-600 dark:hover:text-blue-400">FAQ</a>
+                <a href="https://chat.whatsapp.com/your-support-group-link" target="_blank" rel="noopener noreferrer"
+                   class="inline-flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg transition w-full md:w-auto">
+                  <!-- WhatsApp icon -->
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M20.52 3.48A11.94 11.94 0 0 0 12.01 0C5.38 0 .01 5.37.01 12c0 2.11.55 4.14 1.6 5.94L0 24l6.28-1.64A12 12 0 1 0 20.52 3.48ZM12 21.57c-1.88 0-3.67-.49-5.26-1.42l-.38-.22-3.7.97.99-3.63-.23-.38A9.54 9.54 0 1 1 21.57 12 9.57 9.57 0 0 1 12 21.57Zm5.27-7.15c-.29-.15-1.71-.85-1.98-.95-.27-.1-.46-.15-.66.13-.19.28-.75.94-.92 1.14-.17.2-.34.23-.62.08-.29-.14-1.22-.45-2.33-1.44-1-.88-1.63-1.97-1.81-2.29-.18-.33-.02-.5.12-.65.14-.15.29-.34.44-.52.15-.18.2-.3.29-.49.1-.2.05-.37-.02-.52-.07-.15-.65-1.56-.89-2.14-.24-.58-.48-.5-.66-.5l-.56-.01c-.2 0-.5.07-.77.36-.27.29-1.01.99-1.01 2.41s1.06 2.84 1.2 3.03c.14.19 2.04 3.11 4.94 4.37s2.9.84 3.43.78c.53-.06 1.71-.69 1.95-1.36.24-.67.24-1.25.17-1.37-.07-.12-.27-.2-.55-.35Z"/>
+                  </svg>
+                  Join WhatsApp Group
+                </a>
+              </nav>
+      
+              <!-- Payments: Visa, Mastercard, UPI -->
+              <div class="flex items-center gap-4 mt-6">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png" alt="Visa" class="h-6">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/0/04/Mastercard-logo.png" alt="Mastercard" class="h-6">
+      
+                <!-- Inline UPI logo (always shows) -->
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40" class="h-6" aria-label="UPI">
+                  <rect width="120" height="40" fill="none"/>
+                  <!-- UPI word -->
+                  <text x="10" y="26" font-size="20" font-family="Inter, system-ui, Arial, sans-serif"
+                        font-weight="800" fill="currentColor">UPI</text>
+                  <!-- tri-color arrow -->
+                  <polygon points="78,12 88,20 78,28" fill="#ff7a00"></polygon>
+                  <polygon points="88,20 104,20 104,16 88,16" fill="#ff7a00"></polygon>
+                  <polygon points="88,20 104,20 104,24 88,24" fill="#2ea043"></polygon>
+                </svg>
+              </div>
+            </div>
+          </div>
+      
+          <div class="mt-10 border-t border-gray-300 dark:border-gray-700 pt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+            Made with ❤️ by <strong>Rajat Poddar</strong>
+          </div>
         </div>
-    </footer>
+      </footer>
+      
 
-    <script src="https://unpkg.com/swiper/swiper-bundle.min.js"></script>
+      <script src="https://unpkg.com/swiper/swiper-bundle.min.js"></script>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script> <script>
         document.addEventListener('DOMContentLoaded', function () {
              // Initialize AOS
@@ -597,6 +650,41 @@
                     prevEl: '.swiper-button-prev',
                 },
             });
+
+            // --- NEW CODE TO CHECK LOGIN STATUS ---
+            function checkLoginStatus() {
+                // This fetch request asks the license server if the user is logged in
+                fetch('https://license.nregabot.com/check-login-status', {
+                    method: 'GET',
+                    credentials: 'include' // <-- This is CRITICAL. It sends the session cookie.
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.logged_in) {
+                        // User is logged in. Find all login links and update them.
+                        const loginLinks = document.querySelectorAll('a[href*="license.nregabot.com/login"]');
+                        loginLinks.forEach(link => {
+                            link.textContent = 'My Account';
+                            // --- FIX: Added 'https://' to make it an absolute URL ---
+                            link.href = 'https://license.nregabot.com/account'; 
+                        });
+                    }
+                    // If data.logged_in is false, do nothing. The links remain "Login".
+                })
+                .catch(error => {
+                    // This will happen if the server is down or CORS is misconfigured.
+                    // We'll just leave the "Login" button as is.
+                    console.error('Could not check login status:', error);
+                });
+            }
+            
+            checkLoginStatus();
+            // --- END NEW CODE ---
         });
     </script>
 </body>
