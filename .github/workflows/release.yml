@@ -6,6 +6,10 @@ on:
       - main
   workflow_dispatch: {}
 
+permissions:
+  contents: write     # required for releases
+  actions: write      # required for artifact cleanup
+
 jobs:
   # --- Extract version & changelog ---
   get-release-info:
