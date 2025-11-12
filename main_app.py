@@ -718,7 +718,7 @@ class NregaBotApp(ctk.CTk):
             self.driver = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=opts)
             self.active_browser = "firefox"; 
             self.play_sound("success")
-            messagebox.showinfo("Browser Launched", "Firefox is starting. Please log in.")
+            #messagebox.showinfo("Browser Launched", "Firefox is starting. Please log in.")
             self.driver.get(config.MAIN_WEBSITE_URL); self.driver.execute_script("window.open(arguments[0], '_blank');", "https://bookmark.nregabot.com/")
             self.driver.switch_to.window(self.driver.window_handles[0])
         except Exception as e: 

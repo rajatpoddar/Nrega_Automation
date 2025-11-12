@@ -90,41 +90,6 @@ jobs:
               dist/installer/*.exe
               dist/NREGABot-v${{ needs.get-release-info.outputs.version }}-Windows-Portable.zip
   
-  # --- Build Job for macOS ---
-  build-macos:
-    name: Build for macOS (Universal)
-    needs: get-release-info
-    runs-on: macos-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Create .env file
-        run: echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" > .env
-
-      - name: Install create-dmg
-        run: brew install create-dmg
-
-      - name: Make build script executable
-        run: chmod +x build_macos.sh
-
-      - name: Run macOS build script
-        run: ./build_macos.sh
-
-      - name: Upload macOS artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-build
-          path: dist/NREGABot-v${{ needs.get-release-info.outputs.version }}-macOS.dmg
-
   # --- Build Job for Linux ---
   build-linux:
     name: Build for Linux (Portable)
@@ -177,7 +142,7 @@ jobs:
   # --- Publish Release ---
   publish-release:
     name: Publish GitHub Release
-    needs: [get-release-info, build-windows, build-macos, build-linux]
+    needs: [get-release-info, build-windows, build-linux] # Removed build-macos
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -195,5 +160,21 @@ jobs:
           tag_name: v${{ needs.get-release-info.outputs.version }}
           files: |
             artifacts/windows-builds/**/*
-            artifacts/macos-build/*
             artifacts/linux-build/*
+
+  # --- NEW JOB: Cleanup temporary artifacts after release ---
+  cleanup-artifacts:
+    name: Cleanup Temporary Artifacts
+    needs: [publish-release] # Runs after release job
+    runs-on: ubuntu-latest
+    if: always() # Ensures this runs even if publish-release fails
+    steps:
+      - name: Delete windows artifacts
+        uses: actions/delete-artifact@v5
+        with:
+          name: windows-builds
+
+      - name: Delete linux artifact
+        uses: actions/delete-artifact@v5
+        with:
+          name: linux-build
