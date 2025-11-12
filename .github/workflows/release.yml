@@ -1,14 +1,13 @@
-# .github/workflows/release.yml
 name: Create Application Release
 
 on:
   push:
     branches:
-      - main   # runs automatically on every push to main
-  workflow_dispatch: {} # still allows manual trigger if needed
+      - main
+  workflow_dispatch: {}
 
 jobs:
-  # Extract version & changelog
+  # --- Extract version & changelog ---
   get-release-info:
     name: Get Release Information
     runs-on: ubuntu-latest
@@ -41,61 +40,72 @@ jobs:
 
   # --- Build Job for Windows ---
   build-windows:
-      name: Build for Windows
-      needs: get-release-info
-      runs-on: windows-latest
-      steps:
-        - name: Checkout code
-          uses: actions/checkout@v4
+    name: Build for Windows
+    needs: get-release-info
+    runs-on: windows-latest
+    steps:
+      - name: Purge old artifacts (cleanup before build)
+        uses: kolpav/purge-artifacts@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          expire-in: 1d
+
+      - name: Checkout code
+        uses: actions/checkout@v4
   
-        - name: Set up Python
-          uses: actions/setup-python@v5
-          with:
-            python-version: '3.11'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
   
-        - name: Install dependencies
-          run: pip install -r requirements.txt
+      - name: Install dependencies
+        run: pip install -r requirements.txt
   
-        - name: Create .env file
-          run: echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" > .env
-          shell: bash
+      - name: Create .env file
+        run: echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" > .env
+        shell: bash
   
-        # ✅ Install Inno Setup
-        - name: Install Inno Setup
-          run: |
-            choco install innosetup --yes
-          shell: powershell
+      - name: Install Inno Setup
+        run: choco install innosetup --yes
+        shell: powershell
   
-        # ✅ Run build script with version env
-        - name: Run Windows build script
-          run: |
-            set APP_VERSION=${{ needs.get-release-info.outputs.version }}
-            build_windows.bat
-          shell: cmd
+      - name: Run Windows build script
+        run: |
+          set APP_VERSION=${{ needs.get-release-info.outputs.version }}
+          build_windows.bat
+        shell: cmd
   
-        - name: Debug - List dist/installer
-          run: dir dist\installer
-          shell: cmd
+      - name: Debug - List dist/installer
+        run: dir dist\installer
+        shell: cmd
   
-        - name: Create Portable ZIP archive
-          run: |
-            $version = "${{ needs.get-release-info.outputs.version }}"
-            Compress-Archive -Path dist/'NREGA Bot.exe' -DestinationPath dist/NREGABot-v$version-Windows-Portable.zip
+      - name: Create Portable ZIP archive
+        run: |
+          $version = "${{ needs.get-release-info.outputs.version }}"
+          Compress-Archive -Path dist/'NREGA Bot.exe' -DestinationPath dist/NREGABot-v$version-Windows-Portable.zip
   
-        - name: Upload Windows artifacts
-          uses: actions/upload-artifact@v4
-          with:
-            name: windows-builds
-            path: |
-              dist/installer/*.exe
-              dist/NREGABot-v${{ needs.get-release-info.outputs.version }}-Windows-Portable.zip
-  
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-builds
+          path: |
+            dist/installer/*.exe
+            dist/NREGABot-v${{ needs.get-release-info.outputs.version }}-Windows-Portable.zip
+          retention-days: 1
+
+
   # --- Build Job for Linux ---
   build-linux:
     name: Build for Linux (Portable)
     needs: get-release-info
     runs-on: ubuntu-latest
     steps:
+      - name: Purge old artifacts (cleanup before build)
+        uses: kolpav/purge-artifacts@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          expire-in: 1d
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -138,11 +148,13 @@ jobs:
         with:
           name: linux-build
           path: dist/NREGABot-v${{ needs.get-release-info.outputs.version }}-Linux.tar.gz
+          retention-days: 1
+
 
   # --- Publish Release ---
   publish-release:
     name: Publish GitHub Release
-    needs: [get-release-info, build-windows, build-linux] # Removed build-macos
+    needs: [get-release-info, build-windows, build-linux]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -162,19 +174,15 @@ jobs:
             artifacts/windows-builds/**/*
             artifacts/linux-build/*
 
-  # --- NEW JOB: Cleanup temporary artifacts after release ---
+  # --- Cleanup Temporary Artifacts ---
   cleanup-artifacts:
     name: Cleanup Temporary Artifacts
-    needs: [publish-release] # Runs after release job
+    needs: [publish-release]
     runs-on: ubuntu-latest
-    if: always() # Ensures this runs even if publish-release fails
+    if: always()
     steps:
-      - name: Delete windows artifacts
-        uses: actions/delete-artifact@v5
+      - name: Delete all artifacts after release
+        uses: kolpav/purge-artifacts@v1
         with:
-          name: windows-builds
-
-      - name: Delete linux artifact
-        uses: actions/delete-artifact@v5
-        with:
-          name: linux-build
+          token: ${{ secrets.GITHUB_TOKEN }}
+          expire-in: 1s
