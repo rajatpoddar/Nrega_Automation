@@ -45,10 +45,10 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Purge old artifacts (cleanup before build)
-        uses: kolpav/purge-artifacts@v1
+        uses: c-hive/gha-remove-artifacts@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          expire-in: 1d
+          age: '1 day'
+          skip-recent: 1
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -101,10 +101,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Purge old artifacts (cleanup before build)
-        uses: kolpav/purge-artifacts@v1
+        uses: c-hive/gha-remove-artifacts@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          expire-in: 1d
+          age: '1 day'
+          skip-recent: 1
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -182,7 +182,7 @@ jobs:
     if: always()
     steps:
       - name: Delete all artifacts after release
-        uses: kolpav/purge-artifacts@v1
+        uses: c-hive/gha-remove-artifacts@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          expire-in: 1s
+          age: '1 minute'
+          skip-recent: 0
