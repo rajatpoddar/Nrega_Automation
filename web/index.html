@@ -489,6 +489,27 @@
             </section>
         </section>
 
+        <section id="stats" class="py-16 bg-gray-100 dark:bg-black/50">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12" data-aos="fade-up">
+                    <h3 class="text-3xl font-bold text-gray-900 dark:text-white">Join Our Growing Community</h3>
+                    <p class="text-gray-600 mt-2 dark:text-gray-400">Trusted by operators and staff across the country.</p>
+                </div>
+                <div class="max-w-3xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="bg-white dark:bg-gray-800 p-8 rounded-lg border dark:border-gray-700 text-center" data-aos="fade-up" data-aos-delay="100">
+                        <span id="total-users-count" class="text-5xl font-extrabold text-blue-600 dark:text-blue-400">0</span>
+                        <p class="text-xl font-semibold text-gray-700 dark:text-gray-300 mt-2">Total Users</h>
+                        <p class="text-gray-500 dark:text-gray-400">Includes all trial and paid members who have joined.</p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 p-8 rounded-lg border dark:border-gray-700 text-center" data-aos="fade-up" data-aos-delay="200">
+                        <span id="paid-users-count" class="text-5xl font-extrabold text-green-600 dark:text-green-400">0</span>
+                        <p class="text-xl font-semibold text-gray-700 dark:text-gray-300 mt-2">Paid Subscriptions</p>
+                        <p class="text-gray-500 dark:text-gray-400">Total number of licenses purchased and renewed.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <section id="faq" class="py-16 lg:py-20">
             <div class="container mx-auto px-6">
                 <div class="text-center mb-16" data-aos="fade-up">
@@ -685,6 +706,94 @@
             
             checkLoginStatus();
             // --- END NEW CODE ---
+            // --- START NEW CODE for Stats Counter (Updated with Scroll Animation) ---
+            function animateCountUp(elementId, endValue) {
+                const element = document.getElementById(elementId);
+                if (!element) return;
+
+                let startValue = 0;
+                const duration = 2000; // 2 seconds
+                const frameDuration = 1000 / 60; // 60 fps
+                const totalFrames = Math.round(duration / frameDuration);
+                const increment = (endValue - startValue) / totalFrames;
+                
+                let currentFrame = 0;
+
+                const counter = () => {
+                    currentFrame++;
+                    let currentValue = startValue + (increment * currentFrame);
+
+                    if (currentFrame === totalFrames) {
+                        currentValue = endValue; // Ensure it ends exactly
+                    }
+
+                    // en-IN format (e.g., 1,500) ke liye
+                    element.textContent = Math.floor(currentValue).toLocaleString('en-IN');
+
+                    if (currentFrame < totalFrames) {
+                        requestAnimationFrame(counter);
+                    }
+                };
+                requestAnimationFrame(counter);
+            }
+
+            function fetchPublicStats() {
+                // Naye API endpoint ko call karein
+                fetch('https://license.nregabot.com/api/public-stats', {
+                    method: 'GET'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.total_users && data.paid_users) {
+                        // Animation start karein
+                        animateCountUp('total-users-count', data.total_users);
+                        animateCountUp('paid-users-count', data.paid_users);
+                    }
+                })
+                .catch(error => {
+                    console.error('Could not fetch public stats:', error);
+                    // Agar API fail ho, toh ek default number dikha dein
+                    document.getElementById('total-users-count').textContent = "500+";
+                    document.getElementById('paid-users-count').textContent = "150+";
+                });
+            }
+
+            // --- NEW Intersection Observer Logic ---
+            // Yeh stats section ko target karega
+            const statsSection = document.getElementById('stats'); 
+            
+            const observerOptions = {
+                root: null, // viewport
+                threshold: 0.1 // Jab 10% section dikhe tab trigger ho
+            };
+
+            const statsObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        // Element ab dikh raha hai, animation start karo
+                        fetchPublicStats();
+                        // Animation dobara na chale isliye observe karna band karo
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, observerOptions);
+
+            // Stats section ko observe karna shuru karo
+            if (statsSection) {
+                statsObserver.observe(statsSection);
+            } else {
+                // Fallback (agar stats section na mile toh)
+                fetchPublicStats();
+            }
+            // --- END NEW Intersection Observer Logic ---
+
+            // --- END NEW CODE for Stats Counter ---
+
         });
     </script>
 </body>
