@@ -1,13 +1,17 @@
 name: Build & publish release assets
 
+# set explicit permissions needed to create releases & upload contents
+permissions:
+  contents: write     # required for uploading release assets
+  releases: write     # give explicit release write permission
+
 on:
   push:
     tags:
-      - 'v*'            # trigger when you push tag like v1.2.3
-  workflow_dispatch:    # allow manual runs (optionally)
+      - 'v*'
+  workflow_dispatch:
 
 jobs:
-  # Create the GitHub Release once and expose the upload_url to other jobs
   create_release:
     runs-on: ubuntu-latest
     outputs:
@@ -15,91 +19,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Resolve token to use
+        id: token
+        run: |
+          # prefer a repository secret RELEASE_PAT (Personal Access Token) if set,
+          # otherwise fall back to the built-in GITHUB_TOKEN
+          if [ -n "${{ secrets.RELEASE_PAT }}" ]; then
+            echo "token_type=pat" >> $GITHUB_OUTPUT
+            echo "token=${{ secrets.RELEASE_PAT }}" >> $GITHUB_OUTPUT
+          else
+            echo "token_type=ghtt" >> $GITHUB_OUTPUT
+            echo "token=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
         with:
-          # github.ref_name is the tag name for push/tag events; workflow_dispatch will use github.sha fallback
+          # tag name for push/tag events; fallback to SHA for manual dispatch
           tag_name: ${{ github.ref_name || github.sha }}
           release_name: Release ${{ github.ref_name || github.sha }}
           body: Automated release from workflow
           draft: false
           prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # Build on multiple platforms and upload each binary straight to the Release
-  build-and-upload:
-    needs: create_release
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        # OS runners and a short label for naming
-        include:
-          - os: ubuntu-latest
-            label: linux
-          - os: windows-latest
-            label: windows
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up (example)
-        run: |
-          echo "Running on $RUNNER_OS"
-        # You can add specific setup actions per platform if needed (e.g., setup-python, setup-go, setup-node)
-
-      - name: Build (produce platform artifact)
-        # This step produces the file in ./dist and names it using the tag and platform.
-        run: |
-          set -e
-          mkdir -p dist
-          TAG="${GITHUB_REF_NAME:-${GITHUB_SHA}}"
-          # Make TAG safe when using workflow_dispatch or if GITHUB_REF_NAME is empty
-          if [ -z "$TAG" ] || [ "$TAG" = "refs/heads/"* ]; then
-            TAG="${GITHUB_SHA}"
-          fi
-          # Build commands differ by runner OS
-          if [ "${{ matrix.label }}" = "linux" ]; then
-            # Example linux build — replace with your actual build command(s)
-            echo "dummy linux binary" > dist/myapp-${TAG}-linux.txt
-            tar -czf dist/myapp-${TAG}-linux.tar.gz -C dist myapp-${TAG}-linux.txt
-            echo "artifact=dist/myapp-${TAG}-linux.tar.gz" >> $GITHUB_OUTPUT
-          else
-            # For Windows runner (this script is run inside a bash shell on windows-latest too)
-            # Use PowerShell if you prefer; here we create a zip with Powershell Compress-Archive
-            powershell -Command "if (-not (Test-Path -Path dist)) { New-Item -ItemType Directory -Path dist | Out-Null }"
-            powershell -Command "Set-Content -Path dist\\myapp-${TAG}-windows.txt -Value 'dummy windows binary'"
-            powershell -Command "Compress-Archive -Path dist\\myapp-${TAG}-windows.txt -DestinationPath dist\\myapp-${TAG}-windows.zip -Force"
-            echo "artifact=dist/myapp-${TAG}-windows.zip" >> $GITHUB_OUTPUT
-          fi
-        shell: bash
-
-      - name: Determine artifact path & name
-        id: artifact_info
-        run: |
-          # Read artifact variable emitted above by Build step
-          # If not set, fallback to searching dist/
-          ART="${artifact:-}"
-          if [ -z "$ART" ]; then
-            ART=$(ls dist | head -n1)
-            ART="dist/$ART"
-          fi
-          echo "artifact_path=$ART" >> $GITHUB_OUTPUT
-          # Compose a friendly name for the asset (e.g., myapp-v1.2.3-linux.tar.gz)
-          TAG="${GITHUB_REF_NAME:-${GITHUB_SHA}}"
-          if [ -z "$TAG" ] || [ "$TAG" = "refs/heads/"* ]; then TAG="${GITHUB_SHA}"; fi
-          # Choose extension from filename
-          BASENAME=$(basename "$ART")
-          echo "asset_name=${BASENAME}" >> $GITHUB_OUTPUT
-
-      - name: Upload release asset
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: ${{ steps.artifact_info.outputs.artifact_path }}
-          asset_name: ${{ steps.artifact_info.outputs.asset_name }}
-          # pick an appropriate content type, change if needed
-          asset_content_type: application/octet-stream
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # pass the chosen token (PAT preferred)
+          token: ${{ steps.token.outputs.token }}
