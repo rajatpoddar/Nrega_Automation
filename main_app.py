@@ -16,6 +16,7 @@ from location_data import STATE_DISTRICT_MAP
 from selenium import webdriver
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.edge.options import Options as EdgeOptions
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium.webdriver.firefox.service import Service as FirefoxService
 from webdriver_manager.firefox import GeckoDriverManager
@@ -253,6 +254,7 @@ class NregaBotApp(ctk.CTk):
         self.header_welcome_suffix_label = None
 
         self._load_icon("chrome", "assets/icons/chrome.png")
+        self._load_icon("edge", "assets/icons/edge.png")
         self._load_icon("firefox", "assets/icons/firefox.png")
         self._load_icon("nrega", "assets/icons/nrega.png")
         self._load_icon("whatsapp", "assets/icons/whatsapp.png")
@@ -664,6 +666,7 @@ class NregaBotApp(ctk.CTk):
             if name != "About": btn.configure(state="disabled")
         if hasattr(self, 'launch_chrome_btn'):
             self.launch_chrome_btn.configure(state="disabled")
+            self.launch_edge_btn.configure(state="disabled")
             self.launch_firefox_btn.configure(state="disabled")
             self.theme_combo.configure(state="disabled")
             if hasattr(self, 'sound_switch'): self.sound_switch.configure(state="disabled") # Disable sound switch
@@ -671,7 +674,7 @@ class NregaBotApp(ctk.CTk):
 
     def _unlock_app(self):
         for btn in self.nav_buttons.values(): btn.configure(state="normal")
-        self.launch_chrome_btn.configure(state="normal"); self.launch_firefox_btn.configure(state="normal")
+        self.launch_chrome_btn.configure(state="normal"); self.launch_edge_btn.configure(state="normal"); self.launch_firefox_btn.configure(state="normal") # <-- IS LINE KO UPDATE KAREIN
         self.theme_combo.configure(state="normal")
         if hasattr(self, 'sound_switch'): self.sound_switch.configure(state="normal") # Enable sound switch
 
@@ -709,6 +712,31 @@ class NregaBotApp(ctk.CTk):
             self.play_sound("error")
             messagebox.showerror("Error", f"Failed to launch Chrome:\n{e}")
 
+    def launch_edge_detached(self):
+        port, p_dir = "9223", os.path.join(os.path.expanduser("~"), "EdgeProfileForNREGABot") # Different port and profile
+        os.makedirs(p_dir, exist_ok=True)
+        paths = {
+            "Darwin": ["/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"], 
+            "Windows": [
+                r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe", 
+                r"C:\Program Files\Microsoft\Edge\Application\msedge.exe"
+            ]
+        }
+        b_path = next((p for p in paths.get(config.OS_SYSTEM, []) if os.path.exists(p)), None)
+        if not b_path: 
+            self.play_sound("error")
+            messagebox.showerror("Error", "Microsoft Edge not found."); 
+            return
+        try:
+            cmd = [b_path, f"--remote-debugging-port={port}", f"--user-data-dir={p_dir}", config.MAIN_WEBSITE_URL, "https://bookmark.nregabot.com/"]
+            flags = 0x00000008 if config.OS_SYSTEM == "Windows" else 0
+            subprocess.Popen(cmd, creationflags=flags, start_new_session=(config.OS_SYSTEM != "Windows"))
+            self.play_sound("success")
+            messagebox.showinfo("Edge Launched", "Edge is starting. Please log in to the NREGA website.")
+        except Exception as e: 
+            self.play_sound("error")
+            messagebox.showerror("Error", f"Failed to launch Edge:\n{e}")
+
     def launch_firefox_managed(self):
         if self.driver and messagebox.askyesno("Browser Running", "Close existing Firefox and start new?"): self.driver.quit(); self.driver = None
         elif self.driver: return
@@ -731,12 +759,22 @@ class NregaBotApp(ctk.CTk):
         if self.driver:
             try: _ = self.driver.window_handles; ff_active = True
             except WebDriverException: self.driver = None
+        
         cr_active = False
         try:
             with socket.create_connection(("127.0.0.1", 9222), timeout=0.1): cr_active = True
         except (socket.timeout, ConnectionRefusedError): pass
+        
+        edge_active = False # <-- YEH LINE ADD KAREIN
+        try: # <-- YAHAN SE ADD KAREIN
+            with socket.create_connection(("127.0.0.1", 9223), timeout=0.1): edge_active = True
+        except (socket.timeout, ConnectionRefusedError): pass
+        # --- YAHAN TAK ADD KAREIN ---
+
         if ff_active: self.active_browser = "firefox"; return self.driver
         if cr_active: return self._connect_to_chrome()
+        if edge_active: return self._connect_to_edge() # <-- YEH LINE ADD KAREIN
+        
         self.play_sound("error")
         messagebox.showerror("Connection Failed", "No browser is running. Please launch one first."); return None
 
@@ -747,6 +785,17 @@ class NregaBotApp(ctk.CTk):
         except WebDriverException as e: 
             self.play_sound("error")
             messagebox.showerror("Connection Failed", f"Could not connect to Chrome.\nError: {e}"); return None
+        
+    def _connect_to_edge(self):
+        try:
+            opts = EdgeOptions()
+            opts.add_experimental_option("debuggerAddress", "127.0.0.1:9223") # Use port 9223
+            driver = webdriver.Edge(options=opts) # Use webdriver.Edge
+            self.active_browser = 'edge' # Set active browser
+            return driver
+        except WebDriverException as e: 
+            self.play_sound("error")
+            messagebox.showerror("Connection Failed", f"Could not connect to Edge.\nError: {e}"); return None
         
     def _get_work_area(self):
         """Returns the usable work area (x, y, width, height) respecting taskbars."""
@@ -798,6 +847,9 @@ class NregaBotApp(ctk.CTk):
         
         self.launch_chrome_btn = ctk.CTkButton(controls, text="Chrome", image=self.icon_images.get("chrome"), command=self.launch_chrome_detached, width=100)
         self.launch_chrome_btn.pack(side="left", padx=(0,5))
+
+        self.launch_edge_btn = ctk.CTkButton(controls, text="Edge", image=self.icon_images.get("edge"), command=self.launch_edge_detached, width=100) # <-- YEH LINE ADD KAREIN
+        self.launch_edge_btn.pack(side="left", padx=(0,5))
 
         self.launch_firefox_btn = ctk.CTkButton(controls, text="Firefox", image=self.icon_images.get("firefox"), command=self.launch_firefox_managed, width=100)
         self.launch_firefox_btn.pack(side="left", padx=(0,10))

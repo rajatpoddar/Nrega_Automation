@@ -9,6 +9,13 @@ import pandas as pd
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 
+# --- Imports jo add kiye gaye hain ---
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager
+# --- End Imports ---
+
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -40,10 +47,14 @@ class MrTrackingTab(BaseAutomationTab):
             "Panchayat Name", "Muster Roll No.", "Work Code", "Wagelist Number", "Labour Name", "Jobcard Number"
         ]
         
+        # --- Naya Badlaav: Is tab ka apna driver hoga ---
+        self.driver = None
+        
         self._create_widgets()
         self.load_inputs()
 
     def _create_widgets(self):
+        # (Is function mein koi badlaav nahi hai)
         # Frame for all user input controls
         controls_frame = ctk.CTkFrame(self)
         controls_frame.grid(row=0, column=0, sticky="new", padx=10, pady=10)
@@ -200,7 +211,7 @@ class MrTrackingTab(BaseAutomationTab):
         # --- END NEW TAB ---
 
     def _on_filter_check_changed(self):
-        """Handles clicks for all three filter checkboxes to make them mutually exclusive."""
+        # (Is function mein koi badlaav nahi hai)
         
         # Determine which checkbox (if any) is now checked
         if self.zero_mr_filter_var.get() == 1:
@@ -231,6 +242,7 @@ class MrTrackingTab(BaseAutomationTab):
             self.zero_mr_filter_check.configure(state="normal")
 
     def set_ui_state(self, running: bool):
+        # (Is function mein koi badlaav nahi hai)
         self.set_common_ui_state(running)
         state = "disabled" if running else "normal"
         
@@ -257,6 +269,7 @@ class MrTrackingTab(BaseAutomationTab):
         self.abps_export_format_menu.configure(state=state)
 
     def set_for_abps_check(self):
+        # (Is function mein koi badlaav nahi hai)
         """
         Pre-sets the UI to check for 'Pending for ABPS'.
         Called from another tab (e.g., FTO Generation).
@@ -270,6 +283,7 @@ class MrTrackingTab(BaseAutomationTab):
 
 
     def reset_ui(self, reset_all_filters=True):
+        # (Is function mein koi badlaav nahi hai)
         # Clear inputs (optional, based on user preference)
         # self.state_entry.delete(0, tkinter.END)
         # ...
@@ -289,6 +303,36 @@ class MrTrackingTab(BaseAutomationTab):
         self.app.log_message(self.log_display, "Form has been reset.")
         self.update_status("Ready", 0.0)
         
+    # --- Naya Function: Naya browser instance banane ke liye (HEADLESS) ---
+    def _get_new_driver(self):
+        """
+        Ek naya, alag HEADLESS Chrome browser instance banata hai.
+        """
+        self.app.log_message(self.log_display, "Naya Headless Chrome browser shuru kar raha hoon...", "info")
+        try:
+            chrome_options = ChromeOptions()
+            
+            # --- YEH LINE HEADLESS MODE ENABLE KARTI HAI ---
+            chrome_options.add_argument("--headless")
+            # --- END HEADLESS ---
+
+            # Headless browser ko ek size dena zaroori hai
+            chrome_options.add_argument("--window-size=1920,1080") 
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"]) # "Chrome is being controlled" banner hatane ke liye
+            
+            # webdriver-manager ka istemaal karke driver manage karein
+            service = ChromeService(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service, options=chrome_options)
+            
+            self.app.log_message(self.log_display, "Headless browser safaltapoorvak shuru ho gaya.", "info")
+            return driver
+        except Exception as e:
+            self.app.log_message(self.log_display, f"Headless browser shuru karne mein BADI GADBAD: {e}", "error")
+            messagebox.showerror("Browser Error", f"Naya Headless Chrome browser shuru nahi ho saka.\n\nError: {e}\n\nKya Chrome installed hai?")
+            return None
+
+    # --- Badlaav: `start_automation` ab naya driver banayega ---
     def start_automation(self):
         self.run_mr_payment_button.pack_forget() # Hide button on new run
         self.run_emb_entry_button.pack_forget() # Hide button on new run
@@ -308,11 +352,6 @@ class MrTrackingTab(BaseAutomationTab):
             'zero_mr_filter': self.zero_mr_filter_var.get() == 1 # <-- New
         }
         
-        # --- NEW: Get State Code for search ---
-        # We need the state *value* (e.g., 'JHARKHAND') not the code for the first page,
-        # but we'll need the district *code* for the wagelist search.
-        # Let's assume for now the wagelist search uses names.
-        
         if not all([inputs['state'], inputs['district'], inputs['block'], inputs['panchayat']]):
             messagebox.showwarning("Input Error", "State, District, Block, and Panchayat are required."); return
         
@@ -322,10 +361,27 @@ class MrTrackingTab(BaseAutomationTab):
         self.app.update_history("mr_track_block", inputs['block'])
         self.app.update_history("mr_track_panchayat", inputs['panchayat'])
         
+        # --- NAYA BADLAAV: Driver ko yahan banayein ---
+        if self.driver:
+            self.app.log_message(self.log_display, "Ek automation pehle se chal raha hai. Rukiye...", "warning")
+            messagebox.showwarning("Automation Jaari Hai", "Report generation pehle se chal raha hai.")
+            return
+        
+        self.driver = self._get_new_driver() # Naya driver banayein
+        if not self.driver:
+            self.app.log_message(self.log_display, "ERROR: WebDriver nahi mila. Automation ruka.", "error")
+            return # Driver nahi mila toh kuch mat karo
+        
+        # UI ko lock karein
+        self.app.after(0, self.set_ui_state, True) 
+        
+        # Ab thread start karein (yeh self.driver ka istemaal karega)
         self.app.start_automation_thread(self.automation_key, self.run_automation_logic, args=(inputs,))
+        # --- End Badlaav ---
 
+    # --- Badlaav: `run_automation_logic` ab `self.driver` ka istemaal karega ---
     def run_automation_logic(self, inputs):
-        self.app.after(0, self.set_ui_state, True)
+        # self.app.after(0, self.set_ui_state, True) <-- Yeh line `start_automation` mein chali gayi hai
         self.app.after(0, self.app.set_status, "Starting MR Tracking...") # App-wide status
         self.app.after(0, self.update_status, "Initializing...", 0.0) # Tab-specific status
         self.app.clear_log(self.log_display)
@@ -334,9 +390,10 @@ class MrTrackingTab(BaseAutomationTab):
         self.zero_mr_data = [] # <-- NEW: Initialize list for Zero MR data
         
         try:
-            driver = self.app.get_driver()
+            # driver = self.app.get_driver() # <-- YEH LINE HATA DI GAYI
+            driver = self.driver # <-- NAYA: self.driver ka istemaal karein
             if not driver:
-                self.app.after(0, self.app.set_status, "Browser not found")
+                self.app.log_message(self.log_display, "ERROR: Browser driver not found.", "error")
                 return # Exit early
                 
             wait = WebDriverWait(driver, 20)
@@ -468,6 +525,12 @@ class MrTrackingTab(BaseAutomationTab):
                 elif inputs['pending_only']:
                     if not is_pending_filling:
                         continue 
+
+                    # NAYA CHECK: Agar pending hai, toh check karo ki '0 days' wala hai ya nahi
+                    if muster_status == "Pending for filling of Muster since 0 days of closure of MR":
+                        self.app.log_message(self.log_display, f"Skipping MR {muster_roll_no} (0 days pending).", "info")
+                        continue # Is row ko skip kar do
+                    
                 elif inputs['zero_mr_filter']:
                     # Store data including the panchayat name from the row
                     self.zero_mr_data.append({
@@ -551,9 +614,19 @@ class MrTrackingTab(BaseAutomationTab):
             self.app.log_message(self.log_display, f"Processing complete. {self.success_message.replace('MR Tracking complete. ', '')}", "success")
             
         except (TimeoutException, NoSuchElementException, StaleElementReferenceException) as e:
-            error_msg = f"A browser error occurred: {str(e).splitlines()[0]}"
-            self.app.log_message(self.log_display, error_msg, "error")
-            messagebox.showerror("Automation Error", error_msg)
+            # --- NAYA: Retry logic ---
+            if driver and "Session Expired" in driver.page_source:
+                self.app.log_message(self.log_display, "Session expired, par yeh headless hai, isliye retry nahi kar rahe.", "warning")
+                # Yahan retry logic add kar sakte hain, lekin headless mein session manage karna alag hai.
+                # Abhi ke liye, error de kar exit karte hain.
+                error_msg = "Session Expired during headless operation. Please try again."
+                self.app.log_message(self.log_display, error_msg, "error")
+                messagebox.showerror("Automation Error", error_msg)
+            else:
+                error_msg = f"A browser error occurred: {str(e).splitlines()[0]}"
+                self.app.log_message(self.log_display, error_msg, "error")
+                messagebox.showerror("Automation Error", error_msg)
+                
             self.app.after(0, self.app.set_status, "Browser Error")
             self.success_message = None
         except Exception as e:
@@ -562,7 +635,18 @@ class MrTrackingTab(BaseAutomationTab):
             self.app.after(0, self.app.set_status, "Unexpected Error")
             self.success_message = None
         finally:
-            self.app.after(0, self.set_ui_state, False)
+            # --- NAYA BADLAAV: Driver ko yahan quit karein ---
+            if self.driver: # self.driver ko check karein
+                try:
+                    self.driver.quit()
+                    self.app.after(0, self.app.log_message, self.log_display, "Automation ne browser ko band kar diya hai.", "info")
+                except Exception as e:
+                    self.app.after(0, self.app.log_message, self.log_display, f"Browser band karne mein error: {e}", "warning")
+            
+            self.driver = None # Tab ka driver state reset karein
+            # --- End Badlaav ---
+            
+            self.app.after(0, self.set_ui_state, False) # UI ko unlock karein
             
             final_app_status = "Automation Stopped" if self.app.stop_events[self.automation_key].is_set() else \
                               ("Automation Finished" if hasattr(self, 'success_message') and self.success_message else "Automation Failed")
@@ -590,6 +674,7 @@ class MrTrackingTab(BaseAutomationTab):
 
     # --- NEW METHOD to search wagelist ---
     def _search_wagelist_for_pending_abps(self, driver, wait, inputs, wagelist_no, mr_list, main_window_handle):
+        # (Is function mein koi badlaav nahi hai)
         try:
             # Open homesearch in a new tab to avoid issues
             self.app.log_message(self.log_display, f"   Opening homesearch tab for {wagelist_no}...")
@@ -710,6 +795,7 @@ class MrTrackingTab(BaseAutomationTab):
             time.sleep(0.5) # Small pause
 
     def _run_mr_payment(self):
+        # (Is function mein koi badlaav nahi hai)
         """Called when the 'Run MR Payment' button is clicked."""
         workcodes = self.workcode_textbox.get("1.0", tkinter.END).strip()
         panchayat_name = self.panchayat_entry.get().strip()
@@ -726,6 +812,7 @@ class MrTrackingTab(BaseAutomationTab):
         self.app.switch_to_msr_tab_with_data(workcodes, panchayat_name)
 
     def _run_emb_entry(self):
+        # (Is function mein koi badlaav nahi hai)
         """Called when the 'Run eMB Entry' button is clicked."""
         workcodes = self.workcode_textbox.get("1.0", tkinter.END).strip()
         panchayat_name = self.panchayat_entry.get().strip()
@@ -743,6 +830,7 @@ class MrTrackingTab(BaseAutomationTab):
 
     # --- NEW: Updated function to send data to Zero MR tab ---
     def _run_zero_mr(self):
+        # (Is function mein koi badlaav nahi hai)
         """Called when the 'Forward to Zero MR' button is clicked."""
         if not hasattr(self, 'zero_mr_data') or not self.zero_mr_data:
             messagebox.showwarning("No Data", "No Workcode/MSR data found to forward.", parent=self)
@@ -758,12 +846,14 @@ class MrTrackingTab(BaseAutomationTab):
         self.app.switch_to_zero_mr_tab_with_data(self.zero_mr_data)
 
     def _update_workcode_textbox(self, text):
+        # (Is function mein koi badlaav nahi hai)
         self.workcode_textbox.configure(state="normal")
         self.workcode_textbox.delete("1.0", tkinter.END)
         self.workcode_textbox.insert("1.0", text)
         self.workcode_textbox.configure(state="disabled")
 
     def _copy_workcodes(self):
+        # (Is function mein koi badlaav nahi hai)
         text = self.workcode_textbox.get("1.0", tkinter.END).strip()
         if text:
             self.app.clipboard_clear()
@@ -773,6 +863,7 @@ class MrTrackingTab(BaseAutomationTab):
             messagebox.showwarning("Empty", "There are no workcodes to copy.", parent=self)
 
     def export_report(self):
+        # (Is function mein koi badlaav nahi hai)
         if not self.results_tree.get_children():
             messagebox.showinfo("No Data", "There are no results to export.")
             return
@@ -865,6 +956,7 @@ class MrTrackingTab(BaseAutomationTab):
 
     # --- NEW: Export for ABPS Tab ---
     def _export_abps_report(self):
+        # (Is function mein koi badlaav nahi hai)
         if not self.abps_results_tree.get_children():
             messagebox.showinfo("No Data", "There are no ABPS results to export.")
             return
@@ -909,6 +1001,7 @@ class MrTrackingTab(BaseAutomationTab):
     # --- END NEW METHOD ---
 
     def _save_to_excel(self, data, headers, full_title, file_path):
+        # (Is function mein koi badlaav nahi hai)
         """Saves the data to an Excel file with formatting."""
         try:
             df = pd.DataFrame(data, columns=headers)
@@ -946,6 +1039,7 @@ class MrTrackingTab(BaseAutomationTab):
             return False
 
     def generate_report_pdf(self, data, headers, col_widths, title, date_str, file_path):
+        # (Is function mein koi badlaav nahi hai)
         """ Overrides base method to use Unicode font, add footer, adjust formatting, and reduce row gaps. """
         
         class PDFWithFooter(FPDF):
@@ -1042,6 +1136,7 @@ class MrTrackingTab(BaseAutomationTab):
             return False
 
     def _save_to_png(self, data, headers, title, date_str, file_path):
+        # (Is function mein koi badlaav nahi hai)
         """Generates a professional-looking report as a PNG image."""
         try:
             # --- Font setup ---
@@ -1200,6 +1295,7 @@ class MrTrackingTab(BaseAutomationTab):
             return False
 
     def _wrap_text(self, text, font, max_width):
+        # (Is function mein koi badlaav nahi hai)
         """Helper to wrap text for Pillow."""
         if not text:
             return [""]
@@ -1216,6 +1312,7 @@ class MrTrackingTab(BaseAutomationTab):
         return lines
 
     def save_inputs(self, inputs):
+        # (Is function mein koi badlaav nahi hai)
         """Saves non-sensitive inputs for this tab."""
         save_data = {
             'state': inputs.get('state'),
@@ -1231,6 +1328,7 @@ class MrTrackingTab(BaseAutomationTab):
             print(f"Error saving MR Tracking inputs: {e}")
 
     def load_inputs(self):
+        # (Is function mein koi badlaav nahi hai)
         """Loads saved inputs for this tab."""
         try:
             config_file = self.app.get_data_path("mr_tracking_inputs.json")

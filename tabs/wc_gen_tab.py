@@ -2,7 +2,7 @@
 import tkinter
 from tkinter import ttk, messagebox, filedialog
 import customtkinter as ctk
-import os, csv, time, pyperclip, sys, threading, json, webbrowser
+import os, csv, time, pyperclip, sys, threading, json, webbrowser, requests
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs
 from collections import defaultdict
@@ -15,6 +15,8 @@ import config
 from .base_tab import BaseAutomationTab
 from .date_entry_widget import DateEntry
 from .autocomplete_widget import AutocompleteEntry
+from .demand_tab import CloudFilePicker # <-- Import cloud picker
+
 class WcGenTab(BaseAutomationTab):
     def __init__(self, parent, app_instance):
         super().__init__(parent, app_instance, automation_key="wc_gen")
@@ -117,16 +119,19 @@ class WcGenTab(BaseAutomationTab):
         file_buttons_frame = ctk.CTkFrame(step3_frame, fg_color="transparent")
         file_buttons_frame.grid(row=1, column=0, columnspan=2, sticky="w", padx=15, pady=10)
 
-        self.select_button = ctk.CTkButton(file_buttons_frame, text="Select workcode_data.csv", command=self.select_csv_file)
+        self.select_button = ctk.CTkButton(file_buttons_frame, text="Select from Computer", command=self.select_csv_file)
         self.select_button.pack(side="left", padx=(0, 10))
+        
+        # --- NEW: Add Cloud Button ---
+        self.cloud_csv_button = ctk.CTkButton(file_buttons_frame, text="Select from Cloud", command=self._select_csv_from_cloud, fg_color="teal", hover_color="#00695C")
+        self.cloud_csv_button.pack(side="left", padx=(0, 10))
+        # --- END NEW ---
 
         self.demo_csv_button = ctk.CTkButton(file_buttons_frame, text="Download Demo CSV", command=lambda: self.app.save_demo_csv("wc_gen"), fg_color="#2E8B57", hover_color="#257247")
-        self.demo_csv_button.pack(side="left", padx=(0, 10)) # <-- Modified this line
+        self.demo_csv_button.pack(side="left", padx=(0, 10))
 
-        # --- NEW BUTTON ---
         self.online_csv_button = ctk.CTkButton(file_buttons_frame, text="Generate CSV Online", command=self._open_wc_tool_link, fg_color="#1F618D", hover_color="#154360")
-        self.online_csv_button.pack(side="left")
-        # --- END NEW BUTTON ---
+        self.online_csv_button.pack(side="left", padx=(0, 10)) # <-- Modified this line
         
         self.file_label = ctk.CTkLabel(step3_frame, text="No file selected", text_color="gray")
         self.file_label.grid(row=2, column=0, columnspan=2, sticky="w", padx=15, pady=(0, 10))
@@ -137,11 +142,9 @@ class WcGenTab(BaseAutomationTab):
 
         results_action_frame = ctk.CTkFrame(results_tab, fg_color="transparent")
         results_action_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(5, 10), padx=5)
-        # --- MODIFIED: Changed button command to new export function ---
         self.export_csv_button = ctk.CTkButton(results_action_frame, text="Export for IF Editor", command=self._export_wc_gen_results)
         self.export_csv_button.pack(side="left")
         
-        # --- MODIFIED: Updated treeview columns ---
         cols = ("Work Code", "Job Card", "Beneficiary Type")
         self.results_tree = ttk.Treeview(results_tab, columns=cols, show='headings')
         for col in cols: self.results_tree.heading(col, text=col)
@@ -156,7 +159,62 @@ class WcGenTab(BaseAutomationTab):
     def _open_wc_tool_link(self):
         webbrowser.open_new_tab("https://tools.nregabot.com/work_code_generator")
 
-    # --- MODIFIED: Log result now takes the full data dictionary ---
+    # --- NEW: Cloud file selection methods ---
+    def _select_csv_from_cloud(self):
+        token = self.app.license_info.get('key')
+        if not token:
+            messagebox.showerror("Error", "You must be licensed to use cloud storage.")
+            return
+
+        picker = CloudFilePicker(parent=self, app_instance=self.app)
+        self.wait_window(picker) # Wait for user to select a file
+
+        try:
+            self.winfo_toplevel().focus_set()
+            self.focus_set()
+        except Exception as e:
+            print(f"Error setting focus after picker: {e}")
+        
+        selected_file = picker.selected_file
+        
+        if selected_file:
+            file_id = selected_file['id']
+            filename = selected_file['filename']
+            
+            self.app.log_message(self.log_display, f"Downloading '{filename}' from cloud...")
+            temp_path = self._download_file_from_cloud(file_id, filename)
+            
+            if temp_path:
+                self.csv_path = temp_path
+                self.file_label.configure(text=os.path.basename(temp_path))
+                self.app.log_message(self.log_display, f"Cloud file '{filename}' selected.")
+
+    def _download_file_from_cloud(self, file_id, filename):
+        token = self.app.license_info.get('key')
+        if not token:
+            self.app.log_message(self.log_display, "Cloud Download Failed: Not licensed.", "error")
+            return None
+
+        headers = {'Authorization': f'Bearer {token}'}
+        url = f"{config.LICENSE_SERVER_URL}/files/api/download/{file_id}"
+        
+        temp_path = self.app.get_data_path(f"cloud_download_wc_gen_{filename}")
+        
+        try:
+            with requests.get(url, headers=headers, stream=True, timeout=30) as r:
+                r.raise_for_status() # Check for HTTP errors
+                with open(temp_path, 'wb') as f:
+                    for chunk in r.iter_content(chunk_size=8192): 
+                        f.write(chunk)
+            
+            self.app.log_message(self.log_display, f"Successfully downloaded '{filename}'.", "info")
+            return temp_path
+        except Exception as e:
+            self.app.log_message(self.log_display, f"Cloud download failed: {e}", "error")
+            messagebox.showerror("Download Failed", f"Could not download file: {e}")
+            return None
+    # --- END NEW METHODS ---
+
     def _log_result(self, result_data):
         self.app.after(0, lambda: self.results_tree.insert("", "end", values=(
             result_data.get('work_code', 'N/A'),
@@ -164,7 +222,6 @@ class WcGenTab(BaseAutomationTab):
             result_data.get('beneficiary_type', 'N/A')
         )))
 
-    # --- NEW: Function to export results in the correct format for IF Editor ---
     def _export_wc_gen_results(self):
         if not self.successful_wcs_data:
             messagebox.showinfo("No Data", "There are no successful work codes to export.")
@@ -180,7 +237,6 @@ class WcGenTab(BaseAutomationTab):
             return
         
         try:
-            # These headers must match the keys in the dictionaries and IF Editor's needs
             headers = ["work_code", "beneficiary_type", "job_card"]
             with open(path, 'w', newline='', encoding='utf-8') as f:
                 writer = csv.DictWriter(f, fieldnames=headers)
@@ -506,13 +562,11 @@ class WcGenTab(BaseAutomationTab):
         self.app.clear_log(self.log_display)
         for item in self.results_tree.get_children(): self.results_tree.delete(item)
         
-        # --- MODIFIED: Clear previous results data ---
         self.successful_wcs_data.clear()
         
         self.app.log_message(self.log_display, "--- Starting Workcode Generation ---")
         self.app.after(0, self.app.set_status, "Running Workcode Generation...")
         
-        # --- MODIFIED: Store results locally before assigning to class attribute ---
         local_successful_wcs = [] 
         try:
             driver = self.app.get_driver()
@@ -558,6 +612,7 @@ class WcGenTab(BaseAutomationTab):
         if hasattr(self, 'copy_logs_button'): self.copy_logs_button.configure(state=state)
 
         self.select_button.configure(state=state)
+        self.cloud_csv_button.configure(state=state) # <-- Set state for new button
         self.panchayat_entry.configure(state=state)
         self.load_button.configure(state=state)
         self.save_profile_button.configure(state=state)
@@ -580,7 +635,6 @@ class WcGenTab(BaseAutomationTab):
             self.csv_path = None
             self.app.clear_log(self.log_display)
             self.send_to_if_edit_switch.deselect()
-            # --- NEW: Clear results data on reset ---
             self.successful_wcs_data.clear()
             for item in self.results_tree.get_children(): self.results_tree.delete(item)
             

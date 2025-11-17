@@ -8,6 +8,13 @@ import pandas as pd
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 
+# --- Imports jo add kiye gaye hain ---
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager
+# --- End Imports ---
+
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -33,10 +40,14 @@ class IssuedMrReportTab(BaseAutomationTab):
             "Work Category", "Work Type", "Agency Name"
         ]
         
+        # --- Naya Badlaav: Is tab ka apna driver hoga ---
+        self.driver = None
+        
         self._create_widgets()
         self.load_inputs()
 
     def _create_widgets(self):
+        # (Is function mein koi badlaav nahi hai)
         # Frame for all user input controls
         controls_frame = ctk.CTkFrame(self)
         controls_frame.grid(row=0, column=0, sticky="new", padx=10, pady=10)
@@ -67,8 +78,6 @@ class IssuedMrReportTab(BaseAutomationTab):
                                                  app_instance=self.app, history_key="issued_mr_panchayat")
         self.panchayat_entry.grid(row=3, column=1, sticky='ew', padx=15, pady=5)
 
-        # Removed Delay Column
-
         action_frame = self._create_action_buttons(parent_frame=controls_frame)
         action_frame.grid(row=4, column=0, columnspan=2, pady=10) # Row updated to 4
 
@@ -88,14 +97,12 @@ class IssuedMrReportTab(BaseAutomationTab):
         self.copy_wc_button = ctk.CTkButton(copy_frame, text="Copy Workcodes", command=self._copy_workcodes)
         self.copy_wc_button.pack(side="left")
 
-        # --- MODIFIED BUTTON ---
         self.run_dup_mr_button = ctk.CTkButton(copy_frame,
                                                   text="Run Duplicate MR Print",
                                                   command=self._run_duplicate_mr,
                                                   fg_color="#D35400", # Orange
                                                   hover_color="#E67E22")
         self.run_dup_mr_button.pack_forget() # Hide it initially
-        # --- END MODIFIED BUTTON ---
 
         self.workcode_textbox = ctk.CTkTextbox(workcode_tab, state="disabled")
         self.workcode_textbox.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
@@ -112,12 +119,10 @@ class IssuedMrReportTab(BaseAutomationTab):
         self.export_format_menu = ctk.CTkOptionMenu(export_frame, values=["Excel (.xlsx)", "PDF (.pdf)", "PNG (.png)"])
         self.export_format_menu.pack(side="left", padx=5)
 
-        # --- Update Treeview columns and widths ---
         self.results_tree = ttk.Treeview(results_tab, columns=self.report_headers, show='headings')
         for col in self.report_headers: 
             self.results_tree.heading(col, text=col)
             
-        # Adjust column widths based on new headers
         self.results_tree.column("S No.", width=40, anchor='center')
         self.results_tree.column("Panchayat", width=100)
         self.results_tree.column("Work Code", width=200)
@@ -125,7 +130,6 @@ class IssuedMrReportTab(BaseAutomationTab):
         self.results_tree.column("Work Category", width=150)
         self.results_tree.column("Work Type", width=150)
         self.results_tree.column("Agency Name", width=100)
-        # --- END ---
 
         self.results_tree.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
         scrollbar = ctk.CTkScrollbar(results_tab, command=self.results_tree.yview)
@@ -133,6 +137,7 @@ class IssuedMrReportTab(BaseAutomationTab):
         self.style_treeview(self.results_tree)
 
     def set_ui_state(self, running: bool):
+        # (Is function mein koi badlaav nahi hai)
         self.set_common_ui_state(running)
         state = "disabled" if running else "normal"
         self.state_entry.configure(state=state)
@@ -142,19 +147,48 @@ class IssuedMrReportTab(BaseAutomationTab):
         self.run_dup_mr_button.configure(state=state)
 
     def reset_ui(self):
-        # Clear inputs
+        # (Is function mein koi badlaav nahi hai)
         self.state_entry.delete(0, tkinter.END)
         self.district_entry.delete(0, tkinter.END)
         self.block_entry.delete(0, tkinter.END)
         self.panchayat_entry.delete(0, tkinter.END)
         
-        # Clear results
         for item in self.results_tree.get_children(): self.results_tree.delete(item)
         self._update_workcode_textbox("")
         
         self.app.log_message(self.log_display, "Form has been reset.")
         self.update_status("Ready", 0.0)
         
+    # --- Naya Function: Naya browser instance banane ke liye (HEADLESS) ---
+    def _get_new_driver(self):
+        """
+        Ek naya, alag HEADLESS Chrome browser instance banata hai.
+        """
+        self.app.log_message(self.log_display, "Naya Headless Chrome browser shuru kar raha hoon...", "info")
+        try:
+            chrome_options = ChromeOptions()
+            
+            # --- YEH LINE HEADLESS MODE ENABLE KARTI HAI ---
+            chrome_options.add_argument("--headless")
+            # --- END HEADLESS ---
+
+            # Headless browser ko ek size dena zaroori hai
+            chrome_options.add_argument("--window-size=1920,1080") 
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"]) # "Chrome is being controlled" banner hatane ke liye
+            
+            # webdriver-manager ka istemaal karke driver manage karein
+            service = ChromeService(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service, options=chrome_options)
+            
+            self.app.log_message(self.log_display, "Headless browser safaltapoorvak shuru ho gaya.", "info")
+            return driver
+        except Exception as e:
+            self.app.log_message(self.log_display, f"Headless browser shuru karne mein BADI GADBAD: {e}", "error")
+            messagebox.showerror("Browser Error", f"Naya Headless Chrome browser shuru nahi ho saka.\n\nError: {e}\n\nKya Chrome installed hai?")
+            return None
+
+    # --- Badlaav: `start_automation` ab naya driver banayega ---
     def start_automation(self):
         self.run_dup_mr_button.pack_forget()
         for item in self.results_tree.get_children(): self.results_tree.delete(item)
@@ -176,10 +210,26 @@ class IssuedMrReportTab(BaseAutomationTab):
         self.app.update_history("issued_mr_block", inputs['block'])
         self.app.update_history("issued_mr_panchayat", inputs['panchayat'])
         
+        # --- NAYA BADLAAV: Driver ko yahan banayein ---
+        if self.driver:
+            self.app.log_message(self.log_display, "Ek automation pehle se chal raha hai. Rukiye...", "warning")
+            messagebox.showwarning("Automation Jaari Hai", "Report generation pehle se chal raha hai.")
+            return
+        
+        self.driver = self._get_new_driver() # Naya driver banayein
+        if not self.driver:
+            self.app.log_message(self.log_display, "ERROR: WebDriver nahi mila. Automation ruka.", "error")
+            return # Driver nahi mila toh kuch mat karo
+        
+        # UI ko lock karein
+        self.app.after(0, self.set_ui_state, True) 
+        
+        # Ab thread start karein (yeh self.driver ka istemaal karega)
         self.app.start_automation_thread(self.automation_key, self.run_automation_logic, args=(inputs,))
+        # --- End Badlaav ---
 
     def _solve_captcha(self, driver, wait):
-        """Solves the math CAPTCHA on the MIS report page."""
+        # (Is function mein koi badlaav nahi hai)
         self.app.log_message(self.log_display, "Attempting to solve CAPTCHA...")
         captcha_label_id = "ContentPlaceHolder1_lblStopSpam"; captcha_textbox_id = "ContentPlaceHolder1_txtCaptcha"; verify_button_id = "ContentPlaceHolder1_btnLogin"
         try:
@@ -195,30 +245,30 @@ class IssuedMrReportTab(BaseAutomationTab):
             self.app.log_message(self.log_display, f"Solved: {captcha_text.strip()} = {result}")
             driver.find_element(By.ID, captcha_textbox_id).send_keys(str(result))
             driver.find_element(By.ID, verify_button_id).click()
-            # Wait briefly to see if an error message appears
             time.sleep(1)
             if "Invalid Captcha Code" in driver.page_source:
                 raise ValueError("CAPTCHA verification failed.")
             return True
         except TimeoutException:
-            # If CAPTCHA elements are not found, assume it's already solved or not present
             self.app.log_message(self.log_display, "CAPTCHA not found or already bypassed.", "info")
-            return True # Continue as if successful
+            return True 
         except ValueError as e:
             self.app.log_message(self.log_display, f"CAPTCHA Error: {e}", "error")
-            raise # Re-raise the error to be caught by the main logic
+            raise 
 
+    # --- Badlaav: `run_automation_logic` ab `self.driver` ka istemaal karega ---
     def run_automation_logic(self, inputs, retries=1):
-        self.app.after(0, self.set_ui_state, True)
+        # self.app.after(0, self.set_ui_state, True) <-- Yeh line `start_automation` mein chali gayi hai
         self.app.after(0, self.app.set_status, "Starting Issued MR Report...") 
         self.app.after(0, self.update_status, "Initializing...", 0.0)
         self.app.clear_log(self.log_display)
         self.app.log_message(self.log_display, "Starting Issued MR Report automation...")
 
         try:
-            driver = self.app.get_driver()
+            # driver = self.app.get_driver() # <-- YEH LINE HATA DI GAYI
+            driver = self.driver # <-- NAYA: self.driver ka istemaal karein
             if not driver:
-                self.app.after(0, self.app.set_status, "Browser not found")
+                self.app.log_message(self.log_display, "ERROR: Browser driver not found.", "error")
                 return 
 
             wait = WebDriverWait(driver, 20)
@@ -257,12 +307,10 @@ class IssuedMrReportTab(BaseAutomationTab):
             self.app.log_message(self.log_display, f"Drilling down to Block: {inputs['block']}")
             wait.until(EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, inputs['block'].upper()))).click()
 
-            # --- MODIFIED LOGIC: Click on "No. Of Ongoing Works..." column ---
             self.app.after(0, self.app.set_status, f"Finding Panchayat: {inputs['panchayat']}...")
             self.app.after(0, self.update_status, "Finding Panchayat...", 0.35)
             self.app.log_message(self.log_display, f"Finding Panchayat row: {inputs['panchayat']}")
             
-            # This XPath targets the main table from 'issue mr report.htm'
             main_table_xpath = "//table[.//b[text()='SNo.'] and .//b[text()='Panchayats']]"
             wait.until(EC.presence_of_element_located((By.XPATH, f"{main_table_xpath}//tr[1]/td/b[text()='Panchayats']")))
 
@@ -273,7 +321,6 @@ class IssuedMrReportTab(BaseAutomationTab):
             self.app.after(0, self.update_status, "Clicking Link...", 0.45)
             self.app.log_message(self.log_display, "Clicking 'No. Of Ongoing Works on which MR Issued' (Column 6)...")
             
-            # Column 6 (index 5) holds the link we need
             target_cell = panchayat_row.find_element(By.XPATH, "./td[6]")
 
             try:
@@ -301,13 +348,10 @@ class IssuedMrReportTab(BaseAutomationTab):
                  else:
                     raise ValueError(f"Target cell for 'Ongoing Works' does not contain a clickable link (text: {cell_text}).")
 
-            # --- END MODIFIED LOGIC ---
-
             self.app.after(0, self.app.set_status, "Loading Final Report...")
             self.app.after(0, self.update_status, "Loading Final Report...", 0.5)
             self.app.log_message(self.log_display, "Waiting for final report table...")
             
-            # This XPath targets the final table from 'report details page.htm'
             FINAL_TABLE_XPATH = "//table[@align='center' and .//b[text()='Work Code']]"
             table = wait.until(EC.presence_of_element_located((By.XPATH, FINAL_TABLE_XPATH)))
             rows = table.find_elements(By.XPATH, ".//tr[position()>1]") # Skip header row
@@ -362,11 +406,19 @@ class IssuedMrReportTab(BaseAutomationTab):
             self.success_message = f"Issued MR Report automation has finished.\nFound {scraped_mr_count} Issued MRs in {inputs['panchayat']}."
 
         except (TimeoutException, NoSuchElementException, StaleElementReferenceException) as e:
-            if "Session Expired" in driver.page_source and retries > 0:
+            if driver and "Session Expired" in driver.page_source and retries > 0:
                 self.app.log_message(self.log_display, "Session expired, attempting retry...", "warning")
                 self.app.after(0, self.app.set_status, "Session expired, retrying...")
                 self.app.after(0, self.update_status, "Retrying...", 0.0)
-                self.run_automation_logic(inputs, retries - 1)
+                try:
+                    self.driver.quit() # Puraane ko band karein
+                except Exception:
+                    pass
+                self.driver = self._get_new_driver() # Naya banayein
+                if self.driver:
+                    self.run_automation_logic(inputs, retries - 1)
+                else:
+                    self.app.log_message(self.log_display, "Retry ke liye naya browser shuru nahi ho saka.", "error")
                 return 
             error_msg = f"A browser error occurred: {str(e).splitlines()[0]}"
             self.app.log_message(self.log_display, error_msg, "error")
@@ -385,7 +437,18 @@ class IssuedMrReportTab(BaseAutomationTab):
             self.app.after(0, self.app.set_status, "Unexpected Error")
             self.success_message = None
         finally:
-            self.app.after(0, self.set_ui_state, False)
+            # --- NAYA BADLAAV: Driver ko yahan quit karein ---
+            if self.driver: # self.driver ko check karein
+                try:
+                    self.driver.quit()
+                    self.app.after(0, self.app.log_message, self.log_display, "Automation ne browser ko band kar diya hai.", "info")
+                except Exception as e:
+                    self.app.after(0, self.app.log_message, self.log_display, f"Browser band karne mein error: {e}", "warning")
+            
+            self.driver = None # Tab ka driver state reset karein
+            # --- End Badlaav ---
+
+            self.app.after(0, self.set_ui_state, False) # UI ko unlock karein
             
             final_app_status = "Automation Stopped" if self.app.stop_events[self.automation_key].is_set() else \
                               ("Automation Finished" if hasattr(self, 'success_message') and self.success_message else "Automation Failed")
@@ -401,16 +464,17 @@ class IssuedMrReportTab(BaseAutomationTab):
 
             if hasattr(self, 'success_message') and self.success_message and not self.app.stop_events[self.automation_key].is_set():
                 self.app.after(100, lambda: messagebox.showinfo("Complete", self.success_message))
-                # Show the button to transfer data
                 self.app.after(0, lambda: self.run_dup_mr_button.pack(side="left", padx=(10, 0)))
 
     def _update_workcode_textbox(self, text):
+        # (Is function mein koi badlaav nahi hai)
         self.workcode_textbox.configure(state="normal")
         self.workcode_textbox.delete("1.0", tkinter.END)
         self.workcode_textbox.insert("1.0", text)
         self.workcode_textbox.configure(state="disabled")
 
     def _copy_workcodes(self):
+        # (Is function mein koi badlaav nahi hai)
         text = self.workcode_textbox.get("1.0", tkinter.END).strip()
         if text:
             self.app.clipboard_clear()
@@ -419,9 +483,8 @@ class IssuedMrReportTab(BaseAutomationTab):
         else:
             messagebox.showwarning("Empty", "There are no workcodes to copy.", parent=self)
 
-    # --- Renamed method ---
     def _run_duplicate_mr(self):
-        """Called when the 'Run Duplicate MR Print' button is clicked."""
+        # (Is function mein koi badlaav nahi hai)
         workcodes = self.workcode_textbox.get("1.0", tkinter.END).strip()
         panchayat_name = self.panchayat_entry.get().strip()
 
@@ -433,11 +496,10 @@ class IssuedMrReportTab(BaseAutomationTab):
             messagebox.showwarning("No Data", "Panchayat name is missing. Cannot send to Duplicate MR Print tab.", parent=self)
             return
 
-        # Call the new method in the main app
         self.app.switch_to_duplicate_mr_with_data(workcodes, panchayat_name)
-    # --- END Renamed method ---
 
     def export_report(self):
+        # (Is function mein koi badlaav nahi hai)
         if not self.results_tree.get_children():
             messagebox.showinfo("No Data", "There are no results to export.")
             return
@@ -495,7 +557,6 @@ class IssuedMrReportTab(BaseAutomationTab):
                 messagebox.showinfo("Success", f"Excel report saved successfully to:\n{file_path}")
         
         elif "PDF" in export_format:
-            # SNo, Panchayat, Work Code, Work Name, Category, Type, Agency
             col_widths = [12, 30, 60, 100, 40, 40, 30] 
             total_width_ratio = sum(col_widths)
             effective_page_width = 297 - 20 
@@ -512,6 +573,7 @@ class IssuedMrReportTab(BaseAutomationTab):
 
 
     def _save_to_excel(self, data, headers, title, file_path):
+        # (Is function mein koi badlaav nahi hai)
         try:
             df = pd.DataFrame(data, columns=headers)
             with pd.ExcelWriter(file_path, engine='openpyxl') as writer:
@@ -543,13 +605,12 @@ class IssuedMrReportTab(BaseAutomationTab):
             messagebox.showerror("Excel Export Error", f"Could not generate Excel report.\nError: {e}", parent=self)
             return False
 
-    # This is the PDF generation from base_tab, included here for completeness
     def generate_report_pdf(self, data, headers, col_widths, title, date_str, file_path):
+        # (Is function mein koi badlaav nahi hai)
         return super().generate_report_pdf(data, headers, col_widths, title, date_str, file_path)
 
-    # This is the PNG generation from base_tab, included here for completeness
     def _save_to_png(self, data, headers, title, date_str, file_path):
-        # SNo, Panchayat, Work Code, Work Name, Category, Type, Agency
+        # (Is function mein koi badlaav nahi hai)
         base_col_widths = [0.05, 0.10, 0.20, 0.30, 0.15, 0.15, 0.05]
         
         try:
@@ -668,12 +729,13 @@ class IssuedMrReportTab(BaseAutomationTab):
         final_img.save(file_path, "PNG", dpi=(300, 300))
         return True
 
-    # This is the wrap_text from base_tab, included here for completeness
     def _wrap_text(self, text, font, max_width):
+        # (Is function mein koi badlaav nahi hai)
         return super()._wrap_text(text, font, max_width)
 
         
     def save_inputs(self, inputs):
+        # (Is function mein koi badlaav nahi hai)
         save_data = {k: inputs.get(k) for k in ('state', 'district', 'block', 'panchayat')}
         try:
             config_file = self.app.get_data_path("issued_mr_report_inputs.json")
@@ -683,6 +745,7 @@ class IssuedMrReportTab(BaseAutomationTab):
             print(f"Error saving Issued MR Report inputs: {e}")
 
     def load_inputs(self):
+        # (Is function mein koi badlaav nahi hai)
         try:
             config_file = self.app.get_data_path("issued_mr_report_inputs.json")
             if not os.path.exists(config_file): return

@@ -10,82 +10,63 @@ class AutocompleteEntry(ctk.CTkEntry):
         self.history_key = history_key
         
         self._suggestion_toplevel = None
-        self._suggestion_listbox = None
+        self._after_id = None
         
-        self._focus_out_after_id = None
-        self._debounce_after_id = None
-        
+        # --- For keyboard navigation ---
         self._active_suggestion_index = -1
         self._suggestion_labels = []
-        self._suggestion_frames = [] 
+        self._suggestion_frames = [] # --- NEW: To hold label + button
 
-        self._create_suggestion_toplevel() # --- NEW: Create toplevel once ---
-
-        self.bind("<KeyRelease>", self._on_key_release_debounce)
+        self.bind("<KeyRelease>", self._on_key_release)
         self.bind("<FocusOut>", self._on_focus_out)
         self.bind("<Down>", self._on_arrow_down)
         self.bind("<Up>", self._on_arrow_up)
-        self.bind("<Return>", self._on_enter)
-        self.bind("<Escape>", lambda e: self._hide_suggestions()) # --- NEW: Hide on Escape ---
+        self.bind("<Return>", self._on_enter) # Bind Enter key
 
-    def _create_suggestion_toplevel(self):
-        """Creates the suggestion toplevel window one time and hides it."""
-        if self._suggestion_toplevel:
-            return
-
-        self._suggestion_toplevel = ctk.CTkToplevel(self)
-        self._suggestion_toplevel.wm_overrideredirect(True)
-        self._suggestion_toplevel.attributes("-topmost", True)
-        
-        self._suggestion_listbox = ctk.CTkFrame(self._suggestion_toplevel, fg_color=("gray90", "gray20"))
-        self._suggestion_listbox.pack(expand=True, fill="both")
-        
-        self._suggestion_toplevel.withdraw() # Hide it initially
-
-    def _on_key_release_debounce(self, event):
-        """Debounces the key release event to avoid flickering."""
+    def _on_key_release(self, event):
         # Stop if the user is just navigating
-        if event.keysym in ("Up", "Down", "Return", "Enter", "Escape"):
+        if event.keysym in ("Up", "Down", "Return", "Enter"):
             return
 
-        # Stop for non-character keys
-        if event.keysym in ("BackSpace", "Left", "Right", "Shift_L", "Shift_R", "Control_L", "Control_R", "Alt_L", "Alt_R", "Tab"):
-             # Allow BackSpace to trigger an immediate update if desired, or debounce it
-             pass # Debouncing BackSpace too for consistency
+        if event.keysym in ("BackSpace", "Left", "Right", "Shift_L", "Shift_R", "Control_L", "Control_R"):
+            return
 
-        # Cancel any pending search
-        if self._debounce_after_id:
-            self.after_cancel(self._debounce_after_id)
-            self._debounce_after_id = None
-
-        # Schedule a new search after 300ms
-        self._debounce_after_id = self.after(300, self._perform_search)
-
-    def _perform_search(self):
-        """Performs the actual search and shows suggestions."""
-        self._debounce_after_id = None
         current_text = self.get().lower()
+        
+        # --- MODIFIED: Refresh suggestions if they exist ---
+        if self._suggestion_toplevel:
+            self._hide_suggestions()
+        # ---
 
         if current_text:
             matching_suggestions = [s for s in self.suggestions if current_text in s.lower()]
             if matching_suggestions:
                 self._show_suggestions(matching_suggestions)
-            else:
-                self._hide_suggestions()
-        else:
-            self._hide_suggestions()
 
     def _show_suggestions(self, suggestions):
-        # --- MODIFIED: Clear old widgets, don't destroy toplevel ---
-        for widget in self._suggestion_listbox.winfo_children():
-            widget.destroy()
+        if self._suggestion_toplevel:
+            self._suggestion_toplevel.destroy()
 
         self._suggestion_labels.clear()
-        self._suggestion_frames.clear()
+        self._suggestion_frames.clear() # --- NEW ---
         self._active_suggestion_index = -1
 
-        # --- Repopulate the listbox ---
+        self._suggestion_toplevel = ctk.CTkToplevel(self)
+        self._suggestion_toplevel.wm_overrideredirect(True) # No title bar
+
+        # Position the dropdown
+        x = self.winfo_rootx()
+        y = self.winfo_rooty() + self.winfo_height()
+        w = self.winfo_width() # Match the entry width
+        self._suggestion_toplevel.wm_geometry(f"{w}x{y}+{x}+{y}")
+        self._suggestion_toplevel.lift()
+        self._suggestion_toplevel.attributes("-topmost", True)
+
+        self._suggestion_listbox = ctk.CTkFrame(self._suggestion_toplevel, fg_color=("gray90", "gray20"))
+        self._suggestion_listbox.pack(expand=True, fill="both")
+
         for i, item in enumerate(suggestions[:5]): # Show max 5 suggestions
+            # --- NEW: Create a frame for each item ---
             item_frame = ctk.CTkFrame(self._suggestion_listbox, fg_color="transparent")
             item_frame.pack(fill="x")
             item_frame.grid_columnconfigure(0, weight=1)
@@ -93,6 +74,7 @@ class AutocompleteEntry(ctk.CTkEntry):
             label = ctk.CTkLabel(item_frame, text=item, anchor="w", padx=5)
             label.grid(row=0, column=0, sticky="ew")
             
+            # --- NEW: Add delete button if app and key are provided ---
             if self.app and self.history_key:
                 del_button = ctk.CTkButton(
                     item_frame, text="X", width=25, height=25,
@@ -101,68 +83,69 @@ class AutocompleteEntry(ctk.CTkEntry):
                 )
                 del_button.grid(row=0, column=1, padx=(0, 5))
             
+            # Bind events to the whole frame
             item_frame.bind("<Button-1>", lambda e, val=item: self._select_suggestion(val))
-            label.bind("<Button-1>", lambda e, val=item: self._select_suggestion(val))
+            label.bind("<Button-1>", lambda e, val=item: self._select_suggestion(val)) # Also bind label for good measure
             
             item_frame.bind("<Enter>", lambda e, index=i: self._on_mouse_enter(index))
             item_frame.bind("<Leave>", lambda e, index=i: self._on_mouse_leave(index))
             
             self._suggestion_labels.append(label)
-            self._suggestion_frames.append(item_frame)
-
-        # --- MODIFIED: Update position and show (deiconify) ---
-        x = self.winfo_rootx()
-        y = self.winfo_rooty() + self.winfo_height()
-        w = self.winfo_width()
-        
-        self._suggestion_toplevel.wm_geometry(f"{w}x{y}+{x}+{y}")
-        self._suggestion_toplevel.deiconify() # Show the existing window
-        self._suggestion_toplevel.lift()
+            self._suggestion_frames.append(item_frame) # --- NEW ---
 
     def _hide_suggestions(self):
-        # --- MODIFIED: Just withdraw, don't destroy ---
-        if self._focus_out_after_id:
-            self.after_cancel(self._focus_out_after_id)
-            self._focus_out_after_id = None
-            
+        self._after_id = None
         if self._suggestion_toplevel:
-            self._suggestion_toplevel.withdraw() # Hide the window
+            self._suggestion_toplevel.destroy()
+            self._suggestion_toplevel = None
             
+        self._suggestion_labels.clear()
+        self._suggestion_frames.clear() # --- NEW ---
         self._active_suggestion_index = -1
 
     def _select_suggestion(self, value):
-        # --- MODIFIED: Cancel focus-out timer before hiding ---
-        if self._focus_out_after_id:
-            self.after_cancel(self._focus_out_after_id)
-            self._focus_out_after_id = None
+        if self._after_id:
+            self.after_cancel(self._after_id)
+            self._after_id = None
 
         self.delete(0, "end")
         self.insert(0, value)
         self._hide_suggestions()
-        self.focus() # Return focus to the entry
+        self.focus()
 
     def _on_focus_out(self, event):
-        # --- MODIFIED: Use a 300ms delay to allow clicks on suggestion/button ---
-        if self._focus_out_after_id:
-            self.after_cancel(self._focus_out_after_id)
-        self._focus_out_after_id = self.after(300, self._hide_suggestions)
+        if self._after_id:
+            self.after_cancel(self._after_id)
+        # --- MODIFIED: Use a 300ms delay to allow delete button to be clicked ---
+        self._after_id = self.after(300, self._hide_suggestions)
 
+    # --- NEW: Delete Suggestion Method ---
     def _delete_suggestion(self, value):
         if self.app and self.history_key:
+            # 1. Ask the app to remove it from the master list (HistoryManager)
             self.app.remove_history(self.history_key, value)
             
+            # 2. Remove from this widget's local list
             if value in self.suggestions:
                 self.suggestions.remove(value)
                 
-            # --- MODIFIED: Cancel focus-out, regain focus, and re-run search ---
-            if self._focus_out_after_id:
-                self.after_cancel(self._focus_out_after_id)
-                self._focus_out_after_id = None
+            # 3. Refresh the dropdown to show the change
+            self._hide_suggestions()
+            # Simulate a key release to re-filter and re-open the dropdown
+            self.event_generate("<KeyRelease>", keysym="a")
+            self.delete(len(self.get())-1, "end") # Remove the 'a' we just typed
+            
+            # Stop the focus-out event from firing
+            if self._after_id:
+                self.after_cancel(self._after_id)
+                self._after_id = None
             
             self.focus()
-            self._perform_search() # Re-filter and show the updated list
+
 
     def _highlight_suggestion(self, index):
+        """Highlights the suggestion at the given index."""
+        # --- MODIFIED: Use suggestion_frames ---
         for i, frame in enumerate(self._suggestion_frames):
             if i == index:
                 frame.configure(fg_color="gray70")
@@ -170,18 +153,24 @@ class AutocompleteEntry(ctk.CTkEntry):
                 frame.configure(fg_color="transparent")
 
     def _on_mouse_enter(self, index):
+        """Syncs the active index when mousing over."""
+        # --- MODIFIED: Use suggestion_frames ---
         if 0 <= index < len(self._suggestion_frames):
-            # self._highlight_suggestion(index) # This causes highlight to fight with arrow keys
             self._suggestion_frames[index].configure(fg_color="gray70")
             self._active_suggestion_index = index
 
     def _on_mouse_leave(self, index):
+        """Resets the active index when mousing out."""
+        # --- MODIFIED: Use suggestion_frames ---
+        # --- FIX: Corrected typo 'Ssuggestion_frames' to '_suggestion_frames' ---
         if 0 <= index < len(self._suggestion_frames):
             self._suggestion_frames[index].configure(fg_color="transparent")
             self._active_suggestion_index = -1
 
     def _on_arrow_down(self, event):
-        if not self._suggestion_toplevel.winfo_viewable() or not self._suggestion_frames:
+        """Handles the Down arrow key."""
+        # --- MODIFIED: Use suggestion_frames ---
+        if not self._suggestion_toplevel or not self._suggestion_frames:
             return
 
         self._active_suggestion_index += 1
@@ -192,7 +181,9 @@ class AutocompleteEntry(ctk.CTkEntry):
         return "break"
 
     def _on_arrow_up(self, event):
-        if not self._suggestion_toplevel.winfo_viewable() or not self._suggestion_frames:
+        """Handles the Up arrow key."""
+        # --- MODIFIED: Use suggestion_frames ---
+        if not self._suggestion_toplevel or not self._suggestion_frames:
             return
 
         self._active_suggestion_index -= 1
@@ -204,12 +195,12 @@ class AutocompleteEntry(ctk.CTkEntry):
 
     def _on_enter(self, event):
         """Handles the Enter/Return key."""
-        # --- MODIFIED: Allow Enter to propagate if dropdown is not active ---
-        if not self._suggestion_toplevel.winfo_viewable() or not self._suggestion_labels:
-            return # DO NOT return "break". Let the event pass through to other widgets.
+        # --- MODIFIED: Use suggestion_labels ---
+        if not self._suggestion_toplevel or not self._suggestion_labels:
+            return
 
         if 0 <= self._active_suggestion_index < len(self._suggestion_labels):
             selected_value = self._suggestion_labels[self._active_suggestion_index].cget("text")
             self._select_suggestion(selected_value)
             
-        return "break" # NOW we stop the event, because we've used it to select an item.
+        return "break"
