@@ -1,4 +1,14 @@
 {
+  "2.8.1": [
+      "✨ **New Browser Support:** Added full support for **Microsoft Edge**! You can now launch Edge directly from the dashboard and use it for all automations alongside Chrome and Firefox.",
+      "🚀 **Performance (Headless Mode):** Reports like 'MR Tracking' now run in the background (Headless Browser). You can continue working on other tasks while the bot processes data invisibly.",
+      "📢 **Upcoming:** 'Sarkar Aapke Dwar' Automation coming soon!",
+      "✨ **UI Enhancements:** Introduced 'Skeleton Loading' animations for smoother tab switching, improved 'Toast Notifications' for alerts, and a real-time Server Status indicator update.",
+      "✨ **New Feature (MR Gen):** Added a 'Merge Saved PDFs' button to combine all MRs generated in the current session into a single PDF file. Added a toggle for 'Save to Cloud'.",
+      "🚀 **Enhancement (Zero MR):** Added a specific filter in MR Tracking for 'T+8 to T+15' cases with a direct 'Forward to Zero MR' button for faster processing.",
+      "🚀 **Enhancement (Demand & Allocation):** Improved the workflow connectivity between Demand entry and Work Allocation for smoother handoffs.",
+      "🐞 **Bug Fixes:** Fixed file path issues in MR Generation and resolved session timeout handling during long report fetches."
+    ],
   "2.8.0": [
       "✨ **Major Feature: Referral Program** - Get 15 days of extra validity when a user you refer purchases their first plan! Find your referral code in the 'My Account' page.",
       "✨ **New Automation: Work Allocation** - A new tab to automatically handle work allocation for a list of work keys right after demand is placed.",

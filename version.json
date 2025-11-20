@@ -1,17 +1,17 @@
 {
-  "latest_version": "2.8.0",
-  "download_url_windows": "https://nregabot.com/updates/NREGABot-v2.8.0-Setup.exe",
-  "download_url_macos": "https://nregabot.com/updates/NREGABot-v2.8.0-macOS.dmg",
+  "latest_version": "2.8.1",
+  "download_url_windows": "https://nregabot.com/updates/NREGABot-v2.8.1-Setup.exe",
+  "download_url_macos": "https://nregabot.com/updates/NREGABot-v2.8.1-macOS.dmg",
   "changelog": {
-    "2.8.0": [
-      "✨ **Major Feature: Referral Program** - Get 15 days of extra validity when a user you refer purchases their first plan! Find your referral code in the 'My Account' page.",
-      "✨ **New Automation: Work Allocation** - A new tab to automatically handle work allocation for a list of work keys right after demand is placed.",
-      "🚀 **Enhancement (Workflow):** Added an optional 'Work Key (Auto-Allocate)' field to the 'Demand' tab. After demand is completed, the bot will automatically switch to the 'Allocation' tab and run it for that work key.",
-      "💳 **Major Feature: Auto-Renewal (Subscriptions)** - You can now enable auto-renewal when purchasing a plan from the website to ensure your license never expires. Manage it from your 'My Account' page.",
-      "🚀 **Enhancement (Trial Activation):** Updated the trial registration system. The new web-based trial page now supports users from more states, including Rajasthan and West Bengal.",
-      "🚀 **Enhancement (Reseller Panel):** The web-based Reseller Panel now displays user statistics (active, expired, blocked) and includes a new 'Poke' tool to send email reminders to expired users.",
-      "🚀 **Enhancement (Device Renaming):** You can now rename your activated devices from the 'About' tab in the app and from the 'My Account' page on the website. Names will sync across your account.",
-      "🐞 **Bug Fix (Zero MR):** Fixed a stability issue in the Zero MR automation to better handle page refreshes and prevent timeouts."
+    "2.8.1": [
+      "✨ **New Browser Support:** Added full support for **Microsoft Edge**! You can now launch Edge directly from the dashboard and use it for all automations alongside Chrome and Firefox.",
+      "🚀 **Performance (Headless Mode):** Reports like 'MR Tracking' now run in the background (Headless Browser). You can continue working on other tasks while the bot processes data invisibly.",
+      "📢 **Upcoming:** 'Sarkar Aapke Dwar' Automation coming soon!",
+      "✨ **UI Enhancements:** Introduced 'Skeleton Loading' animations for smoother tab switching, improved 'Toast Notifications' for alerts, and a real-time Server Status indicator update.",
+      "✨ **New Feature (MR Gen):** Added a 'Merge Saved PDFs' button to combine all MRs generated in the current session into a single PDF file. Added a toggle for 'Save to Cloud'.",
+      "🚀 **Enhancement (Zero MR):** Added a specific filter in MR Tracking for 'T+8 to T+15' cases with a direct 'Forward to Zero MR' button for faster processing.",
+      "🚀 **Enhancement (Demand & Allocation):** Improved the workflow connectivity between Demand entry and Work Allocation for smoother handoffs.",
+      "🐞 **Bug Fixes:** Fixed file path issues in MR Generation and resolved session timeout handling during long report fetches."
     ]
   }
 }

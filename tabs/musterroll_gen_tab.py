@@ -20,7 +20,8 @@ class MusterrollGenTab(BaseAutomationTab):
         self.config_file = self.app.get_data_path("muster_roll_inputs.json")
         self.success_count = 0
         self.skipped_count = 0
-        self.output_dir = "" # <-- ADDED
+        self.output_dir = ""
+        self.current_session_files = [] # <-- ADDED
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(2, weight=1)
         self._create_widgets()
@@ -176,6 +177,7 @@ class MusterrollGenTab(BaseAutomationTab):
     def start_automation(self):
         for item in self.results_tree.get_children(): self.results_tree.delete(item)
         self.success_count, self.skipped_count = 0, 0
+        self.current_session_files = [] # <-- RESET LIST HERE
         self.success_label.configure(text="Success: 0")
         self.skipped_label.configure(text="Skipped/Failed: 0")
         
@@ -384,10 +386,14 @@ class MusterrollGenTab(BaseAutomationTab):
             self.app.log_message(self.log_display, "   - Navigating to MR page...")
             driver.get(config.MUSTER_ROLL_CONFIG["base_url"])
             
+            # --- FIX 1: Re-finding Panchayat Dropdown every time ---
             self.app.log_message(self.log_display, "   - Selecting Panchayat...")
-            Select(wait.until(EC.presence_of_element_located((By.ID, "exe_agency")))).select_by_visible_text(config.AGENCY_PREFIX + inputs['panchayat'])
+            panchayat_dropdown = wait.until(EC.presence_of_element_located((By.ID, "exe_agency")))
+            Select(panchayat_dropdown).select_by_visible_text(config.AGENCY_PREFIX + inputs['panchayat'])
+            # --- END FIX 1 ---
             
             self.app.log_message(self.log_display, f"   - Selecting work code for '{item}'...")
+            # _select_work_code will handle re-finding the ddlWorkCode element
             full_work_code_text = self._select_work_code(driver, wait, item, inputs['auto_mode'])
             
             if full_work_code_text in session_skip_list:
@@ -397,16 +403,25 @@ class MusterrollGenTab(BaseAutomationTab):
             self.app.log_message(self.log_display, "   - Entering dates and staff details...")
             driver.find_element(By.ID, "txtDateFrom").send_keys(inputs['start_date'])
             driver.find_element(By.ID, "txtDateTo").send_keys(inputs['end_date'])
-            Select(wait.until(EC.element_to_be_clickable((By.ID, "ddldesg")))).select_by_visible_text(inputs['designation'])
+            
+            # --- FIX 2: Re-finding Designation Dropdown after date entry/DOM update ---
+            designation_dropdown = wait.until(EC.element_to_be_clickable((By.ID, "ddldesg")))
+            Select(designation_dropdown).select_by_visible_text(inputs['designation'])
 
             self.app.log_message(self.log_display, "   - Waiting for Technical Staff list to populate...")
             long_wait = WebDriverWait(driver, 30)
+            
+            # Wait for options to populate in the staff dropdown
             long_wait.until(EC.presence_of_element_located((By.XPATH, "//select[@id='ddlstaff']/option[position()>1]")))
-            staff_dropdown = Select(driver.find_element(By.ID, "ddlstaff"))
+            
+            # --- FIX 3: Re-finding Staff Dropdown after population ---
+            staff_dropdown_element = driver.find_element(By.ID, "ddlstaff")
+            staff_dropdown = Select(staff_dropdown_element)
             
             if inputs['staff'] not in [opt.text for opt in staff_dropdown.options]:
                 raise ValueError(f"Staff name '{inputs['staff']}' not found for the selected designation. Please check the name and try again.")
             staff_dropdown.select_by_visible_text(inputs['staff'])
+            # --- END FIX 3 ---
             
             self.app.log_message(self.log_display, "   - Submitting form...")
             body_element = driver.find_element(By.TAG_NAME, 'body')
@@ -426,15 +441,18 @@ class MusterrollGenTab(BaseAutomationTab):
             
             log_detail = f"Saved as {os.path.basename(pdf_path)}" if pdf_path else "PDF Save Failed"
             
-            if pdf_path and inputs.get('save_to_cloud'):
-                self.app.log_message(self.log_display, "   - Uploading to cloud storage...")
-                upload_success = self._upload_to_cloud(pdf_path, inputs['panchayat'])
-                if upload_success:
-                    log_detail += " & Uploaded to Cloud"
-                    self.app.log_message(self.log_display, "   - Successfully uploaded to cloud.", "success")
-                else:
-                    log_detail += " (Cloud Upload Failed)"
-                    self.app.log_message(self.log_display, "   - Failed to upload to cloud.", "error")
+            if pdf_path:
+                self.current_session_files.append(pdf_path)
+                
+                if inputs.get('save_to_cloud'):
+                    self.app.log_message(self.log_display, "   - Uploading to cloud storage...")
+                    upload_success = self._upload_to_cloud(pdf_path, inputs['panchayat'])
+                    if upload_success:
+                        log_detail += " & Uploaded to Cloud"
+                        self.app.log_message(self.log_display, "   - Successfully uploaded to cloud.", "success")
+                    else:
+                        log_detail += " (Cloud Upload Failed)"
+                        self.app.log_message(self.log_display, "   - Failed to upload to cloud.", "error")
 
             if inputs['output_action'] == "Print" and pdf_path:
                 self._print_file(pdf_path)
@@ -517,19 +535,45 @@ class MusterrollGenTab(BaseAutomationTab):
 
     def _select_work_code(self, driver, wait, item, is_auto_mode):
         try:
+            # Panchayat select hone ke baad WorkCode dropdown ko fresh dhundhna jaroori hai
+            work_code_dropdown_locator = (By.ID, "ddlWorkCode")
+            
             if is_auto_mode:
-                wait.until(lambda d: len(Select(d.find_element(By.ID, "ddlWorkCode")).options) > 1)
-                Select(driver.find_element(By.ID, "ddlWorkCode")).select_by_visible_text(item)
-                return item
+                # Auto Mode: Seedha Work Code dropdown ko load hone ka wait karein
+                # Wait until at least two options are present (one empty, one real)
+                wait.until(lambda d: len(Select(d.find_element(*work_code_dropdown_locator)).options) > 1)
+                
+                # Element ko dobara dhundhkar select karein (StaleElementReferenceException fix)
+                work_code_dropdown = Select(driver.find_element(*work_code_dropdown_locator))
+                
+                # Filter to select only the item that has a value (i.e., not the default "Select")
+                found_option = next((opt for opt in work_code_dropdown.options if opt.text == item and opt.get_attribute("value")), None)
+
+                if found_option:
+                    full_work_code_text = found_option.text
+                    work_code_dropdown.select_by_visible_text(full_work_code_text)
+                    self.app.log_message(self.log_display, f"   - Found and selected: {full_work_code_text}")
+                    return full_work_code_text
+                else:
+                    raise NoSuchElementException(f"Could not find a matching work for auto item '{item}'.")
+            
             else:
+                # Manual Mode: Search box use karein
                 search_key = item
                 search_box = wait.until(EC.presence_of_element_located((By.ID, "txtWork")))
                 search_box.clear()
                 search_box.send_keys(search_key)
+                
+                # Search button click karne se DOM phir se badal sakta hai
                 driver.find_element(By.ID, "imgButtonSearch").click()
-                time.sleep(2)
-                wait.until(lambda d: len(Select(d.find_element(By.ID, "ddlWorkCode")).options) > 1)
-                work_code_dropdown = Select(driver.find_element(By.ID, "ddlWorkCode"))
+                time.sleep(2) # Thoda extra wait dete hain
+
+                # Work Code dropdown ko load hone ka wait karein
+                wait.until(lambda d: len(Select(d.find_element(*work_code_dropdown_locator)).options) > 1)
+                
+                # Element ko dobara dhundhkar select karein (Stale fix)
+                work_code_dropdown = Select(driver.find_element(*work_code_dropdown_locator))
+                
                 found_option = next((opt for opt in work_code_dropdown.options if search_key in opt.text and opt.get_attribute("value")), None)
                 if found_option:
                     full_work_code_text = found_option.text
@@ -660,31 +704,17 @@ class MusterrollGenTab(BaseAutomationTab):
     def merge_saved_pdfs(self):
         self.app.log_message(self.log_display, "Starting PDF merge...")
         
-        # 1. Get current output directory
-        panchayat = self.panchayat_entry.get().strip()
-        if not panchayat:
-            messagebox.showwarning("Input Required", "Please enter a Panchayat name to find the correct folder.", parent=self)
-            return
-            
-        # Get the directory for *today's* saved files for this panchayat
-        output_dir = self._get_output_dir(panchayat)
-        if not os.path.exists(output_dir):
-            self.app.log_message(self.log_display, f"No output folder found for today: {output_dir}", "warning")
-            messagebox.showinfo("No Files", f"No saved PDFs found for '{panchayat}' from today.", parent=self)
-            return
-
-        # 2. Find all PDF files in that directory
-        pdf_files = [os.path.join(output_dir, f) for f in os.listdir(output_dir) if f.lower().endswith('.pdf')]
+        # Use ONLY the files generated in the current session
+        pdf_files = self.current_session_files
         
         if not pdf_files:
-            self.app.log_message(self.log_display, "No PDF files found in the directory.", "warning")
-            messagebox.showinfo("No Files", f"No PDFs found in:\n{output_dir}", parent=self)
+            self.app.log_message(self.log_display, "No PDFs generated in this session to merge.", "warning")
+            messagebox.showinfo("No Files", "No MRs have been successfully generated in this cycle yet.\nRun the automation first.", parent=self)
             return
             
-        pdf_files.sort() # Sort files alphabetically
-        self.app.log_message(self.log_display, f"Found {len(pdf_files)} PDF files to merge.")
+        self.app.log_message(self.log_display, f"Merging {len(pdf_files)} files generated in this session.")
 
-        # 3. Get output file name from user
+        # Get output file name from user
         dialog = ctk.CTkInputDialog(text="Enter a base name for the merged file:", title="Merge PDFs")
         base_name = dialog.get_input()
         
@@ -692,7 +722,7 @@ class MusterrollGenTab(BaseAutomationTab):
             self.app.log_message(self.log_display, "Merge cancelled by user.", "info")
             return
 
-        # 4. Get unique output path in the Merged_Pdf_Output folder
+        # Get unique output path
         try:
             merge_output_dir = os.path.join(self.app.get_user_downloads_path(), "NregaBot", "Merged_Pdf_Output")
             os.makedirs(merge_output_dir, exist_ok=True)
@@ -710,9 +740,9 @@ class MusterrollGenTab(BaseAutomationTab):
             messagebox.showerror("Path Error", f"Could not create merge output path: {e}", parent=self)
             return
 
-        # 5. Run merge in a separate thread to keep UI responsive
+        # Run merge in a separate thread
         self.app.start_automation_thread(
-            "pdf_merger_mr", # Use a temporary key
+            "pdf_merger_mr", 
             self._run_merge_logic, 
             args=(pdf_files, output_path)
         )

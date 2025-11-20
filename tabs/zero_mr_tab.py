@@ -8,7 +8,7 @@ from datetime import datetime
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoSuchElementException, NoAlertPresentException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, NoAlertPresentException, StaleElementReferenceException
 import config
 from .base_tab import BaseAutomationTab
 from .autocomplete_widget import AutocompleteEntry
@@ -189,9 +189,7 @@ class ZeroMrTab(BaseAutomationTab):
             # --- FIX: Add explicit wait for page to be fully interactive ---
             self.app.log_message(self.log_display, "Waiting for page elements to load...")
             try:
-                # 1. Pehle wait karein ki dropdown DOM mein aa jaye
                 wait.until(EC.presence_of_element_located((By.ID, "ddlfin")))
-                # 2. Ab wait karein ki woh clickable ho jaye
                 fin_year_dropdown_element = wait.until(EC.element_to_be_clickable((By.ID, "ddlfin")))
                 self.app.log_message(self.log_display, "Page loaded successfully.")
             except TimeoutException:
@@ -203,9 +201,7 @@ class ZeroMrTab(BaseAutomationTab):
             self.app.after(0, self.app.set_status, "Setting Financial Year...")
             self.app.log_message(self.log_display, f"Selecting Financial Year: {inputs['fin_year']}")
             
-            # Element ka istemal karein jo humne pehle hi dhoond liya hai
             fin_year_select = Select(fin_year_dropdown_element)
-            
             if fin_year_select.first_selected_option.text != inputs['fin_year']:
                 fin_year_select.select_by_visible_text(inputs['fin_year'])
                 self.app.log_message(self.log_display, "Waiting for Fin Year postback...")
@@ -256,21 +252,27 @@ class ZeroMrTab(BaseAutomationTab):
         try:
             self.app.log_message(self.log_display, f"   - Processing Key: {work_key}, MSR: {msr_no}")
             
-            # 1. Enter Search Key
-            # Har naye item ke liye search box ko fresh dhoondhega
-            search_box = wait.until(EC.element_to_be_clickable((By.ID, "txtsearch_work")))
-            search_box.clear()
-            search_box.send_keys(work_key)
+            # --- RETRY LOGIC: Find search box safely ---
+            search_box = None
+            for attempt in range(3):
+                try:
+                    search_box = wait.until(EC.element_to_be_clickable((By.ID, "txtsearch_work")))
+                    search_box.clear()
+                    search_box.send_keys(work_key)
+                    break # Success
+                except StaleElementReferenceException:
+                    if attempt == 2: 
+                        raise # Re-raise if failed 3 times
+                    self.app.log_message(self.log_display, "   - Page updating, retrying search...", "warning")
+                    time.sleep(2)
             
             # 2. Trigger postback (by clicking body) and wait
             driver.find_element(By.TAG_NAME, 'body').click()
             self.app.log_message(self.log_display, "   - Waiting for work code...")
             
-            # 3. Select Work Code (wait for options to appear)
+            # 3. Select Work Code
             wait.until(EC.presence_of_element_located((By.XPATH, "//select[@id='ddlworkcode']/option[position()>1]")))
             work_code_select = Select(driver.find_element(By.ID, "ddlworkcode"))
-            
-            self.app.log_message(self.log_display, f"   - Searching for work code containing '{work_key}'...")
             
             found_option_text = None
             for option in work_code_select.options:
@@ -279,72 +281,75 @@ class ZeroMrTab(BaseAutomationTab):
                     break
             
             if not found_option_text:
-                raise NoSuchElementException(f"Could not find a work code in the dropdown that contains '{work_key}'.")
+                raise NoSuchElementException(f"Could not find a work code matching '{work_key}' in the dropdown.")
 
             work_code_select.select_by_visible_text(found_option_text)
             self.app.log_message(self.log_display, f"   - Selected work code: {found_option_text}")
             
-            self.app.log_message(self.log_display, "   - Waiting for MSR list...")
+            # --- CRITICAL WAIT: Wait for MSR list update ---
+            self.app.log_message(self.log_display, "   - Waiting for MSR list update...")
+            time.sleep(2.5) # Explicit wait for AJAX/Postback
 
-            # 4. Select MSR No (wait for options to appear)
-            wait.until(EC.presence_of_element_located((By.XPATH, "//select[@id='ddlmustroll']/option[position()>1]")))
+            # 4. Select MSR No (Modified for Partial Matching)
+            wait.until(EC.presence_of_element_located((By.ID, "ddlmustroll")))
             msr_select = Select(driver.find_element(By.ID, "ddlmustroll"))
             
-            msr_select.select_by_visible_text(msr_no)
-            self.app.log_message(self.log_display, "   - MSR selected. Clicking save.")
+            target_msr = msr_no.strip()
+            found_msr_text = None
 
-            # 5. Click Save
-            wait.until(EC.element_to_be_clickable((By.ID, "btnSave"))).click()
+            # Iterate options to find partial match (e.g. "32845" inside "32845 (01/04-07/04)")
+            for option in msr_select.options:
+                if "Select" in option.text: continue
+                if target_msr in option.text:
+                    found_msr_text = option.text
+                    break
             
-            # 6. Handle on-page message
-            self.app.log_message(self.log_display, "   - Waiting for on-page message...")
-            try:
-                message_element = wait.until(
-                    EC.visibility_of_element_located((By.ID, "lblmsg"))
-                )
-                message_text = message_element.text.strip()
-                
-                if not message_text:
-                    time.sleep(1) 
-                    message_text = message_element.text.strip()
-
-                if "successfully" in message_text.lower() or "saved" in message_text.lower() or "updated" in message_text.lower():
-                    self.app.log_message(self.log_display, f"   - Success message: {message_text}", "success")
-                    self._log_result(work_key, msr_no, "Success", message_text)
-                    
-                    # --- FIX: Kuch nahi karna hai. Page reset ka wait nahi karna. ---
-                    # Bas function ko khatam hone do. Agla loop automatic 
-                    # naye elements dhoondhega.
-                    # --- END FIX ---
-
-                else:
-                    self.app.log_message(self.log_display, f"   - Unknown message: {message_text}", "warning")
-                    self._log_result(work_key, msr_no, "Warning", message_text)
-
-            except TimeoutException:
-                try:
-                    validation_summary = driver.find_element(By.ID, "ValidationSummary1")
-                    if validation_summary.is_displayed():
-                        error_msg = validation_summary.text.strip().replace("\n", " ").strip()
-                        self.app.log_message(self.log_display, f"   - FAILED (Validation): {error_msg}", "error")
-                        self._log_result(work_key, msr_no, "Failed", error_msg)
-                        return
-                except NoSuchElementException:
-                    pass 
-
-                error_msg = "No success message or alert found after 10s."
+            if found_msr_text:
+                msr_select.select_by_visible_text(found_msr_text)
+                self.app.log_message(self.log_display, f"   - MSR selected: {found_msr_text}. Clicking save.")
+            else:
+                # Debug info: What options were actually available?
+                options_preview = [o.text for o in msr_select.options if "Select" not in o.text][:3]
+                error_msg = f"MSR '{target_msr}' not found in dropdown. Available: {options_preview}..."
                 self.app.log_message(self.log_display, f"   - FAILED: {error_msg}", "error")
                 self._log_result(work_key, msr_no, "Failed", error_msg)
+                return
+
+            # 5. Click Save
+            save_btn = wait.until(EC.element_to_be_clickable((By.ID, "btnSave")))
+            save_btn.click()
+            
+            # 6. Handle on-page message
+            self.app.log_message(self.log_display, "   - Waiting for result message...")
+            
+            def message_or_error_visible(d):
+                msg = d.find_elements(By.ID, "lblmsg")
+                err = d.find_elements(By.ID, "ValidationSummary1")
+                if msg and msg[0].is_displayed() and msg[0].text.strip(): return msg[0]
+                if err and err[0].is_displayed() and err[0].text.strip(): return err[0]
+                return False
+
+            result_element = WebDriverWait(driver, 10).until(message_or_error_visible)
+            message_text = result_element.text.strip().replace("\n", " ")
+
+            if "successfully" in message_text.lower() or "saved" in message_text.lower() or "updated" in message_text.lower():
+                self.app.log_message(self.log_display, f"   - Success: {message_text}", "success")
+                self._log_result(work_key, msr_no, "Success", message_text)
+            else:
+                self.app.log_message(self.log_display, f"   - Failed: {message_text}", "error")
+                self._log_result(work_key, msr_no, "Failed", message_text)
+            
+            time.sleep(1)
 
         except (TimeoutException, NoSuchElementException) as e:
-            error_msg = f"Element not found or timeout. MSR/WorkCode valid? {str(e).splitlines()[0]}"
+            error_msg = f"Element not found/timeout. {str(e).splitlines()[0]}"
             self.app.log_message(self.log_display, f"   - FAILED: {error_msg}", "error")
             self._log_result(work_key, msr_no, "Failed", error_msg)
         except Exception as e:
-            if "stale element" in str(e):
-                error_msg = f"Stale element error. Page may be refreshing too quickly. {str(e).splitlines()[0]}"
+            if "stale element" in str(e).lower():
+                error_msg = "Page refreshed unexpectedly."
             else:
-                error_msg = f"An unexpected error occurred: {e}"
+                error_msg = f"Unexpected error: {e}"
             self.app.log_message(self.log_display, f"   - FAILED: {error_msg}", "error")
             self._log_result(work_key, msr_no, "Failed", error_msg)
 

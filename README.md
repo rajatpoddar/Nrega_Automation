@@ -5,7 +5,7 @@
 # <div align="center">NREGA Bot</div>
 
 <p align="center">
-  <b>Version 2.8.0 | Now with Referral Program, Auto-Renewal, and Work Allocation!</b><br />
+  <b>Version 2.8.1 | Now with Referral Program, Auto-Renewal, and Work Allocation!</b><br />
   <a href="https://nregabot.com/#downloads"><strong>Download Now »</strong></a><br /><br />
   <a href="https://nregabot.com/how-to-use.html">View Instructions</a> ·
   <a href="https://nregabot.com/contact.html">Report Bug</a> ·
@@ -60,6 +60,10 @@ An intuitive, tab-based interface for every automation task:
 - ✨ **PDF Merger** - A standalone utility to quickly merge multiple selected PDF files into one document.
 - ✨ **Zero MR (Fixed!)** - Submit 'Zero MR' for muster rolls. Now more stable with bug fixes for page refreshes and timeouts.
 ---
+- ✨ **Microsoft Edge Support (New!)** - Launch and use Microsoft Edge directly from the dashboard for all automations.
+- 🚀 **Headless Reporting (New!)** - 'MR Tracking' reports now run in the background, freeing up your screen while data is processed.
+- ✨ **UI Enhancements** - Smoother experience with Skeleton Loading, Toast Notifications, and real-time Server Status.
+- ✨ **Merge PDFs (MR Gen)** - Added a button to combine all MRs generated in the current session into a single file.
 
 ## 🛠 Prerequisites
 
@@ -77,8 +81,8 @@ You only need to have a supported web browser installed on your system:
 Download the latest version from the official website:
 
 - Website: [nregabot.com/#downloads](https://nregabot.com/#downloads)
-- **For Windows**: `NREGABot-v2.8.0-Setup.exe`
-- **For macOS**: `NREGABot-v2.8.0-macOS.dmg`
+- **For Windows**: `NREGABot-v2.8.1-Setup.exe`
+- **For macOS**: `NREGABot-v2.8.1-macOS.dmg`
 
 ### 2️⃣ First-Time Launch & Trial
 

@@ -7,14 +7,14 @@
 
     <title>NREGA Bot: The Ultimate Tool for NREGA Task Automation</title>
     <meta name="description"
-        content="Automate your NREGA tasks with NREGA Bot v2.7.10. Now featuring powerful new tools like Issued MR Details, PDF Merger, and enhanced MR Tracking with ABPS pendency reports.">
+        content="Automate your NREGA tasks with NREGA Bot v2.8.1. Now featuring Microsoft Edge support, Headless Reporting, and improved UI enhancements.">
     <meta name="keywords"
         content="NREGA, MGNREGA, automation, FTO Generation, NREGA Bot, Jobcard Verification, MSR processor, wagelist, workcode generator, Palojori, Jharkhand, software, donation, eMB Verify, IF Editor, MR Fill, MR Tracking, Issued MR, PDF Merger, ABPS">
     <meta name="author" content="Rajat Poddar">
 
     <link rel="icon" href="favicon.ico" type="image/x-icon">
 
-    <meta property="og:title" content="NREGA Bot v2.7.10">
+    <meta property="og:title" content="NREGA Bot v2.8.1">
     <meta property="og:description"
         content="The ultimate tool to save time and automate your tedious NREGA data entry tasks.">
     <meta property="og:image" content="https://nregabot.com/og-logo.png">
@@ -155,7 +155,7 @@
                 <div class="container mx-auto px-4 sm:px-6 py-3 text-center text-white">
                     <p>
                         <span class="font-bold bg-white text-blue-600 rounded-full px-2 py-0.5 text-xs mr-2">NEW</span>
-                        <strong>Version 2.8.0 is here!</strong> Introducing <strong>Referral Program</strong>, <strong>Work Allocation</strong>, and <strong>Auto-Renewal</strong>!
+                        <strong>Version 2.8.1 Released!</strong> Now with <strong>Microsoft Edge Support</strong> and <strong>Headless Reporting</strong>!
                         <a href="#downloads" class="underline ml-2 hover:text-blue-200">Download Now &rarr;</a>
                     </p>
                 </div>
@@ -638,8 +638,9 @@
         document.addEventListener('DOMContentLoaded', function () {
              // Initialize AOS
             AOS.init({
-                duration: 800, // values from 0 to 3000, with step 50ms
-                once: true, // whether animation should happen only once - while scrolling down
+                duration: 400, // Fast animation (800ms -> 400ms)
+                once: true,
+                offset: 0, // Trigger immediately when element is in view
             });
 
             // Mobile Menu

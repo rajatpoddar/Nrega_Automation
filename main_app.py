@@ -10,52 +10,12 @@ from getmac import get_mac_address
 from datetime import datetime
 from dotenv import load_dotenv
 
-import pygame
+# Note: Heavy libraries (Selenium, Pygame, Sentry) are imported inside functions 
+# to speed up startup time.
+
 from location_data import STATE_DISTRICT_MAP
-
-from selenium import webdriver
-from selenium.common.exceptions import WebDriverException
-from selenium.webdriver.chrome.options import Options as ChromeOptions
-from selenium.webdriver.edge.options import Options as EdgeOptions
-from selenium.webdriver.firefox.options import Options as FirefoxOptions
-from selenium.webdriver.firefox.service import Service as FirefoxService
-from webdriver_manager.firefox import GeckoDriverManager
-
 from tabs.history_manager import HistoryManager
 import config
-
-# --- TAB CLASS IMPORTS ---
-from tabs.msr_tab import MsrTab
-from tabs.wagelist_gen_tab import WagelistGenTab
-from tabs.wagelist_send_tab import WagelistSendTab
-from tabs.wc_gen_tab import WcGenTab
-from tabs.mb_entry_tab import MbEntryTab
-from tabs.if_edit_tab import IfEditTab
-from tabs.musterroll_gen_tab import MusterrollGenTab
-from tabs.about_tab import AboutTab
-from tabs.jobcard_verify_tab import JobcardVerifyTab
-from tabs.fto_generation_tab import FtoGenerationTab
-from tabs.workcode_extractor_tab import WorkcodeExtractorTab
-from tabs.add_activity_tab import AddActivityTab
-from tabs.abps_verify_tab import AbpsVerifyTab
-from tabs.del_work_alloc_tab import DelWorkAllocTab
-from tabs.update_estimate_tab import UpdateEstimateTab
-from tabs.duplicate_mr_tab import DuplicateMrTab
-from tabs.feedback_tab import FeedbackTab
-from tabs.file_management_tab import FileManagementTab
-from tabs.scheme_closing_tab import SchemeClosingTab
-from tabs.emb_verify_tab import EmbVerifyTab
-from tabs.resend_rejected_wg_tab import ResendRejectedWgTab
-from tabs.SA_report_tab import SAReportTab
-from tabs.mis_reports_tab import MisReportsTab
-from tabs.demand_tab import DemandTab
-from tabs.mr_tracking_tab import MrTrackingTab
-from tabs.dashboard_report_tab import DashboardReportTab
-from tabs.mr_fill_tab import MrFillTab
-from tabs.pdf_merger_tab import PdfMergerTab
-from tabs.issued_mr_report_tab import IssuedMrReportTab
-from tabs.zero_mr_tab import ZeroMrTab
-from tabs.work_allocation_tab import WorkAllocationTab
 
 from utils import resource_path, get_data_path, get_user_downloads_path, get_config, save_config
 
@@ -63,25 +23,12 @@ if config.OS_SYSTEM == "Windows":
     import ctypes
 
 load_dotenv()
-
-# --- ADD THIS LINE AFTER load_dotenv() ---
 config.create_default_config_if_not_exists()
 
-# --- ADD THIS SECTION ---
-# Store original messagebox functions before we patch them
+# Store original messagebox functions
 _original_showinfo = messagebox.showinfo
 _original_showwarning = messagebox.showwarning
 _original_showerror = messagebox.showerror
-# --- END SECTION ---
-
-import sentry_sdk
-SENTRY_DSN = os.getenv("SENTRY_DSN")
-if SENTRY_DSN:
-    sentry_sdk.init(
-        dsn=SENTRY_DSN,
-        release=f"{config.APP_NAME}@{config.APP_VERSION}",
-        traces_sample_rate=1.0,
-    )
 
 ctk.set_default_color_theme(resource_path("theme.json"))
 ctk.set_appearance_mode("System")
@@ -93,7 +40,6 @@ class CollapsibleFrame(ctk.CTkFrame):
         self.grid_columnconfigure(0, weight=1)
         self.title = title
 
-        # Replaced the button with a simple, non-clickable label
         self.header_label = ctk.CTkLabel(
             self, text=self.title.upper(),
             anchor="w", font=ctk.CTkFont(size=11, weight="bold"),
@@ -101,7 +47,6 @@ class CollapsibleFrame(ctk.CTkFrame):
         )
         self.header_label.grid(row=0, column=0, sticky="ew", padx=5, pady=(5, 2))
 
-        # Content frame is now always visible
         self.content_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.content_frame.grid(row=1, column=0, sticky="ew", padx=(5, 0))
 
@@ -110,7 +55,6 @@ class CollapsibleFrame(ctk.CTkFrame):
         return widget
     
 class OnboardingStep(ctk.CTkFrame):
-    """A single step frame for the onboarding guide."""
     def __init__(self, parent, title, description, icon):
         super().__init__(parent, fg_color="transparent")
         self.pack(expand=True, fill="both", padx=20, pady=(10, 0))
@@ -125,16 +69,240 @@ class OnboardingStep(ctk.CTkFrame):
         desc_label = ctk.CTkLabel(self, text=description, wraplength=380, justify="center")
         desc_label.pack(pady=(0, 20))
 
+class SkeletonLoader(ctk.CTkFrame):
+    def __init__(self, parent, rows=5, **kwargs):
+        super().__init__(parent, fg_color="transparent", **kwargs)
+        self.pack(fill="both", expand=True, padx=20, pady=20)
+        
+        self.placeholders = []
+        
+        # Nakli rows banate hain (Gray boxes)
+        for _ in range(rows):
+            # Ek row container
+            row_frame = ctk.CTkFrame(self, fg_color="transparent")
+            row_frame.pack(fill="x", pady=10)
+            
+            # Icon jaisa gola (Circle placeholder)
+            icon_ph = ctk.CTkFrame(row_frame, width=40, height=40, corner_radius=20, fg_color=("gray85", "gray25"))
+            icon_ph.pack(side="left", padx=(0, 15))
+            
+            # Text lines placeholders
+            text_frame = ctk.CTkFrame(row_frame, fg_color="transparent")
+            text_frame.pack(side="left", fill="x", expand=True)
+            
+            # Title line (Lambii)
+            line1 = ctk.CTkFrame(text_frame, height=15, width=200, fg_color=("gray85", "gray25"))
+            line1.pack(anchor="w", pady=(0, 5))
+            
+            # Subtitle line (Chhoti)
+            line2 = ctk.CTkFrame(text_frame, height=12, width=120, fg_color=("gray90", "gray30"))
+            line2.pack(anchor="w")
+            
+            self.placeholders.extend([icon_ph, line1, line2])
+            
+        self.animate_step = 0
+        self.animating = True
+        self._animate()
 
+    def _animate(self):
+        if not self.animating: return
+        
+        # Colors toggle karke "Breathe" effect banayenge
+        # Light mode colors
+        l1, l2 = "gray85", "gray90" 
+        # Dark mode colors
+        d1, d2 = "gray25", "gray30"
+        
+        if self.animate_step == 0:
+            color_set = (l2, d2) # Thoda light
+            self.animate_step = 1
+        else:
+            color_set = (l1, d1) # Thoda dark
+            self.animate_step = 0
+            
+        for p in self.placeholders:
+            try:
+                p.configure(fg_color=color_set)
+            except: pass
+            
+        # Har 800ms (0.8 sec) mein color badlega
+        self.after(800, self._animate)
+
+    def stop(self):
+        self.animating = False
+        self.destroy()
+
+# --- REPLACE MarqueeLabel Class in main_app.py ---
+
+class MarqueeLabel(ctk.CTkFrame):
+    def __init__(self, parent, text, speed=1, **kwargs):
+        super().__init__(parent, fg_color="transparent", **kwargs)
+        self.speed = speed
+        self.text = text
+        self.safe_bg = ("white", "#1D1E1E")
+        
+        # Height increased to 30 (taaki text kate nahi)
+        self.canvas = tkinter.Canvas(
+            self, 
+            bg=self._apply_appearance_mode(self.safe_bg), 
+            bd=0, 
+            highlightthickness=0, 
+            height=30 
+        )
+        self.canvas.pack(fill="both", expand=True)
+        
+        mode = ctk.get_appearance_mode()
+        initial_color = "gray90" if mode == "Dark" else "gray40"
+        
+        # Y-axis 15 (Middle of 30) set kiya hai
+        self.text_id = self.canvas.create_text(10, 15, text=text, anchor="w", fill=initial_color, font=("Segoe UI", 13))
+        
+        self.canvas_width = 1
+        self.text_width = 1
+        
+        self.bind("<Configure>", self._on_resize)
+        self._animate()
+
+    def _on_resize(self, event):
+        self.canvas_width = event.width
+        self.update_colors()
+        self._update_text_width()
+
+    def _update_text_width(self):
+        bbox = self.canvas.bbox(self.text_id)
+        if bbox:
+            self.text_width = bbox[2] - bbox[0]
+
+    def update_colors(self):
+        mode = ctk.get_appearance_mode()
+        text_color = "gray90" if mode == "Dark" else "gray40"
+        bg_color = self._apply_appearance_mode(self.safe_bg)
+        self.canvas.configure(bg=bg_color)
+        self.canvas.itemconfig(self.text_id, fill=text_color)
+
+    def _animate(self):
+        # Width update karte raho taaki glitch na ho
+        self._update_text_width() 
+        
+        # Move logic
+        self.canvas.move(self.text_id, -self.speed, 0)
+        coords = self.canvas.coords(self.text_id)
+        
+        # Agar text left side se poora nikal gaya, toh wapas right side le aao
+        # (x_position + text_width < 0) matlab gayab ho gaya
+        if coords[0] + self.text_width < 0:
+            self.canvas.coords(self.text_id, self.canvas_width + 50, 15)
+
+        # Loop continues (approx 50 FPS for smoothness)
+        self.after(20, self._animate)
+        
+    def update_text(self, new_text):
+        self.text = new_text
+        self.canvas.itemconfig(self.text_id, text=new_text)
+        self._update_text_width()
+
+class ToastNotification(ctk.CTkToplevel):
+    def __init__(self, parent, message, kind="success", duration=3000):
+        super().__init__(parent)
+        self.parent = parent
+        
+        # Colors definition
+        colors = {
+            "success": "#2E8B57", # Sea Green
+            "error": "#C53030",   # Red
+            "info": "#2B6CB0",    # Blue
+            "warning": "#C05621"  # Orange
+        }
+        
+        icons = {
+            "success": "✅",
+            "error": "❌",
+            "info": "ℹ️",
+            "warning": "⚠️"
+        }
+        
+        bg_color = colors.get(kind, "#333333")
+        icon_text = icons.get(kind, "ℹ️")
+
+        # Window Setup (Borderless & Topmost)
+        self.overrideredirect(True)
+        self.attributes("-topmost", True)
+        self.attributes("-alpha", 0.0) # Start invisible for fade-in
+
+        # --- NO TRANSPARENCY NEEDED (Square Look) ---
+        # Hum background color wahi rakhenge jo notification ka hai
+        self.configure(fg_color=bg_color)
+        
+        # Main Frame (Square Shape - No Corner Radius)
+        self.frame = ctk.CTkFrame(self, fg_color=bg_color, corner_radius=0, border_width=0)
+        self.frame.pack(fill="both", expand=True)
+        
+        # Content Layout
+        self.content = ctk.CTkFrame(self.frame, fg_color="transparent")
+        self.content.pack(padx=20, pady=12)
+        
+        # Icon
+        self.icon_label = ctk.CTkLabel(self.content, text=icon_text, font=("Arial", 18), text_color="white")
+        self.icon_label.pack(side="left", padx=(0, 10))
+        
+        # Message
+        self.msg_label = ctk.CTkLabel(self.content, text=message, font=("Segoe UI", 14, "bold"), text_color="white")
+        self.msg_label.pack(side="left")
+        
+        # Position set karein
+        self.update_idletasks()
+        self._position_window()
+        
+        # Animation Start
+        self._animate_in()
+        
+        # Auto Destroy Timer
+        self.after(duration, self._animate_out)
+        
+        # Click to dismiss
+        self.bind("<Button-1>", lambda e: self._animate_out())
+        self.frame.bind("<Button-1>", lambda e: self._animate_out())
+        self.msg_label.bind("<Button-1>", lambda e: self._animate_out())
+        self.icon_label.bind("<Button-1>", lambda e: self._animate_out())
+
+    def _position_window(self):
+        try:
+            parent_x = self.parent.winfo_rootx()
+            parent_y = self.parent.winfo_rooty()
+            parent_w = self.parent.winfo_width()
+            parent_h = self.parent.winfo_height()
+            
+            my_w = self.winfo_reqwidth()
+            my_h = self.winfo_reqheight()
+            
+            # Bottom Center Position
+            pos_x = parent_x + (parent_w // 2) - (my_w // 2)
+            pos_y = parent_y + parent_h - my_h - 60 
+            
+            self.geometry(f"+{pos_x}+{pos_y}")
+        except:
+            pass
+
+    def _animate_in(self, step=0):
+        if step <= 10:
+            alpha = step / 10
+            self.attributes("-alpha", alpha)
+            self.after(20, lambda: self._animate_in(step+1))
+            
+    def _animate_out(self, step=10):
+        if step >= 0:
+            alpha = step / 10
+            self.attributes("-alpha", alpha)
+            self.after(20, lambda: self._animate_out(step-1))
+        else:
+            self.destroy()
 class OnboardingGuide(ctk.CTkToplevel):
-    """A professional, step-by-step onboarding guide window."""
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
         self.current_step = 0
 
         self.title("Welcome to NREGA Bot!")
-        # --- Increased height slightly to better accommodate content ---
         w, h = 450, 350
         x = (self.winfo_screenwidth() // 2) - (w // 2)
         y = (self.winfo_screenheight() // 2) - (h // 2)
@@ -147,7 +315,6 @@ class OnboardingGuide(ctk.CTkToplevel):
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        # --- NEW: Main container is now a scrollable frame ---
         self.scrollable_container = ctk.CTkScrollableFrame(self, fg_color="transparent")
         self.scrollable_container.grid(row=0, column=0, sticky="nsew", padx=10, pady=(0, 10))
 
@@ -160,16 +327,13 @@ class OnboardingGuide(ctk.CTkToplevel):
 
         self.step_frames = []
         for i, step_info in enumerate(self.steps_data):
-            # --- Steps are now placed inside the scrollable_container ---
             frame = OnboardingStep(self.scrollable_container, step_info["title"], step_info["desc"], step_info["icon"])
-            # We don't need to append to a list and hide/show, we will just clear and recreate
-            # but for this simple case, we will let them stack and tkraise will work fine.
             self.step_frames.append(frame)
 
 
         self.footer = ctk.CTkFrame(self)
         self.footer.grid(row=1, column=0, sticky="ew", padx=20, pady=(10, 20))
-        self.footer.grid_columnconfigure(0, weight=1) # Makes the progress bar expand
+        self.footer.grid_columnconfigure(0, weight=1)
 
         self.progress_bar = ctk.CTkProgressBar(self.footer, height=10)
         self.progress_bar.grid(row=0, column=0, sticky="ew", padx=(0, 15))
@@ -181,15 +345,11 @@ class OnboardingGuide(ctk.CTkToplevel):
         self.focus_force()
 
     def show_step(self, step_index):
-        # This logic remains the same
         for i, frame in enumerate(self.step_frames):
             if i == step_index:
-                # Pack the frame if it's not already, and then raise it.
-                # This ensures it's visible inside the scrollable area.
                 frame.pack(expand=True, fill="both")
                 frame.tkraise()
             else:
-                # Unpack other frames to ensure proper layout
                 frame.pack_forget()
 
         progress_value = (step_index + 1) / len(self.steps_data)
@@ -205,35 +365,41 @@ class OnboardingGuide(ctk.CTkToplevel):
         if self.current_step < len(self.steps_data):
             self.show_step(self.current_step)
 
+class ComingSoonTab(ctk.CTkFrame):
+    def __init__(self, parent, app_instance):
+        super().__init__(parent, fg_color="transparent")
+        self.pack(expand=True, fill="both")
+        
+        container = ctk.CTkFrame(self, fg_color="transparent")
+        container.place(relx=0.5, rely=0.5, anchor="center")
+        
+        # Use a relevant icon if available
+        try:
+            icon_image = app_instance.icon_images.get("onboarding_launch") 
+            if icon_image:
+                 ctk.CTkLabel(container, text="", image=icon_image).pack(pady=(0, 20))
+        except: pass
+
+        ctk.CTkLabel(container, text="Coming Soon", font=ctk.CTkFont(size=28, weight="bold")).pack()
+        ctk.CTkLabel(container, text="Sarkar Aapke Dwar Automation is under development.", 
+                     font=ctk.CTkFont(size=14), text_color="gray60").pack(pady=(10, 0))
+
 
 class NregaBotApp(ctk.CTk):
     def __init__(self):
         super().__init__()
-        # self.withdraw()
-        self.attributes("-alpha", 0.0)
-
-        # --- ADD THIS LINE TO INITIALIZE PYGAME MIXER ---
-        try:
-            pygame.mixer.init()
-        except Exception as e:
-            print(f"Warning: Could not initialize audio mixer: {e}. Sounds will be disabled.")
-
-        # --- ADD THIS SECTION ---
-        # Apply the monkey-patch to intercept messagebox calls
-        messagebox.showinfo = self._custom_showinfo
-        messagebox.showwarning = self._custom_showwarning
-        messagebox.showerror = self._custom_showerror
-        # --- END SECTION ---
-
+        self.withdraw() # Hide initially for smooth splash transition
+        self.disabled_features = []
+        # --- FAST STARTUP CONFIG ---
         self.initial_width = 1100
         self.initial_height = 800
-        self.geometry(f"{self.initial_width}x{self.initial_height}")
+        self.title(f"{config.APP_NAME}")
+        self.minsize(1000, 700)
 
-        self.title(f"{config.APP_NAME}"); self.minsize(1000, 700)
+        # Initialize basics
         self.history_manager = HistoryManager(self.get_data_path)
         self.is_licensed = False; self.license_info = {}; self.machine_id = self._get_machine_id()
         self.update_info = {"status": "Checking...", "version": None, "url": None}
-        if SENTRY_DSN: sentry_sdk.set_user({"id": self.machine_id}); sentry_sdk.set_tag("os.name", config.OS_SYSTEM)
         self.driver = None; self.active_browser = None; self.open_on_about_tab = False
         self.sleep_prevention_process = None; self.is_validating_license = False
         self.active_automations = set(); self.icon_images = {}; self.automation_threads = {}
@@ -241,35 +407,155 @@ class NregaBotApp(ctk.CTk):
         self.button_to_category_frame = {}
         self.category_frames = {}
         self.last_selected_category = get_config('last_selected_category', 'All Automations')
-
+        
+        # --- VARIABLES INITIALIZATION (Fixed) ---
         self.sound_switch_var = tkinter.BooleanVar(value=get_config('sound_enabled', True))
+        self.minimize_var = tkinter.BooleanVar(value=True) # <--- YE MISSING THA, AB ADD HO GAYA
+        # ----------------------------------------
 
         self.status_label = None
         self.server_status_indicator = None
         self.loading_animation_label = None
         self.is_animating = False
+        self.splash = None
 
-        self.header_welcome_prefix_label = None
-        self.header_welcome_name_label = None
-        self.header_welcome_suffix_label = None
+        # --- STEP 1: SHOW SPLASH IMMEDIATELY ---
+        self.splash = self._create_splash_screen()
+        self.splash.update() # Force render
 
+        # --- STEP 2: START HEAVY LOADING IN BACKGROUND ---
+        threading.Thread(target=self._background_initialization, daemon=True).start()
+
+    def _background_initialization(self):
+        """Loads heavy libraries and assets in background to keep UI responsive"""
+        
+        # 1. Initialize Pygame (Audio)
+        try:
+            import pygame
+            pygame.mixer.init()
+        except Exception as e:
+            print(f"Warning: Could not initialize audio mixer: {e}")
+
+        # 2. Initialize Sentry (Network)
+        try:
+            SENTRY_DSN = os.getenv("SENTRY_DSN")
+            if SENTRY_DSN:
+                import sentry_sdk
+                sentry_sdk.init(
+                    dsn=SENTRY_DSN,
+                    release=f"{config.APP_NAME}@{config.APP_VERSION}",
+                    traces_sample_rate=1.0,
+                )
+                sentry_sdk.set_user({"id": self.machine_id})
+                sentry_sdk.set_tag("os.name", config.OS_SYSTEM)
+        except Exception: 
+            pass
+
+        # 3. Load Icons (Disk I/O)
+        self._load_all_icons()
+
+        # 4. Apply patches
+        messagebox.showinfo = self._custom_showinfo
+        messagebox.showwarning = self._custom_showwarning
+        messagebox.showerror = self._custom_showerror
+
+        # 5. Trigger UI Setup on Main Thread
+        self.after(10, self._finish_startup)
+
+    def _finish_startup(self):
+        """Called after background loading is done"""
+        self.bind("<Button-1>", self._on_global_click, add="+")
+        self.bind("<FocusIn>", self._on_window_focus)
+        
+        # Build UI
+        self.grid_rowconfigure(1, weight=1); self.grid_columnconfigure(0, weight=1)
+        self._create_header(); self._create_footer()
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self._create_main_layout(for_activation=True)
+        self.set_status("Initializing...")
+
+        # License check
+        self.perform_license_check_flow()
+
+        # Transition Splash
+        self.after(500, self._transition_from_splash)
+
+    def _transition_from_splash(self):
+        if self.splash: self._fade_out_splash(self.splash, step=0)
+
+    def _fade_out_splash(self, splash, step):
+        # Faster fade out (Kam steps, kam delay)
+        if step <= 5:
+            try:
+                if splash.winfo_exists():
+                    splash.attributes("-alpha", 1.0 - (step / 5))
+                    self.after(20, lambda: self._fade_out_splash(splash, step + 1))
+                else:
+                    self._fade_in_main_window()
+            except Exception:
+                self._fade_in_main_window()
+        else:
+            if splash.winfo_exists():
+                splash.destroy()
+            self.splash = None
+            self.after(0, self._fade_in_main_window)
+
+    def _fade_in_main_window(self):
+        self.update_idletasks()
+        work_x, work_y, work_width, work_height = self._get_work_area()
+        min_w, min_h = 1000, 700 
+        app_height = min(self.initial_height, work_height - 40 if work_height > min_h else work_height)
+        app_width = min(self.initial_width, work_width - 40 if work_width > min_w else work_width)
+        app_height = max(app_height, min_h)
+        app_width = max(app_width, min_w)
+        
+        x = work_x + (work_width // 2) - (app_width // 2)
+        y = work_y + (work_height // 2) - (app_height // 2)
+        
+        self.geometry(f'{app_width}x{app_height}+{x}+{y}')
+        
+        # Animation hata di gayi hai - Seedha visible karein
+        self.attributes("-alpha", 1.0) 
+        self.deiconify()
+        self.lift() # Window ko sabse upar layein
+        self.focus_force() # Focus force karein taaki clicks register ho
+
+    def _load_all_icons(self):
+        """Loads all icons."""
+        # Browsers
         self._load_icon("chrome", "assets/icons/chrome.png")
         self._load_icon("edge", "assets/icons/edge.png")
         self._load_icon("firefox", "assets/icons/firefox.png")
+        
+        # App Branding & Tools
         self._load_icon("nrega", "assets/icons/nrega.png")
         self._load_icon("whatsapp", "assets/icons/whatsapp.png")
         self._load_icon("feedback", "assets/icons/feedback.png")
-        self._load_icon("wc_extractor", "assets/icons/extractor.png")
+        
+        # --- FIX: Extractor Icon Explicit Load ---
+        # Ensure 'extractor.png' exists in assets/icons folder!
+        self._load_icon("extractor_icon", "assets/icons/extractor.png", size=(20, 20))
+        
+        # Settings Toggles
+        self._load_icon("sound_on", "assets/icons/sound.png", size=(18, 18)) 
+        self._load_icon("minimize", "assets/icons/minimize.png", size=(18, 18))
+        
+        # Theme Icons
+        self._load_icon("theme_system", "assets/icons/theme_auto.png", size=(18, 18))
+        self._load_icon("theme_light", "assets/icons/theme_sun.png", size=(18, 18))
+        self._load_icon("theme_dark", "assets/icons/theme_moon.png", size=(18, 18))
 
+        # Other Icons (Keep existing ones...)
+        self._load_icon("wc_extractor", "assets/icons/extractor.png") # Keep old key just in case
         self._load_icon("disclaimer_warning", "assets/icons/emojis/warning.png", size=(16,16))
         self._load_icon("disclaimer_thunder", "assets/icons/emojis/thunder.png", size=(16,16))
         self._load_icon("disclaimer_tools", "assets/icons/emojis/tools.png", size=(16,16))
-
         self._load_icon("onboarding_launch", "assets/icons/emojis/thunder.png", size=(48, 48))
         self._load_icon("onboarding_login", "assets/icons/emojis/verify_jobcard.png", size=(48, 48))
         self._load_icon("onboarding_select", "assets/icons/emojis/wc_gen.png", size=(48, 48))
         self._load_icon("onboarding_start", "assets/icons/emojis/fto_gen.png", size=(48, 48))
-
+        
+        # Menu Icons
         self._load_icon("emoji_mr_gen", "assets/icons/emojis/mr_gen.png", size=(16,16))
         self._load_icon("emoji_mr_payment", "assets/icons/emojis/mr_payment.png", size=(16,16))
         self._load_icon("emoji_gen_wagelist", "assets/icons/emojis/gen_wagelist.png", size=(16,16))
@@ -302,158 +588,14 @@ class NregaBotApp(ctk.CTk):
         self._load_icon("emoji_zero_mr", "assets/icons/emojis/zero_mr.png", size=(16,16))
         self._load_icon("emoji_work_alloc", "assets/icons/emojis/work_allocation.png", size=(16,16))
 
-        self.bind("<Button-1>", self._on_global_click, add="+")
-        self.bind("<FocusIn>", self._on_window_focus)
-        self.after(0, self.start_app)
-
-    def bring_to_front(self):
-        self.lift()
-        self.attributes("-topmost", True)
-        self.after(100, lambda: self.attributes("-topmost", False))
-        self.focus_force()
-
-    def set_status(self, message, color=None):
-        if self.status_label:
-            message_lower = message.lower()
-            final_color = color # Start with the provided color (if any)
-            
-            should_animate = False
-
-            if final_color is None: # If no color was forced, determine it
-                if "running" in message_lower or "starting" in message_lower or \
-                   "navigating" in message_lower or "solving" in message_lower or \
-                   "selecting" in message_lower or "opening" in message_lower or \
-                   "drilling" in message_lower or "finding" in message_lower or \
-                   "clicking" in message_lower or "loading" in message_lower or \
-                   "processing" in message_lower or "waiting for" in message_lower or \
-                   "retrying" in message_lower:
-                    
-                    final_color = "#3B82F6" # Blue
-                    should_animate = True
-                
-                elif "finished" in message_lower:
-                    final_color = "#E53E3E" # Red
-                
-                elif "ready" in message_lower:
-                    final_color = "#38A169" # Green
-                    if message == "Ready": # Only play "ready" sound for the final "Ready" state
-                        self.play_sound("success")
-
-                elif "error" in message_lower or "failed" in message_lower:
-                    final_color = "#E53E3E" # Red
-                    if not "session expired" in message_lower: # Don't play error sound for session expiry retries
-                        self.play_sound("error")
-
-                else: # Default for other states (Stopped, No data, etc.)
-                    final_color = "gray50" # Default gray
-
-            # Handle animation state
-            if should_animate and not self.is_animating:
-                self.is_animating = True
-                self._animate_loading_icon()
-            elif not should_animate:
-                self.is_animating = False
-
-            # Configure the status label with the final color
-            self.status_label.configure(text=f"Status: {message}", text_color=final_color)
-
-            # Ensure animation label is cleared if animation stops
-            if not self.is_animating and self.loading_animation_label:
-                 self.loading_animation_label.configure(text="")
-
-    def _animate_loading_icon(self, frame_index=0):
-        if not self.is_animating:
-            if self.loading_animation_label: self.loading_animation_label.configure(text="")
-            return
-        frames = ["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"]
-        if self.loading_animation_label: self.loading_animation_label.configure(text=frames[frame_index])
-        self.after(80, self._animate_loading_icon, (frame_index + 1) % len(frames))
-
-    def set_server_status(self, is_connected: bool):
-        if self.server_status_indicator: self.server_status_indicator.configure(fg_color="green" if is_connected else "red")
-
-    def start_app(self):
-        self.splash = self._create_splash_screen()
-        # This thread will handle all the slow initialization tasks
-        threading.Thread(target=self._initialize_app, daemon=True).start()
-
-    def _initialize_app(self):
-        """
-        Handles slow initialization tasks in a background thread to keep the UI responsive.
-        """
-        # 1. Setup the main window structure immediately.
-        self.after(0, self._setup_main_window)
-
-        # 2. Perform the license check.
-        self.perform_license_check_flow()
-
-        # 3. Transition from the splash screen.
-        self.after(800, self._transition_from_splash)
-
-
-    def _transition_from_splash(self):
-        if self.splash: self._fade_out_splash(self.splash, step=0)
-
-    def _fade_out_splash(self, splash, step):
-        if step <= 10:
-            splash.attributes("-alpha", 1.0 - (step / 10))
-            self.after(40, lambda: self._fade_out_splash(splash, step + 1))
-        else:
-            splash.destroy(); self.splash = None
-            # --- FIX: Schedule the fade-in to run in the next event loop cycle ---
-            self.after(0, self._fade_in_main_window)
-
-    def _fade_in_main_window(self):
-        # This new sequence correctly centers the window BEFORE showing it
-        self.update_idletasks()
-
-        work_x, work_y, work_width, work_height = self._get_work_area()
-        
-        # --- MODIFIED: Fix TypeError by using hardcoded minsize values ---
-        # Instead of calling self.minsize(), we use the values from __init__
-        min_w, min_h = 1000, 700 
-        # --- END MODIFIED ---
-
-        # Ensure app is not larger than the work area (with a small buffer)
-        app_height = min(self.initial_height, work_height - 40 if work_height > min_h else work_height)
-        app_width = min(self.initial_width, work_width - 40 if work_width > min_w else work_width)
-        
-        # Ensure app is not smaller than minsize
-        app_height = max(app_height, min_h)
-        app_width = max(app_width, min_w)
-
-        # Center the app within the work area
-        x = work_x + (work_width // 2) - (app_width // 2)
-        y = work_y + (work_height // 2) - (app_height // 2)
-
-        self.geometry(f'{app_width}x{app_height}+{x}+{y}')
-
-        # We no longer need self.deiconify() because the window was never hidden
-
-        # Start the fade-in animation
-        for i in range(11):
-            self.after(i * 50, lambda a=i/10.0: self.attributes("-alpha", a))
-
-    def _setup_main_window(self):
-        self.grid_rowconfigure(1, weight=1); self.grid_columnconfigure(0, weight=1)
-        self._create_header(); self._create_footer()
-        self.protocol("WM_DELETE_WINDOW", self.on_closing)
-        # Create the main layout immediately but in a loading state
-        self._create_main_layout(for_activation=True)
-        self.set_status("Initializing...")
-
-    def _destroy_splash(self):
-        if self.splash: self.splash.destroy(); self.splash = None
 
     def run_onboarding_if_needed(self):
         flag_path = get_data_path('.first_run_complete')
         if not os.path.exists(flag_path):
-            OnboardingGuide(self) # Launch the new onboarding window
+            OnboardingGuide(self)
             try:
                 with open(flag_path, 'w') as f: f.write(datetime.now().isoformat())
             except Exception as e: print(f"Could not write first run flag: {e}")
-
-
 
     def _create_splash_screen(self):
         splash = ctk.CTkToplevel(self); splash.overrideredirect(True)
@@ -477,145 +619,175 @@ class NregaBotApp(ctk.CTk):
         self._update_about_tab_info(); self.update_idletasks()
 
     def _setup_licensed_ui(self):
-        # The main layout already exists, so we just re-create the nav buttons and unlock
-        for widget in self.main_layout_frame.winfo_children(): widget.destroy()
-        self._create_main_layout(for_activation=False) # Re-create with all buttons
-
+        # Yahan layout destroy/recreate karne ki bajaye, bas UNLOCK karein
+        # Isse app smooth chalega aur clicks block nahi honge.
+        self._unlock_app()
+        
         is_expiring = self.check_expiry_and_notify()
         self._preload_and_update_about_tab()
-        self._ping_server_in_background(); self._unlock_app()
+        self._ping_server_in_background()
+        
+        # Default tab par le jayein
         first_tab = list(list(self.get_tabs_definition().values())[0].keys())[0]
         self.show_frame("About" if is_expiring else first_tab)
-        self.check_for_updates_background(); self.set_status("Ready")
-
+        
+        self.check_for_updates_background()
+        self.set_status("Ready")
         self.after(500, self.run_onboarding_if_needed)
 
-
     def _setup_unlicensed_ui(self):
-        # App is already in the locked "about tab" state from _setup_main_window
         self._preload_and_update_about_tab()
         self.set_status("Activation Required")
-        # Now, show the activation window. If successful, re-init the UI.
         if self.show_activation_window():
-            self.is_licensed = True # Mark as licensed
-            self._setup_licensed_ui() # Re-setup the UI in licensed mode
+            self.is_licensed = True
+            self._setup_licensed_ui()
         else:
-            self.on_closing(force=True) # Close the app if activation is cancelled
+            self.on_closing(force=True)
 
     def _ping_server_in_background(self):
-        # This function now re-schedules itself to run periodically.
         def ping():
             is_connected = False
             try:
-                # Use a lightweight GET request just to check for connectivity.
-                requests.get(config.LICENSE_SERVER_URL, timeout=10)
+                requests.get(config.LICENSE_SERVER_URL, timeout=5)
                 is_connected = True
             except requests.exceptions.RequestException:
                 is_connected = False
             finally:
-                # Always update the UI and reschedule the next check.
                 self.after(0, self.set_server_status, is_connected)
-                # Reschedule this check to run again in 5 minutes (300,000 ms).
-                self.after(300000, ping) # Changed from re-threading
-
-        # Start the first check in a separate thread to not block the UI.
-        # Subsequent checks are scheduled on the main thread's event loop via self.after().
+                self.after(20000, ping)
         threading.Thread(target=ping, daemon=True).start()
 
     def _on_window_focus(self, event=None):
         if self.is_licensed and not self.is_validating_license:
             self.after(500, lambda: threading.Thread(target=self._validate_in_background, daemon=True).start())
 
-    def _on_sound_toggle(self):
-        is_enabled = self.sound_switch_var.get()
-        save_config('sound_enabled', is_enabled)
-        if is_enabled:
-            self.play_sound("success") # Play a sound to confirm
-
-    # --- ADD THIS ENTIRE NEW METHOD ---
-    def _on_global_click(self, event):
-        """Plays a click sound when a button-like widget is pressed."""
-        widget = event.widget
+    def _on_sound_toggle_click(self):
+        # Toggle Value
+        new_val = not self.sound_switch_var.get()
+        self.sound_switch_var.set(new_val)
+        save_config('sound_enabled', new_val)
         
-        # Click target se shuru karke, parent widget tak check karein
+        # Update Visuals
+        self._update_settings_btn_visuals(self.sound_btn, new_val)
+        if new_val: self.play_sound("success")
+
+    def _on_minimize_toggle_click(self):
+        # Toggle Value
+        new_val = not self.minimize_var.get()
+        self.minimize_var.set(new_val)
+        
+        # Update Visuals
+        self._update_settings_btn_visuals(self.minimize_btn, new_val)
+        
+        state = "Enabled" if new_val else "Disabled"
+        self.show_toast(f"Auto-Minimize {state}", "info")
+
+    def _update_settings_btn_visuals(self, btn, is_active):
+        if is_active:
+            btn.configure(fg_color=("gray85", "gray30")) # Active State (Pressed)
+        else:
+            btn.configure(fg_color="transparent") # Inactive State
+
+    def _on_global_click(self, event):
+        widget = event.widget
         while widget:
             try:
-                # Check karein ki widget ek clickable type hai ya nahi
                 if isinstance(widget, (ctk.CTkButton, ctk.CTkOptionMenu, ctk.CTkSwitch, ctk.CTkCheckBox)):
-                    
-                    # --- EXCLUSIONS ---
-                    # Jin buttons ka apna sound hai (jaise 'Start') ya 
-                    # jinke liye click sound nahi chahiye (jaise 'Stop'), unhe skip karein.
-                    
                     button_text = ""
                     if hasattr(widget, 'cget'):
-                        try:
-                            # Widget ka text check karein
-                            button_text = widget.cget("text").lower()
-                        except (AttributeError, tkinter.TclError):
-                            pass # Kuch widgets mein text nahi hota
-
-                    # Agar text mein yeh words hain, toh sound mat bajayein
-                    if "stop" in button_text or "start automation" in button_text:
-                        return # Inke apne sounds hain
-
-                    # Agar exclusion list mein nahi hai, toh 'click' sound bajayein
+                        try: button_text = widget.cget("text").lower()
+                        except (AttributeError, tkinter.TclError): pass
+                    if "stop" in button_text or "start automation" in button_text: return
                     self.play_sound("click")
-                    return # Sound baj gaya, ab aage check nahi karna
-                
-                # Agle parent widget par jaayein
+                    return
                 widget = widget.master
-            
-            except Exception:
-                # Agar widget check karte waqt destroy ho gaya toh safely exit karein
-                return
-    # --- END NEW METHOD ---
+            except Exception: return
 
-    # --- THIS METHOD IS NOW UPDATED FOR PYGAME ---
     def play_sound(self, sound_name: str):
-        """Plays a sound using pygame if sounds are enabled."""
-        if not self.sound_switch_var.get():
-            return
-        
+        if not self.sound_switch_var.get(): return
         try:
+            import pygame
             sound_file = resource_path(f"assets/sounds/{sound_name}.wav")
             if os.path.exists(sound_file):
-                # pygame.mixer.Sound() and .play() are non-blocking
-                sound = pygame.mixer.Sound(sound_file)
-                sound.play()
-            else:
-                print(f"Sound file not found: {sound_file}")
+                pygame.mixer.Sound(sound_file).play()
         except Exception as e:
-            # Catch exceptions (e.g., file not found, audio device issue)
-            print(f"Error playing sound '{sound_name}' with pygame: {e}")
+            print(f"Error playing sound '{sound_name}': {e}")
 
-# --- ADD THIS ENTIRE SECTION OF NEW METHODS ---
     def _custom_showinfo(self, title, message, **options):
-        """Custom showinfo to play a sound first."""
-        # Check if the message is a "completion" message
-        if "finished" in message.lower() or \
-           "complete" in message.lower() or \
-           "success" in message.lower() or \
-           "transferred" in message.lower():
-            self.play_sound("complete")
+        # Sirf "Success" wale messages ko Toast banayenge
+        # Taki Error aane par user ko OK dabana hi pade (Safety ke liye)
+        
+        # Agar message chhota hai, toh Toast dikhao
+        if len(message) < 60 or "success" in message.lower() or "complete" in message.lower() or "finished" in message.lower():
+            self.show_toast(message, kind="success")
+            return "ok" # Fake return taaki code ruk na jaye
         else:
-            self.play_sound("success") # Default for other info popups
-        return _original_showinfo(title, message, **options)
+            # Agar message bada hai ya complex hai, toh purana popup hi dikhao
+            self.play_sound("success")
+            return _original_showinfo(title, message, **options)
 
     def _custom_showwarning(self, title, message, **options):
-        """Custom showwarning to play a sound first."""
-        self.play_sound("error") # Use "error" for warnings
+        # Warnings ko bhi Toast bana sakte hain agar chhota ho
+        if len(message) < 50:
+             self.show_toast(message, kind="warning")
+             return "ok"
+        
+        self.play_sound("error")
         return _original_showwarning(title, message, **options)
 
     def _custom_showerror(self, title, message, **options):
-        """Custom showerror to play a sound first."""
+        # Errors ko humesha POPUP rakhna chahiye taaki user ignore na kare
         self.play_sound("error")
         return _original_showerror(title, message, **options)
-    # --- END SECTION ---
 
     def bring_to_front(self):
         self.lift()
 
+    def show_toast(self, message, kind="success"):
+        try:
+            # Agar koi purana toast hai toh use hata do (Overlapping roko)
+            if hasattr(self, 'current_toast') and self.current_toast and self.current_toast.winfo_exists():
+                self.current_toast.destroy()
+            
+            self.play_sound("complete" if kind == "success" else "error")
+            self.current_toast = ToastNotification(self, message, kind)
+        except Exception as e:
+            print(f"Toast Error: {e}")
+
+    def set_status(self, message, color=None):
+        if self.status_label:
+            message_lower = message.lower()
+            final_color = color 
+            should_animate = False
+            if final_color is None:
+                if any(x in message_lower for x in ["running", "starting", "navigating", "processing", "loading"]):
+                    final_color = "#3B82F6"; should_animate = True
+                elif "finished" in message_lower: final_color = "#E53E3E"
+                elif "ready" in message_lower:
+                    final_color = "#38A169"
+                    if message == "Ready": self.play_sound("success")
+                elif "error" in message_lower or "failed" in message_lower:
+                    final_color = "#E53E3E"
+                    if not "session expired" in message_lower: self.play_sound("error")
+                else: final_color = "gray50"
+
+            if should_animate and not self.is_animating:
+                self.is_animating = True; self._animate_loading_icon()
+            elif not should_animate: self.is_animating = False
+
+            self.status_label.configure(text=f"Status: {message}", text_color=final_color)
+            if not self.is_animating and self.loading_animation_label: self.loading_animation_label.configure(text="")
+
+    def _animate_loading_icon(self, frame_index=0):
+        if not self.is_animating:
+            if self.loading_animation_label: self.loading_animation_label.configure(text="")
+            return
+        frames = ["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"]
+        if self.loading_animation_label: self.loading_animation_label.configure(text=frames[frame_index])
+        self.after(80, self._animate_loading_icon, (frame_index + 1) % len(frames))
+
+    def set_server_status(self, is_connected: bool):
+        if self.server_status_indicator: self.server_status_indicator.configure(fg_color="green" if is_connected else "red")
 
     def _validate_in_background(self):
         try:
@@ -630,37 +802,17 @@ class NregaBotApp(ctk.CTk):
 
     def check_license(self):
         lic_file = get_data_path('license.dat')
-        if not os.path.exists(lic_file):
-            return False
-        
+        if not os.path.exists(lic_file): return False
         try:
-            with open(lic_file, 'r', encoding='utf-8') as f:
-                self.license_info = json.load(f)
-
-            # 1. Quick local validation
-            if 'key' not in self.license_info or 'expires_at' not in self.license_info:
-                raise ValueError("Invalid license file format.")
-
+            with open(lic_file, 'r', encoding='utf-8') as f: self.license_info = json.load(f)
+            if 'key' not in self.license_info or 'expires_at' not in self.license_info: return False
             expires_dt = datetime.fromisoformat(self.license_info['expires_at'].split('T')[0])
-            if datetime.now() > expires_dt:
-                # The local license is expired. Don't even try to start.
-                return False
-
-            # 2. Start a background thread to validate with the server.
-            #    This won't block the app from starting.
+            if datetime.now() > expires_dt: return False
             threading.Thread(target=self.validate_on_server, args=(self.license_info['key'], True), daemon=True).start()
-
-            # 3. Assume the local license is valid for this session.
             return True
-
-        except Exception as e:
-            print(f"License check error, treating as unlicensed: {e}")
-            if os.path.exists(lic_file):
-                os.remove(lic_file)
-            return False
+        except Exception: return False
 
     def _lock_app_to_about_tab(self):
-        # This function is now called as part of the initial UI setup
         self.show_frame("About")
         for name, btn in self.nav_buttons.items():
             if name != "About": btn.configure(state="disabled")
@@ -669,14 +821,13 @@ class NregaBotApp(ctk.CTk):
             self.launch_edge_btn.configure(state="disabled")
             self.launch_firefox_btn.configure(state="disabled")
             self.theme_combo.configure(state="disabled")
-            if hasattr(self, 'sound_switch'): self.sound_switch.configure(state="disabled") # Disable sound switch
-
+            if hasattr(self, 'sound_switch'): self.sound_switch.configure(state="disabled")
 
     def _unlock_app(self):
         for btn in self.nav_buttons.values(): btn.configure(state="normal")
-        self.launch_chrome_btn.configure(state="normal"); self.launch_edge_btn.configure(state="normal"); self.launch_firefox_btn.configure(state="normal") # <-- IS LINE KO UPDATE KAREIN
+        self.launch_chrome_btn.configure(state="normal"); self.launch_edge_btn.configure(state="normal"); self.launch_firefox_btn.configure(state="normal")
         self.theme_combo.configure(state="normal")
-        if hasattr(self, 'sound_switch'): self.sound_switch.configure(state="normal") # Enable sound switch
+        if hasattr(self, 'sound_switch'): self.sound_switch.configure(state="normal")
 
     def get_data_path(self, filename): return get_data_path(filename)
     def get_user_downloads_path(self): return get_user_downloads_path()
@@ -700,8 +851,7 @@ class NregaBotApp(ctk.CTk):
         b_path = next((p for p in paths.get(config.OS_SYSTEM, []) if os.path.exists(p)), None)
         if not b_path: 
             self.play_sound("error")
-            messagebox.showerror("Error", "Google Chrome not found."); 
-            return
+            messagebox.showerror("Error", "Google Chrome not found."); return
         try:
             cmd = [b_path, f"--remote-debugging-port={port}", f"--user-data-dir={p_dir}", config.MAIN_WEBSITE_URL, "https://bookmark.nregabot.com/"]
             flags = 0x00000008 if config.OS_SYSTEM == "Windows" else 0
@@ -713,20 +863,13 @@ class NregaBotApp(ctk.CTk):
             messagebox.showerror("Error", f"Failed to launch Chrome:\n{e}")
 
     def launch_edge_detached(self):
-        port, p_dir = "9223", os.path.join(os.path.expanduser("~"), "EdgeProfileForNREGABot") # Different port and profile
+        port, p_dir = "9223", os.path.join(os.path.expanduser("~"), "EdgeProfileForNREGABot")
         os.makedirs(p_dir, exist_ok=True)
-        paths = {
-            "Darwin": ["/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"], 
-            "Windows": [
-                r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe", 
-                r"C:\Program Files\Microsoft\Edge\Application\msedge.exe"
-            ]
-        }
+        paths = {"Darwin": ["/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"], "Windows": [r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe", r"C:\Program Files\Microsoft\Edge\Application\msedge.exe"]}
         b_path = next((p for p in paths.get(config.OS_SYSTEM, []) if os.path.exists(p)), None)
         if not b_path: 
             self.play_sound("error")
-            messagebox.showerror("Error", "Microsoft Edge not found."); 
-            return
+            messagebox.showerror("Error", "Microsoft Edge not found."); return
         try:
             cmd = [b_path, f"--remote-debugging-port={port}", f"--user-data-dir={p_dir}", config.MAIN_WEBSITE_URL, "https://bookmark.nregabot.com/"]
             flags = 0x00000008 if config.OS_SYSTEM == "Windows" else 0
@@ -738,131 +881,321 @@ class NregaBotApp(ctk.CTk):
             messagebox.showerror("Error", f"Failed to launch Edge:\n{e}")
 
     def launch_firefox_managed(self):
+        # Lazy load selenium
+        from selenium import webdriver
+        from selenium.webdriver.firefox.options import Options as FirefoxOptions
+        from selenium.webdriver.firefox.service import Service as FirefoxService
+        from webdriver_manager.firefox import GeckoDriverManager
+
         if self.driver and messagebox.askyesno("Browser Running", "Close existing Firefox and start new?"): self.driver.quit(); self.driver = None
         elif self.driver: return
         try:
             p_dir = os.path.join(os.path.expanduser("~"), "FirefoxProfileForNREGABot"); os.makedirs(p_dir, exist_ok=True)
             opts = FirefoxOptions(); opts.add_argument("-profile"); opts.add_argument(p_dir)
             self.driver = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=opts)
-            self.active_browser = "firefox"; 
-            self.play_sound("success")
-            #messagebox.showinfo("Browser Launched", "Firefox is starting. Please log in.")
+            self.active_browser = "firefox"; self.play_sound("success")
             self.driver.get(config.MAIN_WEBSITE_URL); self.driver.execute_script("window.open(arguments[0], '_blank');", "https://bookmark.nregabot.com/")
             self.driver.switch_to.window(self.driver.window_handles[0])
         except Exception as e: 
             self.play_sound("error")
-            messagebox.showerror("Error", f"Failed to launch Firefox:\n{e}"); 
-            self.driver = None; self.active_browser = None
+            messagebox.showerror("Error", f"Failed to launch Firefox:\n{e}"); self.driver = None; self.active_browser = None
 
     def get_driver(self):
-        ff_active = False
+        from selenium import webdriver
+        from selenium.webdriver.chrome.options import Options as ChromeOptions
+        from selenium.webdriver.edge.options import Options as EdgeOptions
+        from selenium.common.exceptions import WebDriverException
+
+        available_browsers = []
         if self.driver:
-            try: _ = self.driver.window_handles; ff_active = True
-            except WebDriverException: self.driver = None
-        
-        cr_active = False
-        try:
-            with socket.create_connection(("127.0.0.1", 9222), timeout=0.1): cr_active = True
-        except (socket.timeout, ConnectionRefusedError): pass
-        
-        edge_active = False # <-- YEH LINE ADD KAREIN
-        try: # <-- YAHAN SE ADD KAREIN
-            with socket.create_connection(("127.0.0.1", 9223), timeout=0.1): edge_active = True
-        except (socket.timeout, ConnectionRefusedError): pass
-        # --- YAHAN TAK ADD KAREIN ---
+            try:
+                if not self.driver.window_handles: raise WebDriverException("No active windows")
+                try: _ = self.driver.current_url
+                except WebDriverException: self.driver.switch_to.window(self.driver.window_handles[0])
+                available_browsers.append("firefox")
+            except Exception: self.driver = None
 
-        if ff_active: self.active_browser = "firefox"; return self.driver
-        if cr_active: return self._connect_to_chrome()
-        if edge_active: return self._connect_to_edge() # <-- YEH LINE ADD KAREIN
-        
-        self.play_sound("error")
-        messagebox.showerror("Connection Failed", "No browser is running. Please launch one first."); return None
+        try:
+            with socket.create_connection(("127.0.0.1", 9222), timeout=0.2): available_browsers.append("chrome")
+        except (socket.timeout, ConnectionRefusedError): pass
+        try:
+            with socket.create_connection(("127.0.0.1", 9223), timeout=0.2): available_browsers.append("edge")
+        except (socket.timeout, ConnectionRefusedError): pass
 
-    def _connect_to_chrome(self):
-        try:
-            opts = ChromeOptions(); opts.add_experimental_option("debuggerAddress", "127.0.0.1:9222")
-            driver = webdriver.Chrome(options=opts); self.active_browser = 'chrome'; return driver
-        except WebDriverException as e: 
+        if not available_browsers:
             self.play_sound("error")
-            messagebox.showerror("Connection Failed", f"Could not connect to Chrome.\nError: {e}"); return None
-        
-    def _connect_to_edge(self):
-        try:
-            opts = EdgeOptions()
-            opts.add_experimental_option("debuggerAddress", "127.0.0.1:9223") # Use port 9223
-            driver = webdriver.Edge(options=opts) # Use webdriver.Edge
-            self.active_browser = 'edge' # Set active browser
-            return driver
-        except WebDriverException as e: 
-            self.play_sound("error")
-            messagebox.showerror("Connection Failed", f"Could not connect to Edge.\nError: {e}"); return None
-        
+            messagebox.showerror("Connection Failed", "No browser is running. Please launch one first.")
+            return None
+
+        selected_browser = available_browsers[0] if len(available_browsers) == 1 else self._ask_browser_selection(available_browsers)
+        if not selected_browser: return None
+
+        if selected_browser == "firefox":
+            if not self.driver:
+                self.play_sound("error")
+                messagebox.showerror("Error", "Firefox session was lost. Please relaunch Firefox.")
+                return None
+            self.active_browser = "firefox"
+            return self.driver
+        elif selected_browser == "chrome":
+            try:
+                opts = ChromeOptions(); opts.add_experimental_option("debuggerAddress", "127.0.0.1:9222")
+                driver = webdriver.Chrome(options=opts); self.active_browser = 'chrome'; return driver
+            except Exception as e:
+                self.play_sound("error"); messagebox.showerror("Connection Failed", f"Could not connect to Chrome.\nError: {e}"); return None
+        elif selected_browser == "edge":
+            try:
+                opts = EdgeOptions(); opts.add_experimental_option("debuggerAddress", "127.0.0.1:9223")
+                driver = webdriver.Edge(options=opts); self.active_browser = 'edge'; return driver
+            except Exception as e:
+                self.play_sound("error"); messagebox.showerror("Connection Failed", f"Could not connect to Edge.\nError: {e}"); return None
+        return None
+
+    def _ask_browser_selection(self, options):
+        selection_var = tkinter.StringVar(value="")
+        dialog = ctk.CTkToplevel(self); dialog.title("Select Browser"); dialog.geometry("300x250"); dialog.resizable(False, False)
+        dialog.transient(self); dialog.grab_set()
+        dialog.update_idletasks()
+        x = self.winfo_x() + (self.winfo_width() // 2) - (300 // 2)
+        y = self.winfo_y() + (self.winfo_height() // 2) - (250 // 2)
+        dialog.geometry(f"+{x}+{y}")
+        ctk.CTkLabel(dialog, text="Multiple browsers detected.", font=ctk.CTkFont(weight="bold")).pack(pady=(20, 5))
+        ctk.CTkLabel(dialog, text="Which one do you want to use?").pack(pady=(0, 20))
+        def select(choice): selection_var.set(choice); dialog.destroy()
+        for opt in options:
+            ctk.CTkButton(dialog, text=f"Use {opt.capitalize()}", image=self.icon_images.get(opt, None), command=lambda o=opt: select(o)).pack(pady=5, padx=20, fill="x")
+        self.wait_window(dialog); return selection_var.get()
+
     def _get_work_area(self):
-        """Returns the usable work area (x, y, width, height) respecting taskbars."""
         if config.OS_SYSTEM == "Windows":
             try:
                 SPI_GETWORKAREA = 0x0030
-                rect = (ctypes.c_long * 4)() # Creates a RECT structure: (left, top, right, bottom)
+                rect = (ctypes.c_long * 4)()
                 ctypes.windll.user32.SystemParametersInfoW(SPI_GETWORKAREA, 0, ctypes.byref(rect), 0)
-                work_x = rect[0]
-                work_y = rect[1]
-                work_width = rect[2] - rect[0]
-                work_height = rect[3] - rect[1]
-                return (work_x, work_y, work_width, work_height)
-            except Exception as e:
-                print(f"Could not get Windows work area, falling back: {e}")
-                # Fallback to screen size
-        
-        # Fallback for non-Windows or ctype errors
-        # --- MODIFIED: Removed faulty try/except. This is more reliable. ---
-        screen_width = self.winfo_screenwidth()
-        screen_height = self.winfo_screenheight()
-        return (0, 0, screen_width, screen_height)
-        # --- END MODIFIED ---
+                return (rect[0], rect[1], rect[2] - rect[0], rect[3] - rect[1])
+            except Exception: pass
+        return (0, 0, self.winfo_screenwidth(), self.winfo_screenheight())
 
     def _get_machine_id(self):
         try: return get_mac_address() or "unknown-" + str(uuid.getnode())
         except Exception: return "error-mac"
 
+    # --- REPLACE THIS FUNCTION in main_app.py ---
+
     def _create_header(self):
-        header = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
-        header.grid(row=0, column=0, sticky="ew", padx=20, pady=(20,0))
+        # Main Header Container
+        header = ctk.CTkFrame(self, corner_radius=15, fg_color=("white", "#1D1E1E")) 
+        header.grid(row=0, column=0, sticky="ew", padx=20, pady=(15, 10))
+        header.grid_columnconfigure(1, weight=1)
+
+        # --- LEFT: Branding ---
+        branding_frame = ctk.CTkFrame(header, fg_color="transparent")
+        branding_frame.grid(row=0, column=0, sticky="w", padx=15, pady=8)
+        
         try:
-            logo = ctk.CTkImage(Image.open(resource_path("logo.png")), size=(50, 50))
-            ctk.CTkLabel(header, image=logo, text="").pack(side="left", padx=(0, 15))
+            logo = ctk.CTkImage(Image.open(resource_path("logo.png")), size=(38, 38))
+            ctk.CTkLabel(branding_frame, image=logo, text="").pack(side="left", padx=(0, 12))
         except Exception: pass
 
-        title_frame = ctk.CTkFrame(header, fg_color="transparent"); title_frame.pack(side="left", fill="x", expand=True)
-        ctk.CTkLabel(title_frame, text=config.APP_NAME, font=ctk.CTkFont(size=22, weight="bold")).pack(anchor="w")
-
-        welcome_frame = ctk.CTkFrame(title_frame, fg_color="transparent"); welcome_frame.pack(anchor="w")
-        self.header_welcome_prefix_label = ctk.CTkLabel(welcome_frame, text=f"v{config.APP_VERSION} | Log in, then select a task.", anchor="w"); self.header_welcome_prefix_label.pack(side="left")
-        self.header_welcome_name_label = ctk.CTkLabel(welcome_frame, text="", anchor="w"); self.header_welcome_name_label.pack(side="left")
-        self.header_welcome_suffix_label = ctk.CTkLabel(welcome_frame, text="", anchor="w"); self.header_welcome_suffix_label.pack(side="left")
-
-        controls = ctk.CTkFrame(header, fg_color="transparent"); controls.pack(side="right")
+        text_box = ctk.CTkFrame(branding_frame, fg_color="transparent")
+        text_box.pack(side="left")
         
-        self.extractor_btn = ctk.CTkButton(controls, text="Extractor", image=self.icon_images.get("wc_extractor"), command=lambda: self.show_frame("Workcode Extractor"), width=110)
-        self.extractor_btn.pack(side="left", padx=(0,10))
+        ctk.CTkLabel(text_box, text=config.APP_NAME, font=ctk.CTkFont(size=18, weight="bold"), anchor="w", height=20).pack(anchor="w")
         
-        self.launch_chrome_btn = ctk.CTkButton(controls, text="Chrome", image=self.icon_images.get("chrome"), command=self.launch_chrome_detached, width=100)
-        self.launch_chrome_btn.pack(side="left", padx=(0,5))
+        welcome_sub_frame = ctk.CTkFrame(text_box, fg_color="transparent", height=15)
+        welcome_sub_frame.pack(anchor="w")
+        self.header_welcome_prefix_label = ctk.CTkLabel(welcome_sub_frame, text=f"v{config.APP_VERSION}", font=ctk.CTkFont(size=11), text_color="gray60")
+        self.header_welcome_prefix_label.pack(side="left")
+        self.header_welcome_name_label = ctk.CTkLabel(welcome_sub_frame, text="", font=ctk.CTkFont(size=11, weight="bold"))
+        self.header_welcome_name_label.pack(side="left")
+        self.header_welcome_suffix_label = ctk.CTkLabel(welcome_sub_frame, text="", font=ctk.CTkFont(size=11))
+        self.header_welcome_suffix_label.pack(side="left")
 
-        self.launch_edge_btn = ctk.CTkButton(controls, text="Edge", image=self.icon_images.get("edge"), command=self.launch_edge_detached, width=100) # <-- YEH LINE ADD KAREIN
-        self.launch_edge_btn.pack(side="left", padx=(0,5))
+        # --- MIDDLE: Announcement ---
+        announcement_frame = ctk.CTkFrame(header, fg_color="transparent", height=30)
+        announcement_frame.grid(row=0, column=1, sticky="ew", padx=20)
+        announcement_frame.grid_propagate(False) 
 
-        self.launch_firefox_btn = ctk.CTkButton(controls, text="Firefox", image=self.icon_images.get("firefox"), command=self.launch_firefox_managed, width=100)
-        self.launch_firefox_btn.pack(side="left", padx=(0,10))
+        # Store in self so we can update it
+        self.announcement_label = MarqueeLabel(announcement_frame, text="Connecting to server...", width=300)
+        self.announcement_label.pack(fill="both", expand=True, pady=5)
+        
+        self.after(1000, self._fetch_app_config)
 
-        theme_frame = ctk.CTkFrame(controls, fg_color="transparent"); theme_frame.pack(side="left", padx=10, fill="y")
-        ctk.CTkLabel(theme_frame, text="Theme:").pack(side="left", padx=(0, 5))
-        self.theme_combo = ctk.CTkOptionMenu(theme_frame, values=["System", "Light", "Dark"], command=self.on_theme_change)
-        self.theme_combo.pack(side="left")
+        # --- RIGHT: Toolbar ---
+        controls_frame = ctk.CTkFrame(header, fg_color="transparent")
+        controls_frame.grid(row=0, column=2, sticky="e", padx=15, pady=8)
 
-        sound_frame = ctk.CTkFrame(controls, fg_color="transparent"); sound_frame.pack(side="left", padx=5, fill="y")
-        ctk.CTkLabel(sound_frame, text="Sound:").pack(side="left", padx=(0, 5))
-        self.sound_switch = ctk.CTkSwitch(sound_frame, text="", variable=self.sound_switch_var, onvalue=True, offvalue=False, command=self._on_sound_toggle, width=0)
-        self.sound_switch.pack(side="left")
+        # 1. Extractor
+        self.extractor_btn = ctk.CTkButton(
+            controls_frame, text="", image=self.icon_images.get("extractor_icon"), 
+            width=35, height=35, corner_radius=8,
+            fg_color=("gray95", "gray25"), hover_color=("gray85", "gray35"),
+            command=lambda: self.show_frame("Workcode Extractor")
+        )
+        self.extractor_btn.pack(side="left", padx=(0, 10))
+
+        # Separator
+        ctk.CTkFrame(controls_frame, width=2, height=20, fg_color=("gray90", "gray30")).pack(side="left", padx=(0, 10))
+
+        # 2. Browsers (Grouped) - CRITICAL FIX: Assigning to self variables
+        browser_group = ctk.CTkFrame(controls_frame, fg_color="transparent")
+        browser_group.pack(side="left", padx=(0, 10))
+        
+        self.launch_chrome_btn = ctk.CTkButton(
+            browser_group, text="", image=self.icon_images.get("chrome"), 
+            width=35, height=35, corner_radius=8,
+            fg_color="transparent", hover_color=("gray90", "gray30"),
+            command=self.launch_chrome_detached
+        )
+        self.launch_chrome_btn.pack(side="left", padx=2)
+
+        self.launch_edge_btn = ctk.CTkButton(
+            browser_group, text="", image=self.icon_images.get("edge"), 
+            width=35, height=35, corner_radius=8,
+            fg_color="transparent", hover_color=("gray90", "gray30"),
+            command=self.launch_edge_detached
+        )
+        self.launch_edge_btn.pack(side="left", padx=2)
+
+        self.launch_firefox_btn = ctk.CTkButton(
+            browser_group, text="", image=self.icon_images.get("firefox"), 
+            width=35, height=35, corner_radius=8,
+            fg_color="transparent", hover_color=("gray90", "gray30"),
+            command=self.launch_firefox_managed
+        )
+        self.launch_firefox_btn.pack(side="left", padx=2)
+
+        # Separator
+        ctk.CTkFrame(controls_frame, width=2, height=20, fg_color=("gray90", "gray30")).pack(side="left", padx=(0, 10))
+
+        # 3. Settings
+        settings_group = ctk.CTkFrame(controls_frame, fg_color=("gray95", "gray25"), corner_radius=20)
+        settings_group.pack(side="left")
+
+        # Theme Button
+        self.current_theme_mode = get_config("theme_mode", "System")
+        self.theme_btn = ctk.CTkButton(
+            settings_group, text="", image=self.icon_images.get("theme_system"),
+            width=30, height=30, corner_radius=15,
+            fg_color="transparent", hover_color=("gray85", "gray30"),
+            command=self._cycle_theme
+        )
+        self.theme_btn.pack(side="left", padx=(5, 2), pady=4)
+        self._update_theme_icon()
+
+        # Sound Button
+        self.sound_btn = ctk.CTkButton(
+            settings_group, text="", image=self.icon_images.get("sound_on"),
+            width=30, height=30, corner_radius=15,
+            fg_color="transparent", hover_color=("gray85", "gray30"),
+            command=self._on_sound_toggle_click
+        )
+        self.sound_btn.pack(side="left", padx=2, pady=4)
+        self._update_settings_btn_visuals(self.sound_btn, self.sound_switch_var.get())
+
+        # Minimize Button
+        self.minimize_btn = ctk.CTkButton(
+            settings_group, text="", image=self.icon_images.get("minimize"),
+            width=30, height=30, corner_radius=15,
+            fg_color="transparent", hover_color=("gray85", "gray30"),
+            command=self._on_minimize_toggle_click
+        )
+        self.minimize_btn.pack(side="left", padx=(2, 5), pady=4)
+        self._update_settings_btn_visuals(self.minimize_btn, self.minimize_var.get())
+        
+        # Dummy variable for compatibility if needed
+        self.theme_combo = ctk.CTkOptionMenu(self, width=0, height=0)
+
+    def _fetch_app_config(self):
+        """Fetches global configuration (Announcement + Disabled Features)."""
+        def _worker():
+            try:
+                url = f"{config.LICENSE_SERVER_URL}/api/app-config"
+                # UPDATE: Timeout ko 5 se badhakar 20 kar diya gaya hai
+                # Taaki agar database slow ho to bhi request fail na ho.
+                resp = requests.get(url, timeout=5)
+                
+                if resp.status_code == 200:
+                    data = resp.json()
+                    
+                    # 1. Handle Announcement
+                    msg = data.get("global_announcement", "")
+                    if msg:
+                        self.after(0, lambda: self.announcement_label.update_text(msg))
+                    
+                    # 2. Handle Disabled Features
+                    self.disabled_features = data.get("disabled_features", [])
+                    self.after(0, self._apply_feature_flags) # UI Update Trigger karein
+                    
+            except Exception as e:
+                # Error ko print karein taaki debugging mein aasani ho
+                print(f"Config Fetch Error: {e}")
+            finally:
+                # Poll every 2 minutes (120000 ms)
+                self.after(120000, self._fetch_app_config)
+        
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _apply_feature_flags(self):
+        """Disables buttons based on server config."""
+        if not hasattr(self, 'nav_buttons'): return
+
+        for name, btn in self.nav_buttons.items():
+            if name in self.disabled_features:
+                # Disable the button
+                btn.configure(state="disabled", fg_color=("gray90", "gray30")) 
+                # Optional: Update text to show maintenance
+                if "⚠️" not in btn.cget("text"):
+                    btn.configure(text=f"{name} ⚠️ (Maintenance)")
+            else:
+                # Enable if it was previously disabled but now enabled on server
+                if btn.cget("state") == "disabled":
+                    btn.configure(state="normal", fg_color="transparent")
+                    # Remove warning text if present
+                    clean_text = btn.cget("text").replace(" ⚠️ (Maintenance)", "")
+                    btn.configure(text=clean_text)
+
+    def _cycle_theme(self):
+        modes = ["System", "Light", "Dark"]
+        try:
+            current_idx = modes.index(self.current_theme_mode)
+        except ValueError:
+            current_idx = 0
+            
+        next_idx = (current_idx + 1) % len(modes)
+        self.current_theme_mode = modes[next_idx]
+        
+        # Apply Theme
+        ctk.set_appearance_mode(self.current_theme_mode)
+        save_config("theme_mode", self.current_theme_mode)
+        
+        # Visual Updates
+        self._update_theme_icon()
+        self.play_sound("click")
+        
+        # --- FIX: Force Announcement Color Update ---
+        if hasattr(self, 'announcement_label'):
+            self.announcement_label.update_colors()
+        # --------------------------------------------
+            
+        self.after(100, self.restyle_all_treeviews)
+
+    def _update_theme_icon(self):
+        icon_key = f"theme_{self.current_theme_mode.lower()}" # theme_system, theme_light, theme_dark
+        new_icon = self.icon_images.get(icon_key, self.icon_images.get("theme_system"))
+        self.theme_btn.configure(image=new_icon)
+        
+        # Tooltip/Toast feel (Optional)
+        # self.show_toast(f"Theme: {self.current_theme_mode}", "info")
+
+    def _update_settings_btn_visuals(self, btn, is_active):
+        if is_active:
+            # GREEN SHADE (Light Green bg, Dark Green border/text feel)
+            # Light mode: #E0F2F1 (Pale Teal), Dark mode: #1B5E20 (Dark Green)
+            btn.configure(fg_color=("#C8E6C9", "#1B5E20")) 
+        else:
+            btn.configure(fg_color="transparent")
 
     def _update_header_welcome_message(self):
         if not self.header_welcome_prefix_label: return
@@ -871,80 +1204,164 @@ class NregaBotApp(ctk.CTk):
             self.header_welcome_prefix_label.configure(text=f"v{config.APP_VERSION} | Welcome, ")
             self.header_welcome_name_label.configure(text=user_name)
             self.header_welcome_suffix_label.configure(text="!")
-            if key_type != 'trial':
-                self.header_welcome_name_label.configure(text_color=("gold4", "#FFD700"), font=ctk.CTkFont(size=13, weight="bold"))
-            else:
-                self.header_welcome_name_label.configure(text_color=ctk.ThemeManager.theme["CTkLabel"]["text_color"], font=ctk.CTkFont(size=13, weight="normal"))
+            if key_type != 'trial': self.header_welcome_name_label.configure(text_color=("gold4", "#FFD700"), font=ctk.CTkFont(size=13, weight="bold"))
+            else: self.header_welcome_name_label.configure(text_color=ctk.ThemeManager.theme["CTkLabel"]["text_color"], font=ctk.CTkFont(size=13, weight="normal"))
         else:
             self.header_welcome_prefix_label.configure(text=f"v{config.APP_VERSION} | Log in, then select a task.")
             self.header_welcome_name_label.configure(text=""); self.header_welcome_suffix_label.configure(text="")
 
     def _create_main_layout(self, for_activation=False):
-        self.main_layout_frame = ctk.CTkFrame(self, corner_radius=0); self.main_layout_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(10,0))
-        self.main_layout_frame.grid_rowconfigure(0, weight=1); self.main_layout_frame.grid_columnconfigure(1, weight=1)
+        # Purana frame destroy karein
+        if hasattr(self, 'main_layout_frame') and self.main_layout_frame.winfo_exists():
+            self.main_layout_frame.destroy()
+            # CRITICAL FIX: Screen refresh karein taaki purana frame visually gayab ho jaye
+            self.update_idletasks() 
 
+        self.main_layout_frame = ctk.CTkFrame(self, corner_radius=0)
+        self.main_layout_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(10,0))
+        self.main_layout_frame.grid_rowconfigure(0, weight=1)
+        self.main_layout_frame.grid_columnconfigure(1, weight=1)
+        
         nav_scroll_frame = ctk.CTkScrollableFrame(self.main_layout_frame, width=200, label_text="", fg_color="transparent")
         nav_scroll_frame.grid(row=0, column=0, sticky="nsw", padx=(0,5))
         self._create_nav_buttons(nav_scroll_frame)
-
-        self.content_area = ctk.CTkFrame(self.main_layout_frame); self.content_area.grid(row=0, column=1, sticky="nsew")
-        self.content_area.grid_rowconfigure(0, weight=1); self.content_area.grid_columnconfigure(0, weight=1)
+        
+        self.content_area = ctk.CTkFrame(self.main_layout_frame)
+        self.content_area.grid(row=0, column=1, sticky="nsew")
+        self.content_area.grid_rowconfigure(0, weight=1)
+        self.content_area.grid_columnconfigure(0, weight=1)
+        
         self._create_content_frames()
-
-        if for_activation:
+        
+        if for_activation: 
             self._lock_app_to_about_tab()
-
 
     def _create_nav_buttons(self, parent):
         self.nav_buttons.clear()
         self.button_to_category_frame.clear()
         self.category_frames.clear()
 
-        ctk.CTkLabel(parent, text="Category Filter:", font=ctk.CTkFont(size=12)).pack(fill="x", padx=10, pady=(5, 2))
+        # --- 1. DISTINCT COLOR PALETTE ---
+        CATEGORY_COLORS = {
+            "Core NREGA Tasks":     ("#E3F2FD", "#0D2538"), # Soft Blue
+            "JE & AE Automation":   ("#E8F5E9", "#0F2E16"), # Soft Green
+            "Records & Workcode":   ("#FFF3E0", "#3E2723"), # Soft Orange/Brown
+            "Utilities & Verification": ("#F3E5F5", "#2A0F36"), # Soft Purple
+            "Reporting":            ("#FFEBEE", "#381115"), # Soft Red
+            "Application":          ("#F5F5F5", "#212121"), # Soft Grey
+        }
+        
+        ctk.CTkLabel(parent, text="Category Filter:", font=ctk.CTkFont(size=12, weight="bold")).pack(fill="x", padx=10, pady=(10, 2))
+        
         categories = ["All Automations"] + list(self.get_tabs_definition().keys())
-        self.category_filter_menu = ctk.CTkOptionMenu(parent, values=categories, command=self._on_category_filter_change)
+        self.category_filter_menu = ctk.CTkOptionMenu(
+            parent, 
+            values=categories, 
+            command=self._on_category_filter_change,
+            fg_color=("gray80", "gray25"),
+            button_color=("gray70", "gray30"),
+            text_color=("black", "white")
+        )
         self.category_filter_menu.set(self.last_selected_category)
         self.category_filter_menu.pack(fill="x", padx=10, pady=(0, 15))
 
         for cat, tabs in self.get_tabs_definition().items():
+            cat_color = CATEGORY_COLORS.get(cat, ("#F5F5F5", "#2b2b2b"))
+            
             cat_frame = CollapsibleFrame(parent, title=cat)
+            cat_frame.configure(fg_color=cat_color, corner_radius=10)
+            
+            # --- FIX: grid_configure use kiya (pack_configure galat tha) ---
+            try:
+                cat_frame.content_frame.grid_configure(pady=(0, 5), padx=5)
+            except Exception:
+                pass 
+            
             self.category_frames[cat] = cat_frame
             
             for name, data in tabs.items():
                 btn = ctk.CTkButton(
-                    cat_frame.content_frame, text=f" {name}", image=data.get("icon"), 
-                    compound="left", command=lambda n=name: self.show_frame(n), 
-                    anchor="w", font=ctk.CTkFont(size=13), height=32, corner_radius=6, 
-                    fg_color="transparent", text_color=("gray10", "gray90"), 
-                    hover_color=("gray75", "gray25")
+                    cat_frame.content_frame, 
+                    text=f" {name}", 
+                    image=data.get("icon"), 
+                    compound="left", 
+                    command=lambda n=name: self.show_frame(n), 
+                    anchor="w", 
+                    font=ctk.CTkFont(size=13), 
+                    height=35, 
+                    corner_radius=8, 
+                    fg_color="transparent", 
+                    text_color=("gray10", "gray90"), 
+                    hover_color=("gray100", "gray20")
                 )
-                btn.pack(fill="x", padx=5, pady=2)
+                btn.pack(fill="x", padx=8, pady=3)
+                
                 self.nav_buttons[name] = btn
                 self.button_to_category_frame[name] = cat_frame
-        
+
+                # Check immediately if disabled (agar config pehle hi load ho chuka hai)
+                if name in self.disabled_features:
+                    btn.configure(state="disabled", text=f"{name} ⚠️ (Maintenance)")
+                
         self._filter_nav_menu(self.last_selected_category)
 
     def _on_category_filter_change(self, selected_category: str):
-        """Called when the user selects a new category from the dropdown."""
-        # --- ADD THIS LINE ---
-        self.play_sound("select") 
-        
-        save_config('last_selected_category', selected_category)
-        self._filter_nav_menu(selected_category)
+        self.play_sound("select"); save_config('last_selected_category', selected_category); self._filter_nav_menu(selected_category)
 
     def _filter_nav_menu(self, selected_category: str):
-        """Shows or hides category frames based on the filter."""
-        for category, frame in self.category_frames.items():
+        # 1. Pehle sabko hatao (Unpack)
+        for frame in self.category_frames.values():
             frame.pack_forget()
-            if selected_category == "All Automations" or category == selected_category:
-                frame.pack(fill="x", pady=0, padx=0)
+        
+        # 2. UI Engine ko saans lene do (Smoothness Hack)
+        self.update_idletasks()
+        
+        # 3. Jo select hua hai use wapas lagao
+        if selected_category == "All Automations":
+            for cat, frame in self.category_frames.items():
+                # Margin add karein taaki cards alag-alag dikhein
+                frame.pack(fill="x", pady=8, padx=5) 
+        else:
+            if selected_category in self.category_frames:
+                self.category_frames[selected_category].pack(fill="x", pady=5, padx=5)
 
     def _create_content_frames(self):
-        self.content_frames.clear()
-        self.tab_instances.clear()
-        self.show_frame("About", raise_frame=False)
+        self.content_frames.clear(); self.tab_instances.clear(); self.show_frame("About", raise_frame=False)
 
     def get_tabs_definition(self):
+        # --- LAZY LOAD IMPORTS ---
+        from tabs.msr_tab import MsrTab
+        from tabs.wagelist_gen_tab import WagelistGenTab
+        from tabs.wagelist_send_tab import WagelistSendTab
+        from tabs.wc_gen_tab import WcGenTab
+        from tabs.mb_entry_tab import MbEntryTab
+        from tabs.if_edit_tab import IfEditTab
+        from tabs.musterroll_gen_tab import MusterrollGenTab
+        from tabs.about_tab import AboutTab
+        from tabs.jobcard_verify_tab import JobcardVerifyTab
+        from tabs.fto_generation_tab import FtoGenerationTab
+        from tabs.workcode_extractor_tab import WorkcodeExtractorTab
+        from tabs.add_activity_tab import AddActivityTab
+        from tabs.abps_verify_tab import AbpsVerifyTab
+        from tabs.del_work_alloc_tab import DelWorkAllocTab
+        from tabs.update_estimate_tab import UpdateEstimateTab
+        from tabs.duplicate_mr_tab import DuplicateMrTab
+        from tabs.feedback_tab import FeedbackTab
+        from tabs.file_management_tab import FileManagementTab
+        from tabs.scheme_closing_tab import SchemeClosingTab
+        from tabs.emb_verify_tab import EmbVerifyTab
+        from tabs.resend_rejected_wg_tab import ResendRejectedWgTab
+        from tabs.SA_report_tab import SAReportTab
+        from tabs.mis_reports_tab import MisReportsTab
+        from tabs.demand_tab import DemandTab
+        from tabs.mr_tracking_tab import MrTrackingTab
+        from tabs.dashboard_report_tab import DashboardReportTab
+        from tabs.mr_fill_tab import MrFillTab
+        from tabs.pdf_merger_tab import PdfMergerTab
+        from tabs.issued_mr_report_tab import IssuedMrReportTab
+        from tabs.zero_mr_tab import ZeroMrTab
+        from tabs.work_allocation_tab import WorkAllocationTab
+
         return {
             "Core NREGA Tasks": {
                 "MR Gen": {"creation_func": MusterrollGenTab, "icon": self.icon_images.get("emoji_mr_gen"), "key": "muster"},
@@ -978,6 +1395,9 @@ class NregaBotApp(ctk.CTk):
                 "Zero Mr": {"creation_func": ZeroMrTab, "icon": self.icon_images.get("emoji_zero_mr"), "key": "zero_mr"},
                 "File Manager": {"creation_func": FileManagementTab, "icon": self.icon_images.get("emoji_file_manager"), "key": "file_manager"},
             },
+            "AYASAD": {
+                 "Sarkar Aapke Dwar": {"creation_func": ComingSoonTab, "icon": self.icon_images.get("nrega")},
+            },
             "Reporting": {
                 "Social Audit Report": {"creation_func": SAReportTab, "icon": self.icon_images.get("emoji_social_audit"), "key": "social_audit_respond"},
                 "MIS Reports": {"creation_func": MisReportsTab, "icon": self.icon_images.get("emoji_mis_reports"), "key": "mis_reports"},
@@ -992,238 +1412,122 @@ class NregaBotApp(ctk.CTk):
         }
 
     def show_frame(self, page_name, raise_frame=True):
-        if page_name not in self.tab_instances:
-            tabs = self.get_tabs_definition()
-            for cat, tab_items in tabs.items():
-                if page_name in tab_items:
-                    frame = ctk.CTkFrame(self.content_area)
-                    frame.grid(row=0, column=0, sticky="nsew")
-                    self.content_frames[page_name] = frame
-                    instance = tab_items[page_name]["creation_func"](frame, self)
-                    instance.pack(expand=True, fill="both")
-                    self.tab_instances[page_name] = instance
-                    break 
-
-        if raise_frame:
-            if page_name in self.content_frames:
+        # Step 1: Agar tab pehle se loaded hai, turant dikha do
+        if page_name in self.tab_instances:
+            if raise_frame:
                 self.content_frames[page_name].tkraise()
-            for name, btn in self.nav_buttons.items():
-                btn.configure(fg_color=("gray90", "gray28") if name == page_name else "transparent")
+                self._update_nav_button_color(page_name)
+            return
+
+        # Step 2: Agar tab loaded nahi hai, toh pehle SKELETON dikhao
+        # Ek temporary frame banao
+        loading_frame = ctk.CTkFrame(self.content_area)
+        loading_frame.grid(row=0, column=0, sticky="nsew")
+        
+        # Skeleton start karo
+        skeleton = SkeletonLoader(loading_frame, rows=4)
+        loading_frame.tkraise()
+        self.update_idletasks() # Screen par skeleton force karo draw hone ke liye
+        
+        # Step 3: Thoda sa delay dekar asli data load karo (taaki UI freeze na ho)
+        def load_actual_tab():
+            try:
+                tabs = self.get_tabs_definition()
+                for cat, tab_items in tabs.items():
+                    if page_name in tab_items:
+                        # Asli frame create karo
+                        frame = ctk.CTkFrame(self.content_area)
+                        frame.grid(row=0, column=0, sticky="nsew")
+                        self.content_frames[page_name] = frame
+                        
+                        # Asli content initialize karo (Yeh time leta hai)
+                        instance = tab_items[page_name]["creation_func"](frame, self)
+                        instance.pack(expand=True, fill="both")
+                        self.tab_instances[page_name] = instance
+                        
+                        # Skeleton hatao aur asli frame dikhao
+                        skeleton.stop()
+                        loading_frame.destroy()
+                        
+                        if raise_frame:
+                            frame.tkraise()
+                            self._update_nav_button_color(page_name)
+                        break
+            except Exception as e:
+                print(f"Error loading tab {page_name}: {e}")
+                skeleton.stop()
+                loading_frame.destroy()
+
+        # 50ms baad load function chalao (UI ko saans lene do)
+        self.after(50, load_actual_tab)
+
+    def _update_nav_button_color(self, page_name):
+        for name, btn in self.nav_buttons.items(): 
+            btn.configure(fg_color=("gray90", "gray28") if name == page_name else "transparent")
 
     def open_web_file_manager(self):
-        if self.license_info.get('key'):
-            auth_url = f"{config.LICENSE_SERVER_URL}/authenticate-from-app/{self.license_info['key']}?next=files"
-            webbrowser.open_new_tab(auth_url)
-        else:
-            self.play_sound("error")
-            messagebox.showerror("Error", "License key not found. Please log in to use the web file manager.")
-
-    
+        if self.license_info.get('key'): webbrowser.open_new_tab(f"{config.LICENSE_SERVER_URL}/authenticate-from-app/{self.license_info['key']}?next=files")
+        else: self.play_sound("error"); messagebox.showerror("Error", "License key not found.")
 
     def switch_to_if_edit_with_data(self, data):
-        """Switches to the IF Editor tab and passes data from the WC Gen tab."""
-        if not data:
-            return
-        
         self.show_frame("IF Editor")
-        
-        if_edit_instance = self.tab_instances.get("IF Editor")
-        if if_edit_instance and hasattr(if_edit_instance, 'load_data_from_wc_gen'):
-            if_edit_instance.load_data_from_wc_gen(data)
-            self.play_sound("success")
-            messagebox.showinfo(
-                "Data Transferred",
-                f"{len(data)} work code(s) have been successfully transferred to the IF Editor tab.\n\n"
-                "You can now configure and start the IF Editor automation.",
-                parent=self
-            )
-        else:
-            self.play_sound("error")
-            messagebox.showerror("Error", "Could not find the IF Editor tab instance or it's missing the required method.")
-
-    # --- ADD THIS NEW METHOD ---
+        if self.tab_instances.get("IF Editor"):
+            self.tab_instances["IF Editor"].load_data_from_wc_gen(data)
+            self.play_sound("success"); messagebox.showinfo("Data Transferred", f"{len(data)} items transferred.")
+    
     def run_work_allocation_from_demand(self, panchayat_name: str, work_key: str):
-        """
-        Switches to the Work Allocation tab and starts its automation.
-        Called by DemandTab after it finishes.
-        """
-        
-        # 1. Switch to the tab (Name is 'Allocation' in get_tabs_definition)
         self.show_frame("Allocation")
-        
-        # 2. Get the tab instance
-        alloc_instance = self.tab_instances.get("Allocation")
-        
-        # 3. Check and run
-        if alloc_instance and hasattr(alloc_instance, 'run_automation_from_demand'):
-            # --- FIX: Log to the correct tab's log display ---
-            if hasattr(alloc_instance, 'log_display'):
-                self.log_message(alloc_instance.log_display, "--- Handoff from Demand Tab received ---")
-            # --- END FIX ---
-                
-            # Use `after` to ensure the tab is fully raised before starting
-            self.after(200, alloc_instance.run_automation_from_demand, panchayat_name, work_key)
-            self.play_sound("success") # Play a sound for the handoff
-            messagebox.showinfo(
-                "Automation Handoff",
-                "Demand complete. Starting Work Allocation automatically...",
-                parent=self
-            )
-        else:
-            self.play_sound("error")
-            messagebox.showerror(
-                "Handoff Error", 
-                "Could not find the 'Allocation' tab or it's missing the required 'run_automation_from_demand' method.",
-                parent=self
-            )
-    # --- END NEW METHOD ---
+        alloc = self.tab_instances.get("Allocation")
+        if alloc:
+            self.after(200, alloc.run_automation_from_demand, panchayat_name, work_key)
+            self.play_sound("success"); messagebox.showinfo("Handoff", "Starting Work Allocation...")
 
     def switch_to_msr_tab_with_data(self, workcodes: str, panchayat_name: str):
-        """Switches to the MSR Payment tab and passes data from MR Tracking."""
-        
-        # Ensure the frame and instance exist
         self.show_frame("MR Payment")
-        
-        msr_instance = self.tab_instances.get("MR Payment")
-        
-        if msr_instance and hasattr(msr_instance, 'load_data_from_mr_tracking'):
-            msr_instance.load_data_from_mr_tracking(workcodes, panchayat_name)
-            self.play_sound("success")
-            messagebox.showinfo(
-                "Data Transferred",
-                f"{len(workcodes.splitlines())} workcode(s) and Panchayat '{panchayat_name}' have been transferred to the MR Payment tab.",
-                parent=self
-            )
-        else:
-            self.play_sound("error")
-            messagebox.showerror("Error", "Could not find the MR Payment tab instance or it's missing the required method.")
-    # --- NEW METHOD to send data to eMB Entry ---
+        if self.tab_instances.get("MR Payment"):
+            self.tab_instances["MR Payment"].load_data_from_mr_tracking(workcodes, panchayat_name)
+            self.play_sound("success"); messagebox.showinfo("Data Transferred", "Data sent to MR Payment.")
+
     def switch_to_emb_entry_with_data(self, workcodes: str, panchayat_name: str):
-        """Switches to the eMB Entry tab and passes data from MR Tracking."""
-        
-        # Ensure the frame and instance exist
         self.show_frame("eMB Entry")
-        
-        emb_instance = self.tab_instances.get("eMB Entry")
-        
-        if emb_instance and hasattr(emb_instance, 'load_data_from_mr_tracking'):
-            emb_instance.load_data_from_mr_tracking(workcodes, panchayat_name)
-            self.play_sound("success")
-            messagebox.showinfo(
-                "Data Transferred",
-                f"{len(workcodes.splitlines())} workcode(s) and Panchayat '{panchayat_name}' have been transferred to the eMB Entry tab.",
-                parent=self
-            )
-        else:
-            self.play_sound("error")
-            messagebox.showerror("Error", "Could not find the eMB Entry tab instance or it's missing the required method.")
-    # --- END NEW METHOD ---
+        if self.tab_instances.get("eMB Entry"):
+            self.tab_instances["eMB Entry"].load_data_from_mr_tracking(workcodes, panchayat_name)
+            self.play_sound("success"); messagebox.showinfo("Data Transferred", "Data sent to eMB Entry.")
 
     def switch_to_mr_fill_with_data(self, workcodes: str, panchayat_name: str):
-        """Switches to the MR Fill tab and passes data from Dashboard Report."""
-        
-        # Ensure the frame and instance exist
         self.show_frame("MR Fill")
-        
-        mr_fill_instance = self.tab_instances.get("MR Fill")
-        
-        if mr_fill_instance and hasattr(mr_fill_instance, 'load_data_from_dashboard'):
-            mr_fill_instance.load_data_from_dashboard(workcodes, panchayat_name)
-            self.play_sound("success")
-            messagebox.showinfo(
-                "Data Transferred",
-                f"{len(workcodes.splitlines())} workcode(s) and Panchayat '{panchayat_name}' have been transferred to the MR Fill tab.",
-                parent=self
-            )
-        else:
-            self.play_sound("error")
-            messagebox.showerror("Error", "Could not find the MR Fill tab instance or it's missing the required method.")
-    # --- END NEW METHOD ---
+        if self.tab_instances.get("MR Fill"):
+            self.tab_instances["MR Fill"].load_data_from_dashboard(workcodes, panchayat_name)
+            self.play_sound("success"); messagebox.showinfo("Data Transferred", "Data sent to MR Fill.")
 
-    # --- NEW METHOD to send user to MR Tracking for ABPS ---
     def switch_to_mr_tracking_for_abps(self):
-        """
-        Switches to the MR Tracking tab and pre-sets it
-        for checking ABPS pendency.
-        """
-        # Ensure the frame and instance exist
         self.show_frame("MR Tracking")
-        
-        mr_tracking_instance = self.tab_instances.get("MR Tracking")
-        
-        if mr_tracking_instance and hasattr(mr_tracking_instance, 'set_for_abps_check'):
-            mr_tracking_instance.set_for_abps_check()
-            # Play sound *before* the popup
-            self.play_sound("success")
-            messagebox.showinfo(
-                "Action Required",
-                "fill the details to check ABPS Labour",
-                parent=self
-            )
-        else:
-            self.play_sound("error")
-            messagebox.showerror("Error", "Could not find the MR Tracking tab instance or it's missing the required method.")
-    # --- END NEW METHOD ---
+        if self.tab_instances.get("MR Tracking"):
+            self.tab_instances["MR Tracking"].set_for_abps_check()
+            self.play_sound("success"); messagebox.showinfo("Action Required", "Fill details to check ABPS Labour")
 
     def switch_to_duplicate_mr_with_data(self, workcodes: str, panchayat_name: str):
-        """Switches to the Duplicate MR Print tab and passes data."""
-        
-        # Ensure the frame and instance exist
         self.show_frame("Duplicate MR Print")
-        
-        dup_mr_instance = self.tab_instances.get("Duplicate MR Print")
-        
-        if dup_mr_instance and hasattr(dup_mr_instance, 'load_data_from_report'):
-            dup_mr_instance.load_data_from_report(workcodes, panchayat_name)
-            self.play_sound("success")
-            messagebox.showinfo(
-                "Data Transferred",
-                f"{len(workcodes.splitlines())} workcode(s) and Panchayat '{panchayat_name}' have been transferred to the Duplicate MR Print tab.",
-                parent=self
-            )
-        else:
-            self.play_sound("error")
-            messagebox.showerror("Error", "Could not find the Duplicate MR Print tab instance or it's missing the required method 'load_data_from_report'.")
-    # --- END NEW METHOD ---
+        if self.tab_instances.get("Duplicate MR Print"):
+            self.tab_instances["Duplicate MR Print"].load_data_from_report(workcodes, panchayat_name)
+            self.play_sound("success"); messagebox.showinfo("Data Transferred", "Data sent to Duplicate MR.")
 
-    # --- NEW METHOD to send data to Zero MR ---
     def switch_to_zero_mr_tab_with_data(self, data_list: list):
-        """Switches to the Zero MR tab and passes data from MR Tracking."""
-        
-        # Ensure the frame and instance exist
         self.show_frame("Zero Mr")
-        
-        zero_mr_instance = self.tab_instances.get("Zero Mr")
-        
-        if zero_mr_instance and hasattr(zero_mr_instance, 'load_data_from_mr_tracking'):
-            zero_mr_instance.load_data_from_mr_tracking(data_list)
-            self.play_sound("success")
-            messagebox.showinfo(
-                "Data Transferred",
-                f"{len(data_list)} MR(s) have been transferred to the Zero MR tab.",
-                parent=self
-            )
-        else:
-            self.play_sound("error")
-            messagebox.showerror("Error", "Could not find the Zero MR tab instance or it's missing the required method 'load_data_from_mr_tracking'.")
-    # --- END NEW METHOD ---
+        if self.tab_instances.get("Zero Mr"):
+            self.tab_instances["Zero Mr"].load_data_from_mr_tracking(data_list)
+            self.play_sound("success"); messagebox.showinfo("Data Transferred", "Data sent to Zero MR.")
     
     def _create_footer(self):
         footer = ctk.CTkFrame(self, height=40, corner_radius=0)
         footer.grid(row=2, column=0, sticky="ew", padx=20, pady=(10, 15))
         footer.grid_columnconfigure((0, 1, 3), weight=0); footer.grid_columnconfigure(2, weight=1)
-
         left_frame = ctk.CTkFrame(footer, fg_color="transparent"); left_frame.grid(row=0, column=0, sticky="w", padx=15)
         ctk.CTkLabel(left_frame, text="© 2025 NREGA Bot", text_color="gray50").pack(side="left")
-
         status_frame = ctk.CTkFrame(footer, fg_color="transparent"); status_frame.grid(row=0, column=1, columnspan=2, sticky="ew", padx=20)
         self.loading_animation_label = ctk.CTkLabel(status_frame, text="", width=20, font=ctk.CTkFont(size=14)); self.loading_animation_label.pack(side="left")
         self.status_label = ctk.CTkLabel(status_frame, text="Status: Ready", text_color="gray50", anchor="w"); self.status_label.pack(side="left")
-
         btn_container = ctk.CTkFrame(footer, fg_color="transparent"); btn_container.grid(row=0, column=3, sticky="e", padx=15)
-        def create_link(parent, text, image_key, url):
-            btn = ctk.CTkButton(parent, text=text, image=self.icon_images.get(image_key), command=lambda: webbrowser.open_new_tab(url), fg_color="transparent", hover=False, text_color=("gray10", "gray80"))
-            return btn
         ctk.CTkButton(btn_container, text="File Manager", image=self.icon_images.get("emoji_file_manager"), command=self.open_web_file_manager, fg_color="transparent", hover=False, text_color=("gray10", "gray80")).pack(side="left")
         ctk.CTkButton(btn_container, text="Community", image=self.icon_images.get("whatsapp"), command=lambda: webbrowser.open_new_tab("https://chat.whatsapp.com/Bup3hDCH3wn2shbUryv8wn"), fg_color="transparent", hover=False, text_color=("gray10", "gray80")).pack(side="left", padx=(10, 0))
         ctk.CTkButton(btn_container, text="Contact Support", image=self.icon_images.get("feedback"), command=lambda: self.show_frame("Feedback"), fg_color="transparent", hover=False, text_color=("gray10", "gray80")).pack(side="left", padx=(10, 0))
@@ -1234,18 +1538,10 @@ class NregaBotApp(ctk.CTk):
     def save_demo_csv(self, file_type: str):
         try:
             src = resource_path(f"assets/demo_{file_type}.csv")
-            if not os.path.exists(src): 
-                self.play_sound("error")
-                messagebox.showerror("Error", f"Demo file not found: demo_{file_type}.csv"); 
-                return
-            save_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")], initialfile=f"{file_type}_data.csv", title=f"Save Demo {file_type.upper()} CSV")
-            if save_path: 
-                shutil.copyfile(src, save_path); 
-                self.play_sound("success")
-                messagebox.showinfo("Success", f"Demo file saved to:\n{save_path}")
-        except Exception as e: 
-            self.play_sound("error")
-            messagebox.showerror("Error", f"Could not save demo file: {e}")
+            if not os.path.exists(src): self.play_sound("error"); messagebox.showerror("Error", "Demo file not found"); return
+            save_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")], initialfile=f"{file_type}_data.csv")
+            if save_path: shutil.copyfile(src, save_path); self.play_sound("success"); messagebox.showinfo("Success", f"Demo file saved to:\n{save_path}")
+        except Exception as e: self.play_sound("error"); messagebox.showerror("Error", str(e))
 
     def on_theme_change(self, new_theme: str): ctk.set_appearance_mode(new_theme); self.after(100, self.restyle_all_treeviews)
     def restyle_all_treeviews(self):
@@ -1258,9 +1554,7 @@ class NregaBotApp(ctk.CTk):
         self._update_header_welcome_message()
         about_tab = self.tab_instances.get("About")
         if about_tab:
-            # --- MODIFIED: Pass the whole license_info map ---
             about_tab.update_subscription_details(self.license_info)
-            # --- END MODIFIED ---
             info = self.update_info
             if info['status'] == 'available':
                 about_tab.latest_version_label.configure(text=f"Latest Version: {info['version']}")
@@ -1279,622 +1573,278 @@ class NregaBotApp(ctk.CTk):
             resp = requests.post(f"{config.LICENSE_SERVER_URL}/api/validate", json={"key": key, "machine_id": self.machine_id}, timeout=10)
             self.after(0, self.set_server_status, True)
             data = resp.json()
-
             if resp.status_code == 200 and data.get("status") == "valid":
-                # --- MODIFIED: Store all data from server ---
                 self.license_info = {**data, 'key': key}
-                with open(get_data_path('license.dat'), 'w') as f:
-                    json.dump(self.license_info, f)
-                # --- END MODIFIED ---
-                if not is_startup_check:
-                    self.play_sound("success")
-                    messagebox.showinfo("License Valid", f"Activation successful!\nExpires on: {self.license_info['expires_at'].split('T')[0]}")
+                with open(get_data_path('license.dat'), 'w') as f: json.dump(self.license_info, f)
+                if not is_startup_check: self.play_sound("success"); messagebox.showinfo("License Valid", "Activation successful!")
                 return True
             else:
-                lic_file = get_data_path('license.dat')
-                if os.path.exists(lic_file):
-                    os.remove(lic_file)
-                if not is_startup_check:
-                    self.play_sound("error")
-                    # --- START: Reseller Info Logic ---
-                    reason = data.get('reason', 'Unknown error.')
-                    reseller_info = data.get('reseller_info') # Check for reseller info
-                    
-                    if reseller_info:
-                        name = reseller_info.get('name', 'N/A')
-                        email = reseller_info.get('email', 'N/A')
-                        mobile = reseller_info.get('mobile', 'N/A')
-                        
-                        display_message = (
-                            f"Aapka license block kar diya gaya hai.\n\n"
-                            f"Kripaya apne reseller se sampark karein:\n\n"
-                            f"Naam: {name}\n"
-                            f"Email: {email}\n"
-                            f"Mobile: {mobile}"
-                        )
-                        messagebox.showerror("License Blocked", display_message)
-                    else:
-                        messagebox.showerror("Validation Failed", reason) # Fallback to generic reason
-                    # --- END: Reseller Info Logic ---
+                if os.path.exists(get_data_path('license.dat')): os.remove(get_data_path('license.dat'))
+                if not is_startup_check: self.play_sound("error"); messagebox.showerror("Validation Failed", data.get('reason', 'Unknown error'))
                 return False
-
-        except requests.exceptions.RequestException:
+        except Exception: 
             self.after(0, self.set_server_status, False)
-            if not is_startup_check:
-                self.play_sound("error")
-                messagebox.showerror("Connection Error", "Could not connect to the license server. Please check your internet connection.")
+            if not is_startup_check: self.play_sound("error"); messagebox.showerror("Error", "Connection Error")
             return True
 
     def send_wagelist_data_and_switch_tab(self, start, end):
         self.show_frame("Send Wagelist")
         send_tab = self.tab_instances.get("Send Wagelist")
-        if send_tab and hasattr(send_tab, 'populate_wagelist_data'):
-            self.after(100, lambda: send_tab.populate_wagelist_data(start, end))
-        else: print("Error: Send Wagelist tab not found or is missing method.")
+        if send_tab: self.after(100, lambda: send_tab.populate_wagelist_data(start, end))
 
     def show_activation_window(self):
         win = ctk.CTkToplevel(self); win.title("Activate Product")
-        # --- MODIFIED: Reduced height as tabs are removed ---
-        w, h = 450, 420
-        
-        # --- MODIFIED: Force update AND get dimensions from self (parent) ---
-        win.update_idletasks() # <-- YEH LINE ADD KAREIN
-        screen_width = self.winfo_screenwidth()
-        screen_height = self.winfo_screenheight()
-        
-        final_h = min(h, screen_height - 40)
-        final_w = min(w, screen_width - 40)
-        
-        x = (screen_width // 2) - (final_w // 2)
-        y = (screen_height // 2) - (final_h // 2)
-        
-        win.geometry(f'{final_w}x{final_h}+{x}+{y}')
-        # --- END MODIFIED ---
-        
+        win.update_idletasks()
+        sw, sh = self.winfo_screenwidth(), self.winfo_screenheight()
+        w, h = min(450, sw-40), min(420, sh-40)
+        win.geometry(f'{w}x{h}+{(sw//2)-(w//2)}+{(sh//2)-(h//2)}')
         win.resizable(False, False); win.transient(self); win.grab_set()
-
         main = ctk.CTkFrame(win, fg_color="transparent"); main.pack(expand=True, fill="both", padx=20, pady=20)
         ctk.CTkLabel(main, text="Product Activation", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(0, 10))
         activated = tkinter.BooleanVar(value=False)
-        
-        # --- MODIFIED: Removed TabView ---
-
         def on_trial():
             win.withdraw()
             if self.show_trial_registration_window(): activated.set(True); win.destroy()
             else: win.deiconify()
-
-        # --- UNIFIED ACTIVATION LOGIC ---
         def on_unified_activate():
             input_val = entry.get().strip()
-            if not input_val:
-                self.play_sound("error")
-                messagebox.showwarning("Input Required", "Please enter a license key or your registered email.", parent=win)
-                return
-            
+            if not input_val: self.play_sound("error"); messagebox.showwarning("Input Required", "Please enter a key or email", parent=win); return
             activate_btn.configure(state="disabled", text="Activating...")
-            
-            # --- Check if input is email or key ---
             if "@" in input_val and "." in input_val:
-                # --- This is the LOGIN (on_login) logic ---
-                email = input_val
                 try:
-                    resp = requests.post(f"{config.LICENSE_SERVER_URL}/api/login-for-activation", json={"email": email, "machine_id": self.machine_id}, timeout=15)
+                    resp = requests.post(f"{config.LICENSE_SERVER_URL}/api/login-for-activation", json={"email": input_val, "machine_id": self.machine_id}, timeout=15)
                     data = resp.json()
                     if resp.status_code == 200 and data.get("status") == "success":
-                        save_config('last_used_email', email) # Remember email
-                        self.license_info = data
+                        save_config('last_used_email', input_val); self.license_info = data
                         with open(get_data_path('license.dat'), 'w') as f: json.dump(self.license_info, f)
-                        self.play_sound("success")
-                        messagebox.showinfo("Success", f"Device activated!\nWelcome back, {data.get('user_name', 'User')}.")
-                        activated.set(True); win.destroy()
-                    else:
-                        reason = data.get("reason", "Unknown error.")
-                        reseller_info = data.get('reseller_info')
-                        self.play_sound("error")
-                        
-                        if reseller_info:
-                            name = reseller_info.get('name', 'N/A')
-                            email = reseller_info.get('email', 'N/A')
-                            mobile = reseller_info.get('mobile', 'N/A')
-                            display_message = (
-                                f"Your license has been blocked.\n\n"
-                                f"Please contact your reseller:\n\n"
-                                f"Name: {name}\n"
-                                f"Email: {email}\n"
-                                f"Mobile: {mobile}"
-                            )
-                            messagebox.showerror("License Blocked", display_message, parent=win)
-                        else:
-                            messagebox.showerror("Activation Failed", reason, parent=win)
-                            if data.get("action") == "redirect" and data.get("url"):
-                                webbrowser.open_new_tab(data["url"])
-                except requests.exceptions.RequestException as e: 
-                    self.play_sound("error")
-                    messagebox.showerror("Connection Error", f"Could not connect: {e}", parent=win)
-                finally:
+                        self.play_sound("success"); messagebox.showinfo("Success", "Activated!", parent=win); activated.set(True); win.destroy()
+                    else: self.play_sound("error"); messagebox.showerror("Failed", data.get("reason", "Error"), parent=win)
+                except Exception as e: self.play_sound("error"); messagebox.showerror("Error", str(e), parent=win)
+                finally: 
                     if activate_btn.winfo_exists(): activate_btn.configure(state="normal", text="Login & Activate")
-            
             else:
-                # --- This is the KEY (on_activate) logic ---
-                key = input_val
-                if self.validate_on_server(key): 
-                    email = self.license_info.get('user_email', '')
-                    if email:
-                        save_config('last_used_email', email) # Remember email
-                    activated.set(True); win.destroy()
-                else:
-                    # validate_on_server shows its own error, just re-enable button
+                if self.validate_on_server(input_val): activated.set(True); win.destroy()
+                else: 
                     if activate_btn.winfo_exists(): activate_btn.configure(state="normal", text="Login & Activate")
-
-        # --- END UNIFIED LOGIC ---
-        
-        # --- NEW LAYOUT ---
         ctk.CTkButton(main, text="Start 30-Day Free Trial", command=on_trial).pack(pady=(20, 5), ipady=4, fill='x', padx=10)
         ctk.CTkLabel(main, text="— OR —").pack(pady=10)
-        ctk.CTkLabel(main, text="Activate with your License Key or Email:").pack(pady=(5, 5))
-
-        # Pre-fill with last email
-        last_email = get_config('last_used_email', '') # Get saved email
-        entry = ctk.CTkEntry(main, width=300, placeholder_text="Enter License Key or Email")
-        if last_email:
-            entry.insert(0, last_email) # Pre-fill
-        entry.pack(pady=5, padx=10, fill='x')
-        entry.focus_set()
-
-        activate_btn = ctk.CTkButton(main, text="Login & Activate", command=on_unified_activate)
-        activate_btn.pack(pady=10, ipady=4, fill='x', padx=10)
-        # --- END NEW LAYOUT ---
-
-        links = ctk.CTkFrame(main, fg_color="transparent"); links.pack(pady=(15,0), fill="x")
-        buy_link = ctk.CTkLabel(links, text="Purchase a License Key", text_color=("blue", "cyan"), cursor="hand2"); buy_link.pack()
+        entry = ctk.CTkEntry(main, width=300, placeholder_text="Enter License Key or Email"); entry.pack(pady=5, padx=10, fill='x')
+        if get_config('last_used_email'): entry.insert(0, get_config('last_used_email'))
+        activate_btn = ctk.CTkButton(main, text="Login & Activate", command=on_unified_activate); activate_btn.pack(pady=10, ipady=4, fill='x', padx=10)
+        buy_link = ctk.CTkLabel(main, text="Purchase a License Key", text_color=("blue", "cyan"), cursor="hand2"); buy_link.pack(pady=(15,0))
         buy_link.bind("<Button-1>", lambda e: webbrowser.open_new_tab(f"{config.LICENSE_SERVER_URL}/buy"))
-
         self.wait_window(win); return activated.get()
 
-    # main_app.py (REPLACE this function)
     def show_trial_registration_window(self):
         win = ctk.CTkToplevel(self); win.title("Trial Registration")
-        w, h = 540, 600
-        
-        # --- MODIFIED: Force update AND get dimensions from self (parent) ---
-        win.update_idletasks() # <-- YEH LINE ADD KAREIN
-        screen_width = self.winfo_screenwidth()
-        screen_height = self.winfo_screenheight()
-        
-        final_h = min(h, screen_height - 40) # Use 40px buffer
-        final_w = min(w, screen_width - 40)
-        
-        x = (screen_width // 2) - (final_w // 2)
-        y = (screen_height // 2) - (final_h // 2)
-        
-        win.geometry(f'{final_w}x{final_h}+{x}+{y}')
-        # --- END MODIFIED ---
-        
+        win.update_idletasks()
+        sw, sh = self.winfo_screenwidth(), self.winfo_screenheight()
+        w, h = min(540, sw-40), min(600, sh-40)
+        win.geometry(f'{w}x{h}+{(sw//2)-(w//2)}+{(sh//2)-(h//2)}')
         win.resizable(False, False); win.transient(self); win.grab_set()
-
-        scroll = ctk.CTkScrollableFrame(win, fg_color="transparent", label_fg_color="transparent"); scroll.pack(expand=True, fill="both", padx=10, pady=10)
+        scroll = ctk.CTkScrollableFrame(win, fg_color="transparent"); scroll.pack(expand=True, fill="both", padx=10, pady=10)
         ctk.CTkLabel(scroll, text="Start Your Free Trial", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(0, 5))
-        ctk.CTkLabel(scroll, text="Please provide your details to begin.", text_color="gray50").pack(pady=(0, 15))
-
-        # --- NEW: Mobile validation function ---
-        def _validate_mobile_input(P, S):
-            # P = value if allowed
-            # S = string being inserted
-            # Allow input if it's a digit AND the total length is 10 or less
-            if S.isdigit() and len(P) <= 10:
-                return True
-            # Allow backspace (S is empty)
-            if S == "" and len(P) <= 10:
-                return True
-            # Otherwise, reject the input
-            self.play_sound("error") # Play a small error beep
-            return False
-        
-        # Register the validation command
-        vcmd_mobile = (win.register(_validate_mobile_input), '%P', '%S')
-        # --- END NEW ---
-
         entries = {}
-        
-        # --- START: MODIFIED LAYOUT ---
-        # Full Name
-        ctk.CTkLabel(scroll, text="Full Name", anchor="w").pack(fill="x", padx=10)
-        entry_name = ctk.CTkEntry(scroll)
-        entry_name.pack(fill="x", padx=10, pady=(0, 10))
-        entries['full_name'] = entry_name
-
-        # --- Email and Mobile in one row ---
-        row_frame_1 = ctk.CTkFrame(scroll, fg_color="transparent")
-        row_frame_1.pack(fill="x", padx=10)
-        row_frame_1.grid_columnconfigure((0, 1), weight=1)
-
-        # Email
-        email_frame = ctk.CTkFrame(row_frame_1, fg_color="transparent")
-        email_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
-        ctk.CTkLabel(email_frame, text="Email", anchor="w").pack(fill="x")
-        entry_email = ctk.CTkEntry(email_frame)
-        entry_email.pack(fill="x", pady=(0, 10))
-        entries['email'] = entry_email
-
-        # Mobile
-        mobile_frame = ctk.CTkFrame(row_frame_1, fg_color="transparent")
-        mobile_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
-        ctk.CTkLabel(mobile_frame, text="Mobile", anchor="w").pack(fill="x")
-        entry_mobile = ctk.CTkEntry(mobile_frame, validate="key", validatecommand=vcmd_mobile)
-        entry_mobile.pack(fill="x", pady=(0, 10))
-        entries['mobile'] = entry_mobile
-
-        # --- Block and Pincode in one row ---
-        row_frame_2 = ctk.CTkFrame(scroll, fg_color="transparent")
-        row_frame_2.pack(fill="x", padx=10)
-        row_frame_2.grid_columnconfigure((0, 1), weight=1)
-        
-        # Block
-        block_frame = ctk.CTkFrame(row_frame_2, fg_color="transparent")
-        block_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
-        ctk.CTkLabel(block_frame, text="Block", anchor="w").pack(fill="x")
-        entry_block = ctk.CTkEntry(block_frame)
-        entry_block.pack(fill="x", pady=(0, 10))
-        entries['block'] = entry_block
-
-        # Pincode
-        pincode_frame = ctk.CTkFrame(row_frame_2, fg_color="transparent")
-        pincode_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
-        ctk.CTkLabel(pincode_frame, text="Pincode", anchor="w").pack(fill="x")
-        pincode_entry = ctk.CTkEntry(pincode_frame)
-        pincode_entry.pack(fill="x", pady=(0, 10))
-        entries['pincode'] = pincode_entry
-
-        # --- DYNAMIC STATE AND DISTRICT LOGIC ---
-        all_states = sorted(list(STATE_DISTRICT_MAP.keys()))
-
-        # --- State and District in one row ---
-        row_frame_3 = ctk.CTkFrame(scroll, fg_color="transparent")
-        row_frame_3.pack(fill="x", padx=10)
-        row_frame_3.grid_columnconfigure((0, 1), weight=1)
-
-        # State
-        state_frame = ctk.CTkFrame(row_frame_3, fg_color="transparent")
-        state_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
-        ctk.CTkLabel(state_frame, text="State", anchor="w").pack(fill="x")
-        state_var = tkinter.StringVar(value="Select a State")
-        state_menu = ctk.CTkOptionMenu(state_frame, values=all_states, variable=state_var)
-        state_menu.pack(fill="x", pady=(0, 10))
-        entries['state'] = state_var # Store the variable
-
-        # District
-        district_frame = ctk.CTkFrame(row_frame_3, fg_color="transparent")
-        district_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
-        ctk.CTkLabel(district_frame, text="District", anchor="w").pack(fill="x")
-        district_var = tkinter.StringVar(value="Select a State first")
-        district_menu = ctk.CTkOptionMenu(district_frame, values=["Select a State first"], variable=district_var)
-        district_menu.configure(state="disabled")
-        district_menu.pack(fill="x", pady=(0, 10))
-        entries['district'] = district_var # Store the variable
-        # --- END DYNAMIC LOGIC ---
-
-        def on_state_select(selected_state):
-            districts = STATE_DISTRICT_MAP.get(selected_state, [])
-            if districts:
-                district_menu.configure(values=districts, state="normal")
-                district_var.set("Select a District")
-            else:
-                district_menu.configure(values=["Select a State first"], state="disabled")
-                district_var.set("Select a State first")
-
-        # Link the on_state_select function to the state_menu
-        state_var.trace_add("write", lambda *args: on_state_select(state_var.get()))
-        
-        # --- START: NEW REFERRAL CODE FIELD ---
-        ctk.CTkLabel(scroll, text="Referral Code (Optional)", anchor="w").pack(fill="x", padx=10)
-        ref_entry = ctk.CTkEntry(scroll, placeholder_text="Enter referrer's code")
-        ref_entry.pack(fill="x", padx=10, pady=(0, 10))
-        entries['referral_code'] = ref_entry # Add to dict
-        # --- END: NEW REFERRAL CODE FIELD ---
-        # --- END: MODIFIED LAYOUT ---
-
+        def add_field(p, label, key): ctk.CTkLabel(p, text=label, anchor="w").pack(fill="x"); e=ctk.CTkEntry(p); e.pack(fill="x", pady=(0,10)); entries[key]=e
+        add_field(scroll, "Full Name", "full_name")
+        add_field(scroll, "Email", "email")
+        add_field(scroll, "Mobile", "mobile")
+        add_field(scroll, "Block", "block")
+        add_field(scroll, "Pincode", "pincode")
+        ctk.CTkLabel(scroll, text="State", anchor="w").pack(fill="x")
+        state_var = tkinter.StringVar(value="Select a State"); state_menu = ctk.CTkOptionMenu(scroll, values=sorted(list(STATE_DISTRICT_MAP.keys())), variable=state_var); state_menu.pack(fill="x", pady=(0,10)); entries['state']=state_var
+        ctk.CTkLabel(scroll, text="District", anchor="w").pack(fill="x")
+        dist_var = tkinter.StringVar(value="Select State First"); dist_menu = ctk.CTkOptionMenu(scroll, values=["Select State First"], variable=dist_var, state="disabled"); dist_menu.pack(fill="x", pady=(0,10)); entries['district']=dist_var
+        def on_state(s):
+            dists = STATE_DISTRICT_MAP.get(s, [])
+            if dists: dist_menu.configure(values=dists, state="normal"); dist_var.set("Select District")
+            else: dist_menu.configure(state="disabled")
+        state_var.trace_add("write", lambda *args: on_state(state_var.get()))
+        add_field(scroll, "Referral Code (Optional)", "referral_code")
         successful = tkinter.BooleanVar(value=False)
-        def submit_request():
-            import re
-            # Get values from entries AND variables
-            user_data = {}
-            for k, e in entries.items():
-                if isinstance(e, tkinter.StringVar):
-                    user_data[k] = e.get().strip()
-                else:
-                    user_data[k] = e.get().strip()
-            
-            # --- START: Auto-formatting input fields ---
-            # Format Name
-            if 'full_name' in user_data:
-                formatted_name = user_data['full_name'].title()
-                entries['full_name'].delete(0, 'end')
-                entries['full_name'].insert(0, formatted_name)
-                user_data['full_name'] = formatted_name
-                
-            # Format Email
-            if 'email' in user_data:
-                formatted_email = user_data['email'].lower()
-                entries['email'].delete(0, 'end')
-                entries['email'].insert(0, formatted_email)
-                user_data['email'] = formatted_email
-
-            # Format Block
-            if 'block' in user_data:
-                formatted_block = user_data['block'].title()
-                entries['block'].delete(0, 'end')
-                entries['block'].insert(0, formatted_block)
-                user_data['block'] = formatted_block
-                
-            # Format Referral Code
-            if 'referral_code' in user_data:
-                user_data['referral_code'] = user_data['referral_code'].upper()
-            # --- END: Auto-formatting ---
-
-            email, mobile = user_data.get('email', ''), user_data.get('mobile', '')
-            
-            if not re.match(r"[^@]+@[^@]+\.[^@]+", email): 
-                self.play_sound("error")
-                messagebox.showwarning("Invalid Input", "Valid email is required.", parent=win); return
-            
-            # --- UPDATED: Mobile validation check ---
-            if not (mobile.isdigit() and len(mobile) == 10): 
-                self.play_sound("error")
-                messagebox.showwarning("Invalid Input", "Valid 10-digit mobile is required.", parent=win); return
-            # --- END UPDATED ---
-            
-            # Check dynamic menus
-            if user_data.get('state') == "Select a State":
-                self.play_sound("error")
-                messagebox.showwarning("Input Required", "Please select a state.", parent=win); return
-            if user_data.get('district') == "Select a District" or user_data.get('district') == "Select a State first":
-                self.play_sound("error")
-                messagebox.showwarning("Input Required", "Please select a district.", parent=win); return
-
-            user_data["name"] = user_data.pop("full_name")
-            user_data["machine_id"] = self.machine_id
-            
-            # Check for empty fields (except pincode which can be optional, and referral_code)
-            required_fields = ["name", "email", "mobile", "block", "state", "district"]
-            if not all(user_data.get(f) for f in required_fields):
-                self.play_sound("error")
-                messagebox.showwarning("Input Required", "All fields (except Pincode and Referral) are required.", parent=win); return
-
+        def submit():
+            data = {k: v.get().strip() for k, v in entries.items()}
+            if not all(data.get(f) for f in ["full_name", "email", "mobile", "state"]): self.play_sound("error"); messagebox.showwarning("Error", "Missing fields", parent=win); return
+            data["name"] = data.pop("full_name"); data["machine_id"] = self.machine_id
             submit_btn.configure(state="disabled", text="Requesting...")
             try:
-                resp = requests.post(f"{config.LICENSE_SERVER_URL}/api/request-trial", json=user_data, timeout=15, headers={'User-Agent': f'{config.APP_NAME}/{config.APP_VERSION}'})
-                data = resp.json()
-                if resp.status_code == 200 and data.get("status") == "success":
-                    # --- ADDED: Remember email on trial success ---
-                    save_config('last_used_email', email)
-                    # --- END ADDED ---
-                    self.license_info = {'key': data.get("key"), 'expires_at': data.get('expires_at'), 'user_name': user_data['name'], 'key_type': 'trial'}
+                resp = requests.post(f"{config.LICENSE_SERVER_URL}/api/request-trial", json=data, timeout=15)
+                res = resp.json()
+                if resp.status_code == 200 and res.get("status") == "success":
+                    save_config('last_used_email', data['email'])
+                    self.license_info = {'key': res.get("key"), 'expires_at': res.get('expires_at'), 'user_name': data['name'], 'key_type': 'trial'}
                     with open(get_data_path('license.dat'), 'w') as f: json.dump(self.license_info, f)
-                    self.play_sound("success")
-                    messagebox.showinfo("Success!", f"{data.get('reason', 'Trial has started!')}\nExpires on: {self.license_info['expires_at'].split('T')[0]}")
-                    successful.set(True); win.destroy()
-                else: 
-                    self.play_sound("error")
-                    messagebox.showerror("Trial Error", data.get("reason", "Could not start trial."), parent=win)
-            except requests.exceptions.RequestException: 
-                self.play_sound("error")
-                messagebox.showerror("Connection Error", "Could not connect to server.", parent=win)
-            finally:
+                    self.play_sound("success"); messagebox.showinfo("Success", "Trial Started!", parent=win); successful.set(True); win.destroy()
+                else: self.play_sound("error"); messagebox.showerror("Error", res.get("reason", "Error"), parent=win)
+            except Exception as e: self.play_sound("error"); messagebox.showerror("Error", str(e), parent=win)
+            finally: 
                 if submit_btn.winfo_exists(): submit_btn.configure(state="normal", text="Start Trial")
-
-        submit_btn = ctk.CTkButton(scroll, text="Start Trial", command=submit_request); submit_btn.pack(pady=20, ipady=4, fill='x', padx=10)
+        submit_btn = ctk.CTkButton(scroll, text="Start Trial", command=submit); submit_btn.pack(pady=20, fill='x')
         self.wait_window(win); return successful.get()
 
     def show_purchase_window(self, context='upgrade'):
-        form = {k.replace('user_', ''): v for k, v in self.license_info.items() if k.startswith('user_')}
-        form['existing_key'] = self.license_info.get('key')
-        
-        form['plan_type'] = self.license_info.get('key_type', 'monthly')
-        form['max_devices'] = self.license_info.get('max_devices', 1)
-
-        if not form.get('existing_key'):
-            self.play_sound("error")
-            messagebox.showerror(
-                "License Error", 
-                "Cannot open purchase page because your license key is not available. Please restart the app or contact support.", 
-                parent=self
-            )
-            return
-
-        try:
-            url_params = {k: v for k, v in form.items() if v is not None}
-            buy_url = f"{config.LICENSE_SERVER_URL}/buy?{urlencode(url_params)}"
-            webbrowser.open_new_tab(buy_url)
-        except Exception as e:
-            self.play_sound("error")
-            messagebox.showerror("Error", f"Could not open the purchase page: {e}", parent=self)
+        if not self.license_info.get('key'): self.play_sound("error"); messagebox.showerror("Error", "License key missing"); return
+        webbrowser.open_new_tab(f"{config.LICENSE_SERVER_URL}/buy?existing_key={self.license_info['key']}")
 
     def check_expiry_and_notify(self):
-        expires_str = self.license_info.get('expires_at')
-        if not expires_str: return False
+        exp = self.license_info.get('expires_at')
+        if not exp: return False
         try:
-            days = (datetime.fromisoformat(expires_str.split('T')[0]).date() - datetime.now().date()).days
+            days = (datetime.fromisoformat(exp.split('T')[0]).date() - datetime.now().date()).days
             if 0 <= days < 7:
-                msg = f"License expires {'today' if days == 0 else f'in {days} day' + ('s' if days != 1 else '')}."
-                self.play_sound("error") 
-                messagebox.showwarning("License Expiring", f"{msg}\nPlease renew from the website."); self.open_on_about_tab = True; return True
-        except (ValueError, TypeError) as e:
-            if SENTRY_DSN: sentry_sdk.capture_exception(e)
+                self.play_sound("error"); messagebox.showwarning("Expiring", f"License expires in {days} days."); self.open_on_about_tab = True; return True
+        except Exception: pass
         return False
 
     def start_automation_thread(self, key, target, args=()):
         if self.automation_threads.get(key) and self.automation_threads[key].is_alive():
             self.play_sound("error")
-            messagebox.showwarning("In Progress", "Task is already running."); return
+            messagebox.showwarning("Busy", "Task running")
+            return
         
-        self.play_sound("start") 
-        self.history_manager.increment_usage(key); self.prevent_sleep()
-        self.active_automations.add(key); self.stop_events[key] = threading.Event()
-        def wrapper():
-            try: target(*args)
-            finally: self.after(0, self.on_automation_finished, key)
-        thread = threading.Thread(target=wrapper, daemon=True); self.automation_threads[key] = thread; thread.start()
+        self.play_sound("start")
+        self.history_manager.increment_usage(key)
+        self.prevent_sleep()
+        self.active_automations.add(key)
+        self.stop_events[key] = threading.Event()
 
-    def log_message(self, log, msg, level="info"): log.configure(state="normal"); log.insert(tkinter.END, f"[{time.strftime('%H:%M:%S')}] {msg}\n"); log.configure(state="disabled"); log.see(tkinter.END)
+        # --- AUTO MINIMIZE LOGIC (Mac Chrome Fix Added) ---
+        if self.minimize_var.get() and self.driver:
+            try:
+                # Standard Minimize (Windows/Firefox ke liye)
+                self.driver.minimize_window()
+                self.show_toast("Running in Background (Minimized)", "info")
+
+                # --- MAC CHROME SPECIFIC FIX ---
+                # Agar Mac hai aur Chrome hai, to AppleScript se force minimize karein
+                if config.OS_SYSTEM == "Darwin" and self.active_browser == "chrome":
+                    try:
+                        subprocess.run([
+                            "osascript", "-e", 
+                            'tell application "Google Chrome" to set minimized of windows to true'
+                        ])
+                    except Exception:
+                        pass
+                # -------------------------------
+
+            except Exception:
+                pass
+        # --------------------------------------------------
+
+        def wrapper():
+            try:
+                target(*args)
+            finally:
+                self.after(0, self.on_automation_finished, key)
+        
+        t = threading.Thread(target=wrapper, daemon=True)
+        self.automation_threads[key] = t
+        t.start()
+
+    def log_message(self, log, msg, level="info"): 
+        log.configure(state="normal"); log.insert(tkinter.END, f"[{time.strftime('%H:%M:%S')}] {msg}\n"); log.configure(state="disabled"); log.see(tkinter.END)
+    
     def clear_log(self, log): log.configure(state="normal"); log.delete("1.0", tkinter.END); log.configure(state="disabled")
 
     def on_closing(self, force=False):
-        if force or messagebox.askokcancel("Quit", "Quit? This will stop running automations."):
-            # --- YEH DO LINES ADD KAREIN ---
-            self.play_sound("shutdown") # Close sound bajayega
-            time.sleep(2) # Sound ko bajne ke liye 0.5 sec ka time dega
-            # --- ADD ENDS ---
-            
+        if force or messagebox.askokcancel("Quit", "Quit application?"):
+            self.play_sound("shutdown"); time.sleep(0.5)
             self.attributes("-alpha", 0.0); self.active_automations.clear(); self.allow_sleep()
-            if self.driver:
+            if self.driver: 
                 try: self.driver.quit()
-                except Exception as e: print(f"Error quitting driver: {e}")
-            for event in self.stop_events.values(): event.set()
-            # --- ADD THIS LINE TO QUIT PYGAME ---
-            pygame.mixer.quit()
-            self.after(100, self.destroy)
+                except: pass
+            for e in self.stop_events.values(): e.set()
+            try: 
+                import pygame
+                pygame.mixer.quit()
+            except: pass
+            self.destroy()
 
     def prevent_sleep(self):
         if not self.active_automations:
-            print("Preventing sleep.");
             if config.OS_SYSTEM == "Windows": ctypes.windll.kernel32.SetThreadExecutionState(0x80000003)
-            elif config.OS_SYSTEM == "Darwin":
-                if not self.sleep_prevention_process: self.sleep_prevention_process = subprocess.Popen(["caffeinate", "-d"])
+            elif config.OS_SYSTEM == "Darwin" and not self.sleep_prevention_process: self.sleep_prevention_process = subprocess.Popen(["caffeinate", "-d"])
 
     def allow_sleep(self):
         if not self.active_automations:
-            print("Allowing sleep.")
             if config.OS_SYSTEM == "Windows": ctypes.windll.kernel32.SetThreadExecutionState(0x80000000)
-            elif config.OS_SYSTEM == "Darwin":
-                if self.sleep_prevention_process: self.sleep_prevention_process.terminate(); self.sleep_prevention_process = None
+            elif config.OS_SYSTEM == "Darwin" and self.sleep_prevention_process: self.sleep_prevention_process.terminate(); self.sleep_prevention_process = None
 
     def on_automation_finished(self, key):
         if key in self.active_automations: self.active_automations.remove(key)
-        self.set_status("Automation Finished"); self.after(5000, lambda: self.set_status("Ready"))
+        self.set_status("Finished"); self.after(5000, lambda: self.set_status("Ready"))
         if not self.active_automations: self.allow_sleep()
 
     def check_for_updates_background(self):
         def _check():
-            time.sleep(2)
             try:
-                resp = requests.get(f"{config.MAIN_WEBSITE_URL}/version.json", timeout=10); resp.raise_for_status(); data = resp.json()
-                latest = data.get("latest_version")
-                url_key = "download_url_macos" if sys.platform == "darwin" else "download_url_windows"
-                url = data.get(url_key); notes = data.get("changelog", {}).get(latest, [])
-                if latest and parse_version(latest) > parse_version(config.APP_VERSION):
-                    self.update_info = {"status": "available", "version": latest, "url": url, "changelog": notes}
-                    self.after(0, self.show_update_prompt, latest)
-                else: self.update_info = {"status": "updated", "version": latest, "url": url}
-            except Exception as e: self.update_info['status'] = 'error'
+                resp = requests.get(f"{config.MAIN_WEBSITE_URL}/version.json", timeout=10); data = resp.json()
+                lat = data.get("latest_version")
+                if lat and parse_version(lat) > parse_version(config.APP_VERSION):
+                    self.update_info = {"status": "available", "version": lat, "url": data.get("download_url_windows"), "changelog": data.get("changelog", {}).get(lat, [])}
+                    self.after(0, self.show_update_prompt, lat)
+                else: self.update_info = {"status": "updated", "version": lat}
+            except: self.update_info['status'] = 'error'
             finally: self.after(0, self._update_about_tab_info)
         threading.Thread(target=_check, daemon=True).start()
 
     def show_update_prompt(self, version):
-        self.play_sound("update") 
-        if messagebox.askyesno("Update Available", f"Version {version} is available. Go to the 'Updates' tab?"):
-            self.show_frame("About")
-            about = self.tab_instances.get("About")
-            if about: about.tab_view.set("Updates")
+        self.play_sound("update")
+        if messagebox.askyesno("Update", f"Version {version} available. View?"):
+            self.show_frame("About"); self.tab_instances.get("About").tab_view.set("Updates")
 
     def update_history(self, key, val): self.history_manager.save_entry(key, val)
-
-    def remove_history(self, key, val):
-        """Asks the HistoryManager to remove a specific entry."""
-        if hasattr(self.history_manager, 'remove_entry'):
-            self.history_manager.remove_entry(key, val)
-        else:
-            print(f"Warning: HistoryManager is missing the 'remove_entry' method.")
+    def remove_history(self, key, val): self.history_manager.remove_entry(key, val)
 
     def download_and_install_update(self, url, version):
         about = self.tab_instances.get("About")
-        if not about: 
-            self.play_sound("error")
-            messagebox.showerror("Error", "Could not find About Tab."); return
+        if not about: return
         about.update_button.configure(state="disabled"); about.update_progress.grid(row=4, column=0, pady=10, padx=20, sticky='ew')
-
         def _worker():
             try:
-                filename = url.split('/')[-1]; dl_path = os.path.join(self.get_user_downloads_path(), filename)
-                self.after(0, lambda: about.update_button.configure(text="Downloading..."))
-                with requests.get(url, stream=True, timeout=60) as r:
-                    r.raise_for_status(); total = int(r.headers.get('content-length', 0)); downloaded = 0
+                dl_path = os.path.join(self.get_user_downloads_path(), url.split('/')[-1])
+                with requests.get(url, stream=True) as r:
+                    r.raise_for_status(); total = int(r.headers.get('content-length', 0)); dl=0
                     with open(dl_path, 'wb') as f:
-                        for chunk in r.iter_content(chunk_size=8192):
-                            f.write(chunk); downloaded += len(chunk)
-                            if total > 0: self.after(0, about.update_progress.set, downloaded / total)
-
-                self.after(0, lambda: about.update_button.configure(text="Download Complete. Installing..."))
-                if sys.platform == "win32":
-                    self.play_sound("success")
-                    messagebox.showinfo("Ready to Update", "The app will now close to run the installer.", parent=self)
-                    os.startfile(dl_path); self.after(200, os._exit, 0)
-                elif sys.platform == "darwin":
-                    subprocess.call(["open", dl_path])
-                    self.play_sound("success")
-                    self.after(0, messagebox.showinfo, "Instructions", f"'{filename}' has been opened.\nDrag the icon to Applications.\nApp will now close.")
-                    self.after(3000, self.on_closing, True)
-            except Exception as e:
-                self.play_sound("error")
-                self.after(0, messagebox.showerror, "Update Failed", f"Could not run update.\n\nError: {e}")
-                if about.winfo_exists():
-                    self.after(0, lambda: about.update_button.configure(state="normal", text=f"Download v{version}"))
-                    self.after(0, about.update_progress.grid_forget); self.after(0, about.update_progress.set, 0)
+                        for chunk in r.iter_content(8192): f.write(chunk); dl+=len(chunk); self.after(0, about.update_progress.set, dl/total)
+                if sys.platform == "win32": os.startfile(dl_path); self.after(200, os._exit, 0)
+                else: subprocess.call(["open", dl_path])
+            except Exception as e: self.after(0, messagebox.showerror, "Error", str(e))
         threading.Thread(target=_worker, daemon=True).start()
 
 def initialize_webdriver_manager():
-    """Downloads/updates drivers for Chrome and Firefox before the app starts."""
-    print("Initializing WebDriver Manager...")
     try:
-        print("Checking for Chrome driver...")
         from webdriver_manager.chrome import ChromeDriverManager
         from selenium.webdriver.chrome.service import Service as ChromeService
         ChromeService(ChromeDriverManager().install())
-        print("Chrome driver is up to date.")
-    except Exception as e:
-        print(f"Could not initialize ChromeDriver: {e}")
-
+    except: pass
     try:
-        print("Checking for Firefox driver (GeckoDriver)...")
         from webdriver_manager.firefox import GeckoDriverManager
         from selenium.webdriver.firefox.service import Service as FirefoxService
         FirefoxService(GeckoDriverManager().install())
-        print("GeckoDriver is up to date.")
-    except Exception as e:
-        print(f"Could not initialize GeckoDriver: {e}")
-    print("WebDriver Manager initialization complete.")
-
+    except: pass
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(level=logging.INFO)
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try: s.bind(("127.0.0.1", 60123))
-    except OSError:
+    except:
         try: s.connect(("127.0.0.1", 60123)); s.sendall(b'focus')
-        except Exception as e: logging.error(f"Failed to send focus: {e}")
-        finally: s.close(); sys.exit(0)
-
+        except: pass
+        sys.exit(0)
+    
     threading.Thread(target=initialize_webdriver_manager, daemon=True).start()
-
+    
     try:
         app = NregaBotApp()
         def listen():
             s.listen(1)
             while True:
-                conn, addr = s.accept()
-                if conn.recv(1024) == b'focus': app.after(0, app.bring_to_front)
-                conn.close()
+                c, a = s.accept(); d = c.recv(1024)
+                if d == b'focus': app.after(0, app.bring_to_front)
+                c.close()
         threading.Thread(target=listen, daemon=True).start()
         app.mainloop()
     except Exception as e:
-        if SENTRY_DSN: sentry_sdk.capture_exception(e)
-        logging.critical(f"Fatal startup error: {e}", exc_info=True)
-        try:
-            # Try to play a fatal error sound
-            pygame.mixer.init()
-            pygame.mixer.Sound(resource_path("assets/sounds/error.wav")).play()
-            time.sleep(1) # Give sound time to play
-        except Exception:
-            pass 
-        messagebox.showerror("Fatal Startup Error", f"A critical error occurred:\n\n{e}\n\nThe app will now close.")
+        messagebox.showerror("Fatal Error", str(e))
     finally: s.close()
