@@ -89,41 +89,7 @@ jobs:
             path: |
               dist/installer/*.exe
               dist/NREGABot-v${{ needs.get-release-info.outputs.version }}-Windows-Portable.zip
-  
-  # --- Build Job for macOS ---
-  build-macos:
-    name: Build for macOS (Universal)
-    needs: get-release-info
-    runs-on: macos-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Create .env file
-        run: echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" > .env
-
-      - name: Install create-dmg
-        run: brew install create-dmg
-
-      - name: Make build script executable
-        run: chmod +x build_macos.sh
-
-      - name: Run macOS build script
-        run: ./build_macos.sh
-
-      - name: Upload macOS artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-build
-          path: dist/NREGABot-v${{ needs.get-release-info.outputs.version }}-macOS.dmg
+            retention-days: 1 # <-- AUTOMATIC CLEANUP: Artifacts 1 din baad delete ho jayenge
 
   # --- Build Job for Linux ---
   build-linux:
@@ -173,11 +139,12 @@ jobs:
         with:
           name: linux-build
           path: dist/NREGABot-v${{ needs.get-release-info.outputs.version }}-Linux.tar.gz
+          retention-days: 1 # <-- AUTOMATIC CLEANUP: Artifacts 1 din baad delete ho jayenge
 
   # --- Publish Release ---
   publish-release:
     name: Publish GitHub Release
-    needs: [get-release-info, build-windows, build-macos, build-linux]
+    needs: [get-release-info, build-windows, build-linux] # <-- macOS removed form needs
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -195,5 +162,4 @@ jobs:
           tag_name: v${{ needs.get-release-info.outputs.version }}
           files: |
             artifacts/windows-builds/**/*
-            artifacts/macos-build/*
             artifacts/linux-build/*

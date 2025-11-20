@@ -24,52 +24,61 @@ The application works by securely controlling a web browser on your computer, al
 
 ## 🚀 Key Features
 
-An intuitive, tab-based interface for every automation task:
+An intuitive, tab-based interface organized for efficiency:
 
-- ✨ **Referral Program (New!)** - Get 15 days of extra validity when a user you refer purchases their first plan. Find your code in the 'My Account' page.
+### 🔹 General & Application
+- ✨ **Microsoft Edge Support (New!)** - Launch and use Microsoft Edge directly from the dashboard for all automations.
+- 🚀 **Headless Reporting (New!)** - Reports like 'MR Tracking' now run in the background, freeing up your screen while data is processed.
+- ✨ **Referral Program (New!)** - Get 15 days of extra validity when a user you refer purchases their first plan.
 - 💳 **Auto-Renewal (New!)** - Enable auto-renewal (subscription) from the website to ensure your license never expires.
-- ✨ **Work Allocation (New!)** - A new automation to handle work allocation for a list of work keys.
-- ✨ **Demand Automation (Workflow!)** - Demand laborers from a CSV. Now supports **GP logins** and auto-adjusts for 100-day limits. Includes a new workflow to **auto-run Work Allocation** after demand is complete.
 - ✨ **Device Renaming (New!)** - Rename your activated devices from the app's 'About' tab or the website's 'My Account' page.
-- ✨ **Reseller Panel (Enhanced!)** - Resellers can now view user stats and send email reminders from their web panel.
-- ✨ **MR Fill** - A new automation to automatically fill Muster Rolls. It intelligently marks holidays as absent and includes a manual mode for custom attendance.
-- ✨ **Resend Rejected Wagelist** - A brand new automation to reprocess wagelist payments that have been rejected by the bank.
-- ✨ **Duplicate MR Print (Enhanced!)** – Find, save as PDF, and print all Muster Rolls for one or more work codes. Now includes a **Merge PDFs** button in the results tab.
-- ✨ **Update Estimated Outcome** – Quickly update the 'Estimated Outcome' for a list of work codes.
-- 🗂️ **Muster Roll (MR) Generator (Enhanced!)** – Automatically generate and download Muster Roll PDFs. Now includes a **Merge PDFs** button.
+- 🎨 **Dynamic UI** – A modern interface with a dynamic footer, Dark/Light theme support, Skeleton Loading, Toast Notifications, and audible sound effects.
+- ✨ **Reseller Panel** - Resellers can view user stats and send email reminders from their web panel.
+
+### 🏗️ Core NREGA Tasks
+- ✨ **Demand Automation** - Demand laborers from a CSV. Supports GP logins, auto-adjusts for 100-day limits, and includes a workflow to **auto-run Work Allocation**.
+- ✨ **Work Allocation (New!)** - Automatically handle work allocation for a list of work keys.
+- 🗂️ **MR Generator** – Automatically generate and download Muster Roll PDFs. Now includes a **Merge PDFs** button.
+- ✨ **MR Fill** - Automatically fill Muster Rolls. Intelligently marks holidays as absent and includes a manual mode.
 - ⚙️ **MSR Processor** – Process and save Muster Rolls from the MSR Payment page for a list of work codes.
-- 📤 **FTO Generation (Enhanced!)** – Automates FTO verification. Now includes a workflow to **Check Pending ABPS Labour** via the MR Tracking tab.
-- 📋 **Wagelist Automation (Enhanced!)** – Generate new wagelists and send them for e-FMS payment. Includes an option to **save as PDF**.
-- ✅ **Jobcard Verification & Photo Upload** – Verify job cards for an entire village (or all villages) and automatically upload the correct family photo.
+- 📤 **FTO Generation** – Automates FTO verification with a workflow to **Check Pending ABPS Labour** via MR Tracking.
+- 📋 **Wagelist Automation** – Generate new wagelists and send them for e-FMS payment. Includes an option to **save as PDF**.
+- ✨ **Duplicate MR Print** – Find, save as PDF, and print all Muster Rolls for work codes. Includes a **Merge PDFs** button.
+- 🏁 **Scheme Closing** - Automate the process of closing schemes for completed work.
+- 🗑️ **Delete Work Allocation** - Remove work allocations for specified job cards in bulk.
+
+### 👷 JE & AE Automation
 - ✏️ **eMB Entry** – Automate filling the Measurement Book (MB) entry page for multiple work codes.
 - 🔍 **eMB Verify** – Quickly verify Measurement Book (MB) entries in bulk.
+
+### 📝 Records & Workcode
 - 🏗️ **Workcode Generator (Dynamic)** – Create new work codes in bulk by loading categories from the website and reading data from a simple CSV file.
 - 🔧 **IF Editor (Dynamic)** – Automate the multi-page IF editing process with a flexible UI and a simple CSV for inputs.
 - 🪄 **Add Activity** - Automate the process of adding activities to work codes.
-- 💳 **Verify ABPS (Fixed!)** – Automate checking worker Aadhaar numbers with NPCI. Now correctly processes multiple laborers on a single job card.
-- ✂️ **Workcode Extractor** – A handy utility to parse and extract clean lists of work codes from any block of text.
-- 🗑️ **Delete Work Allocation** - Remove work allocations for specified job cards in bulk.
-- 🏁 **Scheme Closing (Fixed!)** - Automate the process of closing schemes for completed work.
-- 📁 **File Manager with Sharing** - A built-in cloud file manager to save, organize, and share your important documents like Muster Roll PDFs.
-- 🎨 **Dynamic UI (Enhanced!)** – A modern interface with a dynamic footer, Dark/Light theme support, real-time status updates, and **audible sound effects**.
-- 📊 **MIS Reports Downloader:** Solves CAPTCHA and downloads multiple MIS reports into a single, multi-sheet Excel file.
-- ✨ **MR Tracking (Enhanced!)** - Track MR status in real-time. Can drill down to find specific laborers pending for ABPS.
-- ✨ **Dashboard Report** - Fetch and view comprehensive dashboard reports with full export capabilities.
-- 📈 **Social Audit Reports:** Automates the process of fetching Social Audit issue details.
-- ✨ **Issued MR Details** - A new report to fetch all 'e-muster issued' works for a panchayat.
-- ✨ **PDF Merger** - A standalone utility to quickly merge multiple selected PDF files into one document.
+- ✨ **Update Estimated Outcome** – Quickly update the 'Estimated Outcome' for a list of work codes.
+
+### 🛠️ Utilities & Verification
 - ✨ **Zero MR (Fixed!)** - Submit 'Zero MR' for muster rolls. Now more stable with bug fixes for page refreshes and timeouts.
----
-- ✨ **Microsoft Edge Support (New!)** - Launch and use Microsoft Edge directly from the dashboard for all automations.
-- 🚀 **Headless Reporting (New!)** - 'MR Tracking' reports now run in the background, freeing up your screen while data is processed.
-- ✨ **UI Enhancements** - Smoother experience with Skeleton Loading, Toast Notifications, and real-time Server Status.
-- ✨ **Merge PDFs (MR Gen)** - Added a button to combine all MRs generated in the current session into a single file.
+- ✅ **Jobcard Verification** – Verify job cards for an entire village and automatically upload the correct family photo.
+- 💳 **Verify ABPS** – Automate checking worker Aadhaar numbers with NPCI. Correctly processes multiple laborers on a single job card.
+- ✨ **Resend Rejected Wagelist** - Automate reprocessing wagelist payments that have been rejected by the bank.
+- ✨ **PDF Merger** - A standalone utility to quickly merge multiple selected PDF files into one document.
+- ✂️ **Workcode Extractor** – Parse and extract clean lists of work codes from any block of text.
+- 📁 **File Manager** - A built-in cloud file manager to save, organize, and share your important documents.
+
+### 📊 Reporting
+- ✨ **MR Tracking** - Track MR status in real-time (Headless). Can drill down to find specific laborers pending for ABPS.
+- ✨ **Dashboard Report** - Fetch and view comprehensive dashboard reports with full export capabilities.
+- ✨ **Issued MR Details** - Fetch all 'e-muster issued' works for a panchayat and extract work codes.
+- 📊 **MIS Reports** - Solves CAPTCHA and downloads multiple MIS reports into a single, multi-sheet Excel file.
+- 📈 **Social Audit Reports** - Automates the process of fetching Social Audit issue details.
 
 ## 🛠 Prerequisites
 
 You only need to have a supported web browser installed on your system:
 
 - 🌐 **Google Chrome (Recommended)**
+- 🔵 **Microsoft Edge**
 - 🦊 **Mozilla Firefox**
 
 ---

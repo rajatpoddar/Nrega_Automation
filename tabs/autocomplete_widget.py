@@ -138,6 +138,7 @@ class AutocompleteEntry(ctk.CTkEntry):
         self.focus()
         # Optional: Trigger manual event if needed elsewhere
         # self.event_generate("<KeyRelease>") 
+        self.event_generate("<KeyRelease>")
 
     def _on_focus_out(self, event):
         # Thoda delay dein taki click register ho sake (agar user list par click kare)

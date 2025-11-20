@@ -390,14 +390,14 @@ class AboutTab(ctk.CTkFrame):
                 button_frame = ctk.CTkFrame(device_entry_frame, fg_color="transparent")
                 button_frame.pack(side="right", padx=(0, 5))
 
-                # --- USE EMOJI TEXT INSTEAD OF IMAGE ---
+                # --- UPDATED: Use PNG Icons instead of Emojis ---
                 edit_btn = ctk.CTkButton(
                     button_frame,
-                    text="✏️", # Edit Emoji
+                    text="",  # Text hata diya
+                    image=self.app.icon_images.get("device_edit"), # PNG Icon use kiya
                     command=lambda mid=machine_id: self._rename_device_popup(mid),
-                    width=35, # Slightly wider for emoji
+                    width=35, 
                     height=30,
-                    font=ctk.CTkFont(size=16), # Adjust size if needed
                     fg_color="transparent",
                     hover_color=("gray75", "gray25")
                 )
@@ -405,15 +405,16 @@ class AboutTab(ctk.CTkFrame):
 
                 reset_btn = ctk.CTkButton(
                     button_frame,
-                    text="🔄", # Reset Emoji (or use ♻️)
+                    text="", # Text hata diya
+                    image=self.app.icon_images.get("device_reset"), # PNG Icon use kiya
                     command=lambda mid=machine_id: self._send_deactivation_request_api(mid),
-                    width=35, # Slightly wider for emoji
+                    width=35, 
                     height=30,
-                    font=ctk.CTkFont(size=16), # Adjust size if needed
                     fg_color="transparent",
                     hover_color=("gray75", "gray25")
                 )
                 reset_btn.pack(side="left")
+                # --- END UPDATE ---
 
                 self.device_buttons[machine_id] = {'reset': reset_btn, 'edit': edit_btn}
 

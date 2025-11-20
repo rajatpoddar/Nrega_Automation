@@ -554,6 +554,10 @@ class NregaBotApp(ctk.CTk):
         self._load_icon("onboarding_login", "assets/icons/emojis/verify_jobcard.png", size=(48, 48))
         self._load_icon("onboarding_select", "assets/icons/emojis/wc_gen.png", size=(48, 48))
         self._load_icon("onboarding_start", "assets/icons/emojis/fto_gen.png", size=(48, 48))
+
+        # --- NEW: Device Management Icons ---
+        self._load_icon("device_edit", "assets/icons/edit.png", size=(20, 20))
+        self._load_icon("device_reset", "assets/icons/reset.png", size=(20, 20))
         
         # Menu Icons
         self._load_icon("emoji_mr_gen", "assets/icons/emojis/mr_gen.png", size=(16,16))
@@ -645,17 +649,34 @@ class NregaBotApp(ctk.CTk):
             self.on_closing(force=True)
 
     def _ping_server_in_background(self):
-        def ping():
-            is_connected = False
-            try:
-                requests.get(config.LICENSE_SERVER_URL, timeout=5)
-                is_connected = True
-            except requests.exceptions.RequestException:
+        """
+        Checks server status in a dedicated background thread loop.
+        This prevents UI freezing because requests never run on the main thread.
+        """
+        def ping_loop():
+            while True: # Infinite loop inside the background thread
                 is_connected = False
-            finally:
-                self.after(0, self.set_server_status, is_connected)
-                self.after(20000, ping)
-        threading.Thread(target=ping, daemon=True).start()
+                try:
+                    # Timeout check kar rahe hain
+                    requests.get(config.LICENSE_SERVER_URL, timeout=5)
+                    is_connected = True
+                except requests.exceptions.RequestException:
+                    is_connected = False
+                
+                # UI update ko main thread par bhejna zaroori hai
+                try:
+                    if self.winfo_exists(): # Check agar app abhi bhi khula hai
+                        self.after(0, self.set_server_status, is_connected)
+                    else:
+                        break # Agar app band ho gaya to loop roko
+                except:
+                    break
+
+                # Thread ko 20 second ke liye sula dein (UI freeze nahi hoga)
+                time.sleep(20)
+
+        # Thread start karein
+        threading.Thread(target=ping_loop, daemon=True).start()
 
     def _on_window_focus(self, event=None):
         if self.is_licensed and not self.is_validating_license:

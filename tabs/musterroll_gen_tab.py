@@ -18,10 +18,19 @@ class MusterrollGenTab(BaseAutomationTab):
     def __init__(self, parent, app_instance):
         super().__init__(parent, app_instance, automation_key="muster")
         self.config_file = self.app.get_data_path("muster_roll_inputs.json")
+        
+        # --- NEW: Mapping file path and data holder ---
+        self.mapping_file = self.app.get_data_path("mr_panchayat_staff_map.json")
+        self.mapping_data = {} 
+        
         self.success_count = 0
         self.skipped_count = 0
         self.output_dir = ""
-        self.current_session_files = [] # <-- ADDED
+        self.current_session_files = []
+        
+        self.panchayat_after_id = None # Debounce timer
+        self._load_mapping_data() # Load saved linkages
+        
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(2, weight=1)
         self._create_widgets()
@@ -38,6 +47,7 @@ class MusterrollGenTab(BaseAutomationTab):
             app_instance=self.app,
             history_key="panchayat_name")
         self.panchayat_entry.grid(row=0, column=1, columnspan=3, sticky='ew', padx=15, pady=(15,0))
+        self.panchayat_entry.bind("<KeyRelease>", self._on_panchayat_change_debounced, add="+")
         
         ctk.CTkLabel(controls_frame, text="Note: Must exactly match the name on the NREGA website.", text_color="gray50").grid(row=1, column=1, columnspan=3, sticky='w', padx=15, pady=(0,10))
         
@@ -173,6 +183,49 @@ class MusterrollGenTab(BaseAutomationTab):
         self.export_filter_menu.configure(state=state)
         self.merge_pdfs_button.configure(state=state) # <-- ADDED
         if state == "normal": self._on_format_change(self.export_format_menu.get())
+
+    def _load_mapping_data(self):
+        """Loads the Panchayat-Staff mapping from JSON."""
+        if os.path.exists(self.mapping_file):
+            try:
+                with open(self.mapping_file, 'r') as f:
+                    self.mapping_data = json.load(f)
+            except Exception:
+                self.mapping_data = {}
+
+    def _save_mapping_pair(self, panchayat, staff):
+        """Saves a new Panchayat-Staff link."""
+        if not panchayat or not staff: return
+        
+        # Normalize key to lowercase for better matching
+        key = panchayat.strip().lower()
+        self.mapping_data[key] = staff.strip()
+        
+        try:
+            with open(self.mapping_file, 'w') as f:
+                json.dump(self.mapping_data, f, indent=4)
+        except Exception as e:
+            print(f"Error saving mapping: {e}")
+
+    def _on_panchayat_change_debounced(self, event=None):
+        """Waits for user to stop typing then updates Staff field."""
+        if self.panchayat_after_id:
+            self.after_cancel(self.panchayat_after_id)
+        
+        if event and event.keysym in ("Up", "Down", "Return", "Enter", "Tab"): return
+        
+        self.panchayat_after_id = self.after(300, self._auto_fill_staff)
+
+    def _auto_fill_staff(self):
+        """Checks if we have a saved staff for this panchayat and fills it."""
+        current_panchayat = self.panchayat_entry.get().strip().lower()
+        if current_panchayat in self.mapping_data:
+            saved_staff = self.mapping_data[current_panchayat]
+            
+            # Update UI only if it's different (to avoid cursor jumping if user is typing)
+            if self.staff_entry.get().strip() != saved_staff:
+                self.staff_entry.delete(0, tkinter.END)
+                self.staff_entry.insert(0, saved_staff)
         
     def start_automation(self):
         for item in self.results_tree.get_children(): self.results_tree.delete(item)
@@ -197,10 +250,13 @@ class MusterrollGenTab(BaseAutomationTab):
         if not all(inputs[k] for k in ['panchayat', 'start_date', 'end_date', 'designation', 'staff']):
             messagebox.showwarning("Input Error", "All fields are required (except Work Search Keys).")
             return
+        self._save_mapping_pair(inputs['panchayat'], inputs['staff'])
         inputs['work_codes'] = [line.strip() for line in inputs['work_codes_raw'].split('\n') if line.strip()]
         inputs['auto_mode'] = not bool(inputs['work_codes'])
         self.save_inputs(inputs)
         self.app.start_automation_thread(self.automation_key, self.run_automation_logic, args=(inputs,))
+
+    
         
     def reset_ui(self):
         if messagebox.askokcancel("Reset Form?", "Clear all inputs and logs?"):

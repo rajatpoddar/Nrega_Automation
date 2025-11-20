@@ -19,6 +19,10 @@ class MbEntryTab(BaseAutomationTab):
         
         # Path to save/load form inputs
         self.config_file = self.app.get_data_path("mb_entry_inputs.json")
+
+        self.mapping_file = self.app.get_data_path("mb_panchayat_mate_map.json")
+        self.mapping_data = {}
+        self._load_mapping_data()
         
         # Dictionary to hold form field variables
         self.config_vars = {}
@@ -216,29 +220,51 @@ class MbEntryTab(BaseAutomationTab):
         # Schedule a new update
         self.panchayat_after_id = self.after(300, self._on_panchayat_change)
 
+    # --- NEW HELPER METHODS ---
+    def _load_mapping_data(self):
+        if os.path.exists(self.mapping_file):
+            try:
+                with open(self.mapping_file, 'r') as f:
+                    self.mapping_data = json.load(f)
+            except Exception:
+                self.mapping_data = {}
+
+    def _save_mapping_pair(self, panchayat, mate_names):
+        if not panchayat or not mate_names: return
+        key = panchayat.strip().lower()
+        self.mapping_data[key] = mate_names.strip()
+        try:
+            with open(self.mapping_file, 'w') as f:
+                json.dump(self.mapping_data, f, indent=4)
+        except Exception: pass
+    # --------------------------
+
     def _on_panchayat_change(self):
         """
-        Updates the mate name suggestions based on the current panchayat.
-        Called by the debouncer or directly when loading data.
+        Updates Mate suggestions AND auto-fills the Mate entry box
+        based on the saved mapping for the current Panchayat.
         """
-        # Cancel any pending job, just in case
         if self.panchayat_after_id:
             self.after_cancel(self.panchayat_after_id)
             self.panchayat_after_id = None
 
-        # Get the new dynamic key (e.g., "mate_name_palojori")
+        # 1. History Logic (Existing) - Update Dropdown List
         mate_key = self._get_current_mate_key()
-        
-        # Get the list of mates for this specific panchayat
         new_suggestions = self.app.history_manager.get_suggestions(mate_key)
         
         if self.mate_name_entry:
-            # Update the autocomplete widget with the new key and suggestion list
             self.mate_name_entry.history_key = mate_key
             self.mate_name_entry.suggestions = new_suggestions
-            self.mate_name_entry.delete(0, "end") # Clear old mate name
-    
-    # --- End of Panchayat-dependent logic ---
+            
+            # 2. NEW: Mapping Logic - Auto-fill Text
+            current_panchayat = self.panchayat_entry.get().strip().lower()
+            if current_panchayat in self.mapping_data:
+                saved_mate = self.mapping_data[current_panchayat]
+                
+                # Fill only if field is empty or different
+                if self.mate_name_entry.get().strip() != saved_mate:
+                    self.mate_name_entry.delete(0, tkinter.END)
+                    self.mate_name_entry.insert(0, saved_mate)
 
     def set_ui_state(self, running: bool):
         """Enables or disables UI elements based on automation state."""
@@ -301,6 +327,7 @@ class MbEntryTab(BaseAutomationTab):
             messagebox.showwarning("Input Required", "Please paste at least one work code.")
             return
             
+        self._save_mapping_pair(cfg['panchayat_name'], cfg['mate_name'])
         # Save inputs for next session
         self._save_inputs(cfg)
         
