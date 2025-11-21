@@ -38,7 +38,7 @@ class SarkarAapkeDwarTab(BaseAutomationTab):
 
         ctk.CTkLabel(bulk_frame, text="Mode 1: Bulk Entry (via CSV)", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, columnspan=3, sticky="w", padx=10, pady=5)
         
-        self.csv_path_entry = ctk.CTkEntry(bulk_frame, placeholder_text="Select CSV file for bulk entry...")
+        self.csv_path_entry = ctk.CTkEntry(bulk_frame, placeholder_text="Select CSV file with Applicant Details...")
         self.csv_path_entry.grid(row=1, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
         
         btn_frame = ctk.CTkFrame(bulk_frame, fg_color="transparent")
@@ -47,30 +47,29 @@ class SarkarAapkeDwarTab(BaseAutomationTab):
         ctk.CTkButton(btn_frame, text="Browse", width=80, command=self.browse_csv).pack(side="left", padx=2)
         ctk.CTkButton(btn_frame, text="Get Demo CSV", width=100, fg_color="green", command=self.generate_demo_csv).pack(side="left", padx=2)
         
-        ctk.CTkLabel(bulk_frame, text="* If CSV is selected, app will auto-fill ALL fields and submit applications one by one.", text_color="gray60", font=ctk.CTkFont(size=11)).grid(row=2, column=0, columnspan=3, sticky="w", padx=10, pady=(0, 5))
+        ctk.CTkLabel(bulk_frame, text="* CSV should ONLY contain: Name, Father Name, Age, Mobile, Village, Address.", text_color="gray60", font=ctk.CTkFont(size=11)).grid(row=2, column=0, columnspan=3, sticky="w", padx=10, pady=(0, 5))
 
-        # --- MODE 2: Monitor & Auto-Fill (Manual Helper) ---
-        monitor_frame = ctk.CTkFrame(controls_frame)
-        monitor_frame.grid(row=2, column=0, columnspan=3, sticky="ew", padx=10, pady=(0, 10))
-        monitor_frame.grid_columnconfigure(1, weight=1)
+        # --- Settings (Applied to ALL Modes) ---
+        settings_frame = ctk.CTkFrame(controls_frame)
+        settings_frame.grid(row=2, column=0, columnspan=3, sticky="ew", padx=10, pady=(0, 10))
+        settings_frame.grid_columnconfigure(1, weight=1)
 
-        ctk.CTkLabel(monitor_frame, text="Mode 2: Manual Helper (Auto-fill Scheme only)", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, columnspan=2, sticky="w", padx=10, pady=5)
-        ctk.CTkLabel(monitor_frame, text="* Used only if CSV is empty. Fills scheme details when you open a new form.", text_color="gray60", font=ctk.CTkFont(size=11)).grid(row=0, column=2, sticky="e", padx=10)
+        ctk.CTkLabel(settings_frame, text="Common Settings (Applied to CSV & Manual Mode)", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, columnspan=2, sticky="w", padx=10, pady=5)
 
         # 1. Applicant Remarks
-        ctk.CTkLabel(monitor_frame, text="Applicant Remarks:").grid(row=1, column=0, sticky="w", padx=10, pady=2)
-        self.app_remarks_entry = ctk.CTkEntry(monitor_frame, placeholder_text="Enter Applicant Remarks")
+        ctk.CTkLabel(settings_frame, text="Applicant Remarks:").grid(row=1, column=0, sticky="w", padx=10, pady=2)
+        self.app_remarks_entry = ctk.CTkEntry(settings_frame, placeholder_text="Enter Applicant Remarks (e.g. Camp)")
         self.app_remarks_entry.grid(row=1, column=1, columnspan=2, sticky="ew", padx=10, pady=2)
 
         # 2. Scheme Type Dropdown
-        ctk.CTkLabel(monitor_frame, text="Scheme Type:").grid(row=2, column=0, sticky="w", padx=10, pady=2)
+        ctk.CTkLabel(settings_frame, text="Scheme Type:").grid(row=2, column=0, sticky="w", padx=10, pady=2)
         scheme_types = ["Service Focus Area"] 
-        self.scheme_type_combobox = ctk.CTkComboBox(monitor_frame, values=scheme_types, width=300)
+        self.scheme_type_combobox = ctk.CTkComboBox(settings_frame, values=scheme_types, width=300)
         self.scheme_type_combobox.set("Service Focus Area")
         self.scheme_type_combobox.grid(row=2, column=1, columnspan=2, sticky="ew", padx=10, pady=2)
 
         # 3. Scheme/Service Dropdown
-        ctk.CTkLabel(monitor_frame, text="Scheme/Service:").grid(row=3, column=0, sticky="w", padx=10, pady=2)
+        ctk.CTkLabel(settings_frame, text="Scheme/Service:").grid(row=3, column=0, sticky="w", padx=10, pady=2)
         service_options = [
             "जाति प्रमाण पत्र (Caste Certificate)",
             "आय प्रमाण पत्र (Income Certificate)",
@@ -86,12 +85,12 @@ class SarkarAapkeDwarTab(BaseAutomationTab):
             "विकलांग पेंशन (Disability Pension)",
             "झारखंड राज्य सेवा देने की गारंटी अधिनियम 2011 से जुड़ी अन्य सेवाएं (Other Services under Jharkhand Right to Guarantee of Services Act 2011)"
         ]
-        self.service_combobox = ctk.CTkComboBox(monitor_frame, values=service_options, width=300)
+        self.service_combobox = ctk.CTkComboBox(settings_frame, values=service_options, width=300)
         self.service_combobox.grid(row=3, column=1, columnspan=2, sticky="ew", padx=10, pady=2)
 
         # 4. Scheme Remarks
-        ctk.CTkLabel(monitor_frame, text="Scheme Remarks:").grid(row=4, column=0, sticky="w", padx=10, pady=2)
-        self.scheme_remarks_entry = ctk.CTkEntry(monitor_frame, placeholder_text="Enter Scheme Remarks")
+        ctk.CTkLabel(settings_frame, text="Scheme Remarks:").grid(row=4, column=0, sticky="w", padx=10, pady=2)
+        self.scheme_remarks_entry = ctk.CTkEntry(settings_frame, placeholder_text="Enter Scheme Remarks")
         self.scheme_remarks_entry.grid(row=4, column=1, columnspan=2, sticky="ew", padx=10, pady=2)
 
         # Action Buttons
@@ -119,19 +118,19 @@ class SarkarAapkeDwarTab(BaseAutomationTab):
             self.csv_path_entry.insert(0, file_path)
 
     def generate_demo_csv(self):
+        # UPDATED: Removed Scheme/Remarks columns from CSV
         headers = [
             "Applicant Name", "Father/Husband Name", "Age", "Mobile No", 
-            "Is WhatsApp (Y/N)", "Village", "Address", "Applicant Remarks", 
-            "Scheme Type", "Service", "Scheme Remarks"
+            "Is WhatsApp (Y/N)", "Village", "Address"
         ]
         demo_data = [
-            "Ramesh Kumar", "Suresh Kumar", "45", "9876543210", "Y", "Ratu", "House No 12, Main Road", "Camp Application", "Service Focus Area", "जाति प्रमाण पत्र (Caste Certificate)", "Urgent"
+            "Ramesh Kumar", "Suresh Kumar", "45", "9876543210", "Y", "Ratu", "House No 12, Main Road"
         ]
         
         file_path = filedialog.asksaveasfilename(
             defaultextension=".csv", 
             filetypes=[("CSV Files", "*.csv")],
-            initialfile="SAD_Bulk_Entry_Demo.csv",
+            initialfile="SAD_Bulk_Simple_Demo.csv",
             title="Save Demo CSV"
         )
         
@@ -141,7 +140,7 @@ class SarkarAapkeDwarTab(BaseAutomationTab):
                     writer = csv.writer(f)
                     writer.writerow(headers)
                     writer.writerow(demo_data)
-                messagebox.showinfo("Success", "Demo CSV saved successfully!")
+                messagebox.showinfo("Success", "Demo CSV saved! Please fill applicant details only.")
             except Exception as e:
                 messagebox.showerror("Error", f"Could not save file: {e}")
 
@@ -154,15 +153,14 @@ class SarkarAapkeDwarTab(BaseAutomationTab):
             'scheme_remarks': self.scheme_remarks_entry.get().strip()
         }
 
-        # Validation
-        if inputs['csv_file']:
-            if not os.path.exists(inputs['csv_file']):
-                messagebox.showerror("File Error", "CSV File does not exist.")
-                return
-        else:
-            if not inputs['scheme_type'] or not inputs['service']:
-                messagebox.showwarning("Input Error", "For Manual Helper Mode, Scheme Type and Service are required.")
-                return
+        # Validation: Scheme details are ALWAYS required from UI now
+        if not inputs['scheme_type'] or not inputs['service']:
+            messagebox.showwarning("Input Error", "Please select 'Scheme Type' and 'Service' from the dropdowns.")
+            return
+
+        if inputs['csv_file'] and not os.path.exists(inputs['csv_file']):
+            messagebox.showerror("File Error", "Selected CSV File does not exist.")
+            return
 
         self.save_inputs(inputs)
         self.app.start_automation_thread(self.automation_key, self.run_automation_logic, args=(inputs,))
@@ -178,10 +176,10 @@ class SarkarAapkeDwarTab(BaseAutomationTab):
                 return
             wait = WebDriverWait(driver, 10)
 
-            # DECIDE MODE
             if inputs['csv_file']:
-                self.app.log_message(self.log_display, "Starting BULK ENTRY Mode from CSV...")
-                self._run_bulk_mode(driver, wait, inputs['csv_file'])
+                self.app.log_message(self.log_display, f"Starting BULK Mode via CSV...")
+                self.app.log_message(self.log_display, f"Common Service: {inputs['service']}")
+                self._run_bulk_mode(driver, wait, inputs)
             else:
                 self.app.log_message(self.log_display, "Starting MONITOR Mode (Manual Helper)...")
                 self._run_monitor_mode(driver, wait, inputs)
@@ -192,10 +190,10 @@ class SarkarAapkeDwarTab(BaseAutomationTab):
             self.app.after(0, self.set_ui_state, False)
             self.app.after(0, self.app.set_status, "Automation Stopped")
 
-    def _run_bulk_mode(self, driver, wait, csv_path):
+    def _run_bulk_mode(self, driver, wait, inputs):
         data = []
         try:
-            with open(csv_path, 'r', encoding='utf-8-sig') as f:
+            with open(inputs['csv_file'], 'r', encoding='utf-8-sig') as f:
                 reader = csv.DictReader(f)
                 data = list(reader)
         except Exception as e:
@@ -203,7 +201,7 @@ class SarkarAapkeDwarTab(BaseAutomationTab):
             return
 
         total = len(data)
-        self.app.log_message(self.log_display, f"Loaded {total} records from CSV.")
+        self.app.log_message(self.log_display, f"Loaded {total} records. Using fixed Scheme details from UI.")
 
         for i, row in enumerate(data):
             if self.app.stop_events[self.automation_key].is_set(): break
@@ -213,21 +211,19 @@ class SarkarAapkeDwarTab(BaseAutomationTab):
             self.app.after(0, self.update_status, f"Processing {applicant_name}...", (i+1)/total)
 
             try:
-                # 1. Ensure on Create Page
                 if "application/create" not in driver.current_url:
                     driver.get("https://sarkaraapkedwar.jharkhand.gov.in/#/application/create")
                     time.sleep(2)
 
-                # 2. Wait for form
+                # Wait for form to be ready
                 wait.until(EC.presence_of_element_located((By.NAME, "applicantName")))
 
-                # 3. Fill Basic Details
+                # --- 1. Fill Applicant Details (From CSV) ---
                 self._safe_send_keys(driver, "applicantName", applicant_name)
                 self._safe_send_keys(driver, "fatherHusbandName", row.get("Father/Husband Name", ""))
                 self._safe_send_keys(driver, "age", row.get("Age", ""))
                 self._safe_send_keys(driver, "mobileNo", row.get("Mobile No", ""))
                 
-                # WhatsApp Checkbox
                 is_whatsapp = row.get("Is WhatsApp (Y/N)", "N").upper()
                 try:
                     chk = driver.find_element(By.ID, "isWhatsAppMobile")
@@ -235,88 +231,88 @@ class SarkarAapkeDwarTab(BaseAutomationTab):
                         chk.click()
                 except: pass
 
-                # 4. Village (React Select Handling)
+                # Village (Fixed Locator)
                 village = row.get("Village", "")
                 if village:
                     try:
-                        # React select input usually has an ID like 'react-select-2-input'
-                        # We search for the input inside the village container
-                        village_input = driver.find_element(By.XPATH, "//div[contains(text(), 'Select Village')]/following-sibling::div//input")
-                        # Alternatively, check for specific ID from screenshot/html if consistent
-                        if not village_input:
-                            village_input = driver.find_element(By.ID, "react-select-2-input")
-                        
+                        village_input = driver.find_element(By.ID, "react-select-2-input")
                         village_input.send_keys(village)
                         time.sleep(1)
                         village_input.send_keys(Keys.ENTER)
-                    except Exception as e:
-                        self.app.log_message(self.log_display, f"Warning: Could not select Village '{village}'. Error: {e}", "warning")
+                    except NoSuchElementException:
+                        try:
+                            village_input = driver.find_element(By.CSS_SELECTOR, ".css-13cymwt-control input")
+                            village_input.send_keys(village)
+                            time.sleep(1)
+                            village_input.send_keys(Keys.ENTER)
+                        except:
+                            self.app.log_message(self.log_display, f"Warning: Could not select Village '{village}'.", "warning")
 
-                # 5. Address & Remarks
                 self._safe_send_keys(driver, "address", row.get("Address", ""))
-                self._safe_send_keys(driver, "remarks", row.get("Applicant Remarks", ""))
+                
+                # --- 2. Fill Remarks (From UI) ---
+                # Applicant Remark
+                self._safe_send_keys(driver, "remarks", inputs['app_remarks'])
 
-                # 6. Scheme Details
-                # Scroll down to ensure visibility
+                # --- 3. Fill Scheme Details (From UI) ---
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                 
-                scheme_type = row.get("Scheme Type", "")
-                if scheme_type:
-                    Select(driver.find_element(By.NAME, "schemeId")).select_by_visible_text(scheme_type)
-                    time.sleep(1) # Wait for services to load
-
-                service = row.get("Service", "")
-                if service:
-                    try:
-                        svc_select = Select(wait.until(EC.presence_of_element_located((By.NAME, "schemeService"))))
-                        try:
-                            svc_select.select_by_visible_text(service)
-                        except:
-                            # Partial match attempt
-                            for opt in svc_select.options:
-                                if service.lower() in opt.text.lower():
-                                    svc_select.select_by_visible_text(opt.text)
-                                    break
-                    except Exception:
-                        self.app.log_message(self.log_display, f"Error selecting Service: {service}", "error")
-
-                self._safe_send_keys(driver, "schemeRemarks", row.get("Scheme Remarks", ""))
-
-                # 7. Click Add Service
-                add_btn = driver.find_element(By.XPATH, "//button[contains(., 'Add Service')]")
-                add_btn.click()
-                
-                # Wait for row to appear in table (Validation that service is added)
-                time.sleep(1)
-                
-                # 8. Click Create Application (Final Submit)
-                create_btn = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Create Application')]")))
-                create_btn.click()
-                
-                # 9. Handle Success/Reset
-                # Wait for success message or page reload
-                time.sleep(2)
-                
-                # Click Reset to prepare for next
+                # Scheme Type
                 try:
-                    reset_btn = driver.find_element(By.XPATH, "//button[contains(., 'Reset')]")
-                    reset_btn.click()
-                    time.sleep(1)
-                except:
-                    driver.refresh() # Fallback
-                    time.sleep(2)
+                    Select(driver.find_element(By.NAME, "schemeId")).select_by_visible_text(inputs['scheme_type'])
+                    time.sleep(1) # Wait for services
+                except NoSuchElementException:
+                    self.app.log_message(self.log_display, f"Error: Scheme Type '{inputs['scheme_type']}' not found.", "error")
+                    continue
 
-                self.app.log_message(self.log_display, f"Success: {applicant_name}", "success")
+                # Service
+                try:
+                    svc_select = Select(wait.until(EC.presence_of_element_located((By.NAME, "schemeService"))))
+                    try:
+                        svc_select.select_by_visible_text(inputs['service'])
+                    except:
+                        # Partial match logic
+                        found = False
+                        for opt in svc_select.options:
+                            if inputs['service'].lower() in opt.text.lower():
+                                svc_select.select_by_visible_text(opt.text)
+                                found = True
+                                break
+                        if not found:
+                            self.app.log_message(self.log_display, f"Error: Service '{inputs['service']}' not found.", "error")
+                except Exception as e:
+                    self.app.log_message(self.log_display, f"Error selecting Service: {e}", "error")
+
+                # Scheme Remark
+                self._safe_send_keys(driver, "schemeRemarks", inputs['scheme_remarks'])
+
+                # --- 4. Submit ---
+                try:
+                    driver.find_element(By.XPATH, "//button[contains(., 'Add Service')]").click()
+                    time.sleep(1)
+                    wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Create Application')]"))).click()
+                    
+                    # Success Wait
+                    time.sleep(2)
+                    
+                    # Reset for next
+                    try:
+                        driver.find_element(By.XPATH, "//button[contains(., 'Reset')]").click()
+                        time.sleep(1)
+                    except:
+                        driver.refresh()
+                        time.sleep(2)
+
+                    self.app.log_message(self.log_display, f"Success: {applicant_name}", "success")
+                except Exception as e:
+                    self.app.log_message(self.log_display, f"Error clicking submit buttons: {e}", "error")
 
             except Exception as e:
-                self.app.log_message(self.log_display, f"Failed to process {applicant_name}: {e}", "error")
-                # Try to refresh to recover for next row
+                self.app.log_message(self.log_display, f"Failed {applicant_name}: {e}", "error")
                 driver.refresh()
                 time.sleep(3)
 
     def _run_monitor_mode(self, driver, wait, inputs):
-        # ... (Keep existing Monitor Logic here) ...
-        # Copied from previous version for completeness
         while not self.app.stop_events[self.automation_key].is_set():
             try:
                 if "application/create" not in driver.current_url:
@@ -338,7 +334,6 @@ class SarkarAapkeDwarTab(BaseAutomationTab):
                     time.sleep(1)
                     
                     svc_select = Select(driver.find_element(By.NAME, "schemeService"))
-                    # Retry loop for service population
                     for _ in range(5):
                         if len(svc_select.options) > 1: break
                         time.sleep(1)
