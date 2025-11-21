@@ -23,7 +23,7 @@ ICONS = {
     "Gen Wagelist": "📋", "Send Wagelist": "➡️", "Verify Jobcard": "✅",
     "eMB Entry": "✏️", "eMB Verify": "🔍", "WC Gen (Abua)": "🏗️", "IF Editor (Abua)": "🔧",
     "Add Activity": "🪄","Verify ABPS": "💳",  "Workcode Extractor": "✂️", "Scheme Closing": "🏁",
-    "Update Outcome": "📊", "Duplicate MR Print": "📠", "Feedback": "💬","File Manager": "📁", "Resend Rejected WG": "🔁", "Demand": "📝",# <-- ADD THIS LINE
+    "Update Outcome": "📊", "Duplicate MR Print": "📠", "Feedback": "💬","File Manager": "📁", "Resend Rejected WG": "🔁", "Demand": "📝", "Sarkar Aapke Dwar": "⛺",# <-- ADD THIS LINE
     "About": "ℹ️", "Theme": {"light": "🌙", "dark": "☀️"}
 }
 

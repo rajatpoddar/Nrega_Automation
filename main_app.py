@@ -591,6 +591,7 @@ class NregaBotApp(ctk.CTk):
         self._load_icon("emoji_issued_mr_report", "assets/icons/emojis/issued_mr_report.png", size=(16,16))
         self._load_icon("emoji_zero_mr", "assets/icons/emojis/zero_mr.png", size=(16,16))
         self._load_icon("emoji_work_alloc", "assets/icons/emojis/work_allocation.png", size=(16,16))
+        self._load_icon("emoji_sad_auto", "assets/icons/emojis/thunder.png", size=(16,16))
 
 
     def run_onboarding_if_needed(self):
@@ -1382,6 +1383,7 @@ class NregaBotApp(ctk.CTk):
         from tabs.issued_mr_report_tab import IssuedMrReportTab
         from tabs.zero_mr_tab import ZeroMrTab
         from tabs.work_allocation_tab import WorkAllocationTab
+        from tabs.sarkar_aapke_dwar_tab import SarkarAapkeDwarTab
 
         return {
             "Core NREGA Tasks": {
@@ -1417,7 +1419,7 @@ class NregaBotApp(ctk.CTk):
                 "File Manager": {"creation_func": FileManagementTab, "icon": self.icon_images.get("emoji_file_manager"), "key": "file_manager"},
             },
             "AYASAD": {
-                 "Sarkar Aapke Dwar": {"creation_func": ComingSoonTab, "icon": self.icon_images.get("nrega")},
+                "Sarkar Aapke Dwar": {"creation_func": SarkarAapkeDwarTab, "icon": self.icon_images.get("emoji_sad_auto"), "key": "sad_auto"},
             },
             "Reporting": {
                 "Social Audit Report": {"creation_func": SAReportTab, "icon": self.icon_images.get("emoji_social_audit"), "key": "social_audit_respond"},
