@@ -83,8 +83,8 @@ class SarkarAapkeDwarTab(BaseAutomationTab):
             "वृद्धा पेंशन (Old Age Pension)",
             "विधवा पेंशन (Widow Pension)",
             "विकलांग पेंशन (Disability Pension)",
-            "झारखंड राज्य सेवा देने की गारंटी अधिनियम 2011 से जुड़ी अन्य सेवाएं (Other Services under Jharkhand Right to Guarantee of Services Act 2011)"
-            "अन्य लोक कल्याणकारी योजनाएँ (Other Welfare Schemes)"
+            "झारखंड राज्य सेवा देने की गारंटी अधिनियम 2011 से जुड़ी अन्य सेवाएं (Other Services under Jharkhand Right to Guarantee of Services Act 2011)",
+            "अन्य लोक कल्याणकारी योजनाएँ (Other Welfare Schemes)" # <-- NEW OPTION ADDED HERE
         ]
         self.service_combobox = ctk.CTkComboBox(settings_frame, values=service_options, width=300)
         self.service_combobox.grid(row=3, column=1, columnspan=2, sticky="ew", padx=10, pady=2)
