@@ -1,8 +1,13 @@
 {
-  "latest_version": "2.8.1",
+  "latest_version": "2.8.2",
   "download_url_windows": "https://nregabot.com/updates/NREGABot-v2.8.1-Setup.exe",
   "download_url_macos": "https://nregabot.com/updates/NREGABot-v2.8.1-macOS.dmg",
   "changelog": {
+    "2.8.2": [
+      "🐞 **Bug Fix (SAD Update Status):** Resolved an issue where the 'Fetch Status' button was unresponsive in the 'SAD Update Status' tab.",
+      "🐞 **Bug Fix (Edge Launch):** Fixed a problem where launching Microsoft Edge from the dashboard occasionally failed due to incorrect path handling.",
+      "🐞 **Bug Fix (Headless Reporting):** Addressed a rare crash that occurred when running reports in headless mode under specific system configurations."
+    ],
     "2.8.1": [
       "✨ **New Browser Support:** Added full support for **Microsoft Edge**! You can now launch Edge directly from the dashboard and use it for all automations alongside Chrome and Firefox.",
       "🚀 **Performance (Headless Mode):** Reports like 'MR Tracking' now run in the background (Headless Browser). You can continue working on other tasks while the bot processes data invisibly.",
