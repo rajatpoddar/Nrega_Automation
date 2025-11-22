@@ -36,24 +36,36 @@ class SADUpdateStatusTab(BaseAutomationTab):
         main_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
         main_frame.grid_columnconfigure(1, weight=1)
 
+        # Title
         ctk.CTkLabel(main_frame, text="Sarkar Aapke Dwar - Update Status / Disposal", 
                      font=ctk.CTkFont(size=16, weight="bold")).grid(row=0, column=0, columnspan=3, pady=10, sticky="w", padx=10)
 
-        # 1. File Selection
-        ctk.CTkLabel(main_frame, text="Upload File (Excel/CSV):").grid(row=1, column=0, sticky="w", padx=10, pady=5)
-        self.csv_entry = ctk.CTkEntry(main_frame, placeholder_text="Select .xlsx or .csv file")
-        self.csv_entry.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
-        ctk.CTkButton(main_frame, text="Browse", width=80, command=self.browse_file).grid(row=1, column=2, padx=10, pady=5)
+        # --- NEW NOTE ADDED HERE (Row 1) ---
+        ctk.CTkLabel(main_frame, text="Note: Download Excel filtered Applicant report from ASAD portal and directly upload it here.", 
+                     text_color="gray", font=("Arial", 12, "italic")).grid(row=1, column=0, columnspan=3, sticky="w", padx=15, pady=(0, 10))
 
-        # 2. Action Selection Dropdown
-        ctk.CTkLabel(main_frame, text="Select Action:").grid(row=2, column=0, sticky="w", padx=10, pady=5)
+        # 1. File Selection (Row 2)
+        ctk.CTkLabel(main_frame, text="Upload File (Excel/CSV):").grid(row=2, column=0, sticky="w", padx=10, pady=5)
+        self.csv_entry = ctk.CTkEntry(main_frame, placeholder_text="Select .xlsx or .csv file")
+        self.csv_entry.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
+        ctk.CTkButton(main_frame, text="Browse", width=80, command=self.browse_file).grid(row=2, column=2, padx=10, pady=5)
+
+        # 2. Action Selection (Row 3)
+        ctk.CTkLabel(main_frame, text="Select Action:").grid(row=3, column=0, sticky="w", padx=10, pady=5)
         self.action_combobox = ctk.CTkComboBox(main_frame, values=["Dispose", "Reject", "In Progress", "Pending"])
         self.action_combobox.set("Dispose") 
-        self.action_combobox.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
+        self.action_combobox.grid(row=3, column=1, sticky="ew", padx=5, pady=5)
 
-        # 3. Control Buttons
+        # 3. Block Code Prefix (Row 4)
+        ctk.CTkLabel(main_frame, text="Block Code to Remove:").grid(row=4, column=0, sticky="w", padx=10, pady=5)
+        self.prefix_entry = ctk.CTkEntry(main_frame, placeholder_text="e.g. 3/28/ (Leave empty if not needed)")
+        self.prefix_entry.grid(row=4, column=1, sticky="ew", padx=5, pady=5)
+        ctk.CTkLabel(main_frame, text="(Prefix will be removed)", 
+                     text_color="gray", font=("Arial", 10)).grid(row=4, column=2, sticky="w", padx=5)
+
+        # 4. Control Buttons (Row 5)
         btn_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
-        btn_frame.grid(row=3, column=0, columnspan=3, pady=15, sticky="ew")
+        btn_frame.grid(row=5, column=0, columnspan=3, pady=15, sticky="ew")
         
         self.start_btn = ctk.CTkButton(btn_frame, text="Start Process", command=self.start_process, 
                                        fg_color="#28a745", hover_color="#218838", width=100)
@@ -71,7 +83,7 @@ class SADUpdateStatusTab(BaseAutomationTab):
                                           fg_color="#17a2b8", hover_color="#138496", width=80)
         self.copy_log_btn.pack(side="left", padx=5)
 
-        # 4. Logs
+        # 5. Logs
         log_frame = ctk.CTkFrame(self.main_scroll)
         log_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
         log_frame.grid_columnconfigure(0, weight=1)
@@ -101,6 +113,7 @@ class SADUpdateStatusTab(BaseAutomationTab):
 
     def reset_ui(self):
         self.csv_entry.delete(0, tkinter.END)
+        self.prefix_entry.delete(0, tkinter.END)
         self.app.clear_log(self.log_display)
         self.log("UI Reset.")
 
@@ -115,6 +128,7 @@ class SADUpdateStatusTab(BaseAutomationTab):
                 with open(self.config_file, 'r') as f:
                     data = json.load(f)
                     self.csv_entry.insert(0, data.get('csv_file', ''))
+                    self.prefix_entry.insert(0, data.get('block_prefix', '3/28/')) # Default suggested
         except: pass
 
     # --- File Reading Helper ---
@@ -154,6 +168,7 @@ class SADUpdateStatusTab(BaseAutomationTab):
     def start_process(self):
         file_path = self.csv_entry.get().strip()
         action_text = self.action_combobox.get().strip()
+        prefix_val = self.prefix_entry.get().strip()
 
         if not file_path or not os.path.exists(file_path):
             messagebox.showerror("Error", "Valid file select karein.")
@@ -162,14 +177,14 @@ class SADUpdateStatusTab(BaseAutomationTab):
         action_map = {"Pending": "0", "In Progress": "1", "Dispose": "2", "Reject": "3"}
         action_val = action_map.get(action_text, "2")
 
-        self.save_inputs({'csv_file': file_path})
+        self.save_inputs({'csv_file': file_path, 'block_prefix': prefix_val})
         
         self.is_running = True
         self.stop_requested = False
         self.start_btn.configure(state="disabled", text="Running...")
         self.stop_btn.configure(state="normal")
         
-        threading.Thread(target=self.run_logic, args=(file_path, action_val, action_text), daemon=True).start()
+        threading.Thread(target=self.run_logic, args=(file_path, action_val, action_text, prefix_val), daemon=True).start()
 
     def stop_process(self):
         if self.is_running:
@@ -177,7 +192,7 @@ class SADUpdateStatusTab(BaseAutomationTab):
             self.log("Stopping requested... finishing current step.")
             self.stop_btn.configure(state="disabled")
 
-    def run_logic(self, file_path, action_val, action_text):
+    def run_logic(self, file_path, action_val, action_text, prefix_val):
         try:
             driver = self.app.get_driver()
             if not driver: return
@@ -191,6 +206,8 @@ class SADUpdateStatusTab(BaseAutomationTab):
 
             total = len(rows)
             self.log(f"Total Rows: {total}. Action: {action_text}")
+            if prefix_val:
+                self.log(f"Using Block Prefix: '{prefix_val}'")
 
             processed_success = 0
             
@@ -211,12 +228,17 @@ class SADUpdateStatusTab(BaseAutomationTab):
                     
                     raw_acc = str(raw_acc).strip()
                     search_term = raw_acc
-                    if "3/28/" in raw_acc:
-                        parts = raw_acc.split("3/28/")
-                        if len(parts) > 1:
-                            search_term = parts[1]
+
+                    # --- DYNAMIC PREFIX REMOVAL ---
+                    if prefix_val:
+                        # Case insensitive check if needed, but standardizing on exact match usually better
+                        if search_term.startswith(prefix_val):
+                            search_term = search_term[len(prefix_val):]
+                        elif prefix_val in search_term:
+                            # Fallback: Agar prefix shuru me nahi par beech me hai (kam chance hai)
+                            search_term = search_term.replace(prefix_val, "", 1)
                     
-                    self.log(f"[{idx+1}/{total}] Processing: {raw_acc}")
+                    self.log(f"[{idx+1}/{total}] Processing: {raw_acc} -> Search: {search_term}")
 
                     # 1. Search Page
                     driver.get("https://sarkaraapkedwar.jharkhand.gov.in/#/application/search")
@@ -248,7 +270,7 @@ class SADUpdateStatusTab(BaseAutomationTab):
                             edit_btn = driver.find_element(By.XPATH, "//a[contains(., 'Update')]")
                             edit_btn.click()
                         except:
-                            self.log(f"--> Update Link Not found.")
+                            self.log(f"--> Update Link Not found (Applicant mismatch?).")
                             continue
                     
                     # 5. Select Action
@@ -271,7 +293,7 @@ class SADUpdateStatusTab(BaseAutomationTab):
                             set_docs_btn.click()
                             time.sleep(1)
                         except TimeoutException:
-                            pass # Modal not found, proceeding
+                            pass
 
                     # 6. Click "Update Status"
                     try:
@@ -281,22 +303,21 @@ class SADUpdateStatusTab(BaseAutomationTab):
                         if update_final_btn.is_enabled():
                             update_final_btn.click()
                             
-                            # --- NEW: Handle SUCCESS Popup (SweetAlert) ---
+                            # --- Handle SUCCESS Popup (SweetAlert) ---
                             try:
-                                # Look for the 'OK' button in SweetAlert and click it
-                                # Class usually 'swal2-confirm' or button text 'OK'
+                                # Find 'OK' button in SweetAlert
                                 swal_ok = WebDriverWait(driver, 5).until(
                                     EC.element_to_be_clickable((By.CSS_SELECTOR, "button.swal2-confirm"))
                                 )
                                 swal_ok.click()
                                 self.log("--> Success (Popup Closed)")
                                 
-                                # Wait for popup to disappear so it doesn't block next loop
+                                # Wait for popup to vanish
                                 WebDriverWait(driver, 3).until(
                                     EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.swal2-container"))
                                 )
                             except TimeoutException:
-                                self.log("--> Success (Popup auto-closed or not found)")
+                                self.log("--> Success (No popup/Auto-closed)")
                             
                             processed_success += 1
                             time.sleep(1) 
